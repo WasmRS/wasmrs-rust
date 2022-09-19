@@ -1,0 +1,10 @@
+spec: schema.apexlang
+generates:
+  crates/wasmrs/src/generated.rs:
+    module: "@apexlang/codegen/rust"
+    visitorClass: RustBasic
+    config:
+      derive:
+        _all:
+      visibility:
+        _all: crate

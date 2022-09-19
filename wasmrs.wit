@@ -1,0 +1,2 @@
+init-buffers: func(guest-buffer-pointer: u32, host-buffer-pointer: u32)
+send: func(next-pos: u32)
