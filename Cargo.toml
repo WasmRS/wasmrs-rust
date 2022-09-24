@@ -1,4 +1,4 @@
 [workspace]
-members = ["crates/*"]
+members = ["crates/*", "wasm/wasmrs-component"]
 
-exclude = ["wasm/wasmrs-component"]
+# exclude = ["wasm/wasmrs-component"]

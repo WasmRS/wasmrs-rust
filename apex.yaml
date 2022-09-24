@@ -1,10 +1,31 @@
 spec: schema.apexlang
 generates:
-  crates/wasmrs/src/generated.rs:
+  crates/wasmrs-rsocket/src/generated.rs:
     module: "@apexlang/codegen/rust"
     visitorClass: RustBasic
     config:
+      header:
+        - "#![allow(unused_qualifications, missing_copy_implementations,clippy::from_over_into)]"
+      newtype:
+        RequestResponse: true
+        RequestChannel: true
+        RequestStream: true
+        FireAndForget: true
       derive:
         _all:
+        FrameType:
+          - Copy
+          - Clone
+          - Eq
+          - PartialEq
+          - Debug
+        Metadata:
+          - Clone
+      attributes:
+        _all:
+          - '#[cfg_attr(not(target_family = "wasm"), derive(Debug))]'
+          - "#[must_use]"
+        _except:
+          - FrameType
       visibility:
-        _all: crate
+        _all: pub

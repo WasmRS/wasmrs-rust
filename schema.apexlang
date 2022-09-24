@@ -1,7 +1,8 @@
 namespace "wasmrs.rsocket.v1"
 
+import {index_type} from "@apexlang/core"
 
-enum FrameType  {
+enum FrameType @index_type(type:u8) {
     Reserved = 0 as "RESERVED"
     Setup = 1 as "SETUP"
     Lease = 2 as "LEASE"
@@ -29,8 +30,6 @@ enum FrameFlag {
   Next = 3 as "N"
   Ignore = 4 as "I"
 }
-
-alias FrameTypeId = u8
 
 "Six (6) bytes reserved for FrameHeader information."
 type FrameHeader {
@@ -80,7 +79,15 @@ type RequestN {
 	n: u32
 }
 
-type RequestResponse {
+
+alias RequestChannel = RequestPayload
+alias RequestStream = RequestPayload
+alias RequestResponse = RequestPayload
+alias FireAndForget = RequestPayload
+
+type RequestPayload {
+  "The type of Request this payload creates."
+  frameType: FrameType
   "The stream ID this frame belongs to."
   streamId: u32
   "Any metadata associated with the Payload as raw bytes."
@@ -95,47 +102,27 @@ type RequestResponse {
 	initialN: u32
 }
 
-type FireAndForget {
-  "The stream ID this frame belongs to."
-  streamId: u32
-  "Any metadata associated with the Payload as raw bytes."
-	metadata: bytes
-  "The actual payload data as raw bytes."
-	data: bytes
-  "Whether this payload is broken up into multiple frames."
-	follows: bool
-  "Whether or not this frame is the last frame in a stream."
-  complete: bool
-  "TODO"
-	initialN: u32
+"Metadata associated with the frame."
+type Metadata {
+    "The namespace of the target operation."
+    namespace: string,
+    "The target operation."
+    operation: string,
+    "Instance."
+    instance: bytes,
 }
 
-type RequestStream {
-  "The stream ID this frame belongs to."
-  streamId: u32
-  "Any metadata associated with the Payload as raw bytes."
-	metadata: bytes
-  "The actual payload data as raw bytes."
-	data: bytes
-  "Whether this payload is broken up into multiple frames."
-	follows: bool
-  "Whether or not this frame is the last frame in a stream."
-  complete: bool
-  "TODO"
-	initialN: u32
-}
-
-type RequestChannel {
-  "The stream ID this frame belongs to."
-  streamId: u32
-  "Any metadata associated with the Payload as raw bytes."
-	metadata: bytes
-  "The actual payload data as raw bytes."
-	data: bytes
-  "Whether this payload is broken up into multiple frames."
-	follows: bool
-  "Whether or not this frame is the last frame in a stream."
-  complete: bool
-  "TODO"
-	initialN: u32
+"RSocket Error Codes"
+enum ErrorCode {
+  InvalidSetup = 1
+  UnsupportedSetup = 2
+  RejectedSetup = 3
+  RejectedResume = 4
+  ConnectionError = 257
+  ConnectionClose = 258
+  ApplicationError = 513
+  Rejected = 514
+  Canceled = 515
+  Invalid = 516
+  Reserved = 4294967295
 }

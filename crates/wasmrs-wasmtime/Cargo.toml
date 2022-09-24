@@ -1,0 +1,38 @@
+[package]
+name = "wasmrs-wasmtime"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wasmrs-host = { path = "../wasmrs-host" }
+wasmrs-ringbuffer = { path = "../wasmrs-ringbuffer" }
+wasmrs-rsocket = { path = "../wasmrs-rsocket" }
+
+wasmtime = "1.0"
+wasmtime-wasi = { version = "1.0", features = ["sync"] }
+wasi-common = { version = "1.0" }
+
+tracing = "0.1"
+thiserror = "1.0"
+cfg-if = "1.0.0"
+parking_lot = "0.12"
+futures-core = "0.3"
+once_cell = "1.13"
+
+tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
+
+
+[dev-dependencies]
+wasmflow-codec = "0.10.0"
+env_logger = "0.9"
+tokio = { version = "1", features = ["macros", "time"] }
+test-log = "0.2.10"
+tracing-subscriber = { version = "0.3", default-features = false, features = [
+  "env-filter",
+  "fmt",
+] }
+futures = "0.3"
+anyhow = { version = "1.0" }
+rxrust = { path = "../../crates/rxRust", features = [] }

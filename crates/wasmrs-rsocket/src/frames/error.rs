@@ -1,32 +1,42 @@
 use crate::{
-    generated::{ErrorFrame, FrameHeader, FrameType},
+    generated::{FrameHeader, FrameType},
     util::from_u32_bytes,
 };
 
-use super::{Error, Frame};
+use super::{Error, FrameCodec};
+
+pub use crate::generated::ErrorFrame;
 
 impl ErrorFrame {}
 
-impl Frame<ErrorFrame> for ErrorFrame {
-    fn kind(&self) -> FrameType {
-        FrameType::Payload
+impl FrameCodec<ErrorFrame> for ErrorFrame {
+    const FRAME_TYPE: FrameType = FrameType::Err;
+
+    fn stream_id(&self) -> u32 {
+        self.stream_id
     }
 
-    fn decode(header: FrameHeader, mut buffer: Vec<u8>) -> Result<ErrorFrame, Error> {
+    fn decode(mut buffer: Vec<u8>) -> Result<ErrorFrame, Error> {
+        let header = FrameHeader::from_reader(&*buffer)?;
+        Self::check_type(&header)?;
+        let start = 6;
+
         Ok(ErrorFrame {
             stream_id: header.stream_id(),
-            code: from_u32_bytes(&buffer[0..4]),
-            data: String::from_utf8(buffer.drain(4..).collect())
+            code: from_u32_bytes(&buffer[start..start + 4]),
+            data: String::from_utf8(buffer.drain(start + 4..).collect())
                 .map_err(|_| super::Error::StringConversion)?,
         })
     }
 
     fn encode(self) -> Vec<u8> {
-        let len = self.data.len() + 4;
-        let mut bytes = Vec::with_capacity(len);
-        bytes.append(&mut self.code.to_be_bytes().to_vec());
-        bytes.append(&mut self.data.into_bytes());
-        bytes
+        let header = self.gen_header().encode();
+        [
+            header,
+            self.code.to_be_bytes().to_vec(),
+            self.data.into_bytes(),
+        ]
+        .concat()
     }
 
     fn gen_header(&self) -> FrameHeader {
@@ -36,7 +46,7 @@ impl Frame<ErrorFrame> for ErrorFrame {
 
 #[cfg(test)]
 mod test {
-    use crate::frames::Frame;
+    use crate::frames::FrameCodec;
 
     use super::*;
     use anyhow::Result;
@@ -46,8 +56,7 @@ mod test {
     #[test]
     fn test_decode() -> Result<()> {
         println!("{:?}", BYTES);
-        let header = FrameHeader::from_bytes(BYTES[0..6].to_vec());
-        let p = ErrorFrame::decode(header, BYTES[6..].to_vec())?;
+        let p = ErrorFrame::decode(BYTES.to_vec())?;
         assert_eq!(p.stream_id, 1234);
         assert_eq!(&p.data, "errstr");
         assert_eq!(p.code, 11);
@@ -61,10 +70,8 @@ mod test {
             data: "errstr".to_owned(),
             code: 11,
         };
-        let mut header = payload.gen_header().into_bytes();
-        let mut encoded = payload.encode();
-        header.append(&mut encoded);
-        assert_eq!(header, BYTES);
+        let encoded = payload.encode();
+        assert_eq!(encoded, BYTES);
         Ok(())
     }
 }

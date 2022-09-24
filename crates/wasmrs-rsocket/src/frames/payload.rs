@@ -1,16 +1,17 @@
 use super::{
-    Error, Frame, FRAME_FLAG_COMPLETE, FRAME_FLAG_FOLLOWS, FRAME_FLAG_METADATA, FRAME_FLAG_NEXT,
+    Error, FrameCodec, FRAME_FLAG_COMPLETE, FRAME_FLAG_FOLLOWS, FRAME_FLAG_METADATA,
+    FRAME_FLAG_NEXT,
 };
 
-pub(crate) use crate::generated::Payload;
+pub use crate::generated::Payload;
 
 use crate::{
-    generated::{FrameHeader, FrameType},
+    generated::{FrameFlags, FrameHeader, FrameType},
     util::{from_u24_bytes, to_u24_bytes},
 };
 
 impl Payload {
-    fn get_flags(&self) -> u16 {
+    fn get_flags(&self) -> FrameFlags {
         (if self.metadata.is_empty() {
             0
         } else {
@@ -24,16 +25,24 @@ impl Payload {
     }
 }
 
-impl Frame<Payload> for Payload {
-    fn kind(&self) -> FrameType {
-        FrameType::Payload
+impl FrameCodec<Payload> for Payload {
+    const FRAME_TYPE: FrameType = FrameType::Payload;
+
+    fn stream_id(&self) -> u32 {
+        self.stream_id
     }
 
-    fn decode(header: FrameHeader, mut buffer: Vec<u8>) -> Result<Payload, Error> {
-        let (start, metadata_len) = if header.has_metadata() {
-            (3, from_u24_bytes(&buffer[0..3]))
+    fn decode(mut buffer: Vec<u8>) -> Result<Payload, Error> {
+        let header = FrameHeader::from_reader(&*buffer)?;
+        Self::check_type(&header)?;
+        let mut start = 6;
+
+        let metadata_len = if header.has_metadata() {
+            let len = from_u24_bytes(&buffer[start..start + 3]);
+            start += 3;
+            len
         } else {
-            (0, 0)
+            0
         };
 
         let data_start = start + metadata_len as usize;
@@ -52,14 +61,15 @@ impl Frame<Payload> for Payload {
         })
     }
 
-    fn encode(mut self) -> Vec<u8> {
-        let len =
-            self.data.len() + self.metadata.len() + if self.metadata.is_empty() { 0 } else { 3 };
-        let mut bytes = Vec::with_capacity(len);
-        bytes.append(&mut to_u24_bytes(self.metadata.len() as u32));
-        bytes.append(&mut self.metadata);
-        bytes.append(&mut self.data);
-        bytes
+    fn encode(self) -> Vec<u8> {
+        let header = self.gen_header().encode();
+        [
+            header,
+            to_u24_bytes(self.metadata.len() as u32),
+            self.metadata,
+            self.data,
+        ]
+        .concat()
     }
 
     fn gen_header(&self) -> FrameHeader {
@@ -69,7 +79,7 @@ impl Frame<Payload> for Payload {
 
 #[cfg(test)]
 mod test {
-    use crate::frames::Frame;
+    use crate::frames::FrameCodec;
 
     use super::*;
     use anyhow::Result;
@@ -78,10 +88,8 @@ mod test {
 
     #[test]
     fn test_decode() -> Result<()> {
-        println!("{:?}", BYTES);
-        let header = FrameHeader::from_bytes(BYTES[0..6].to_vec());
-        assert!(header.has_metadata());
-        let p = Payload::decode(header, BYTES[6..].to_vec())?;
+        println!("RAW: {:?}", BYTES);
+        let p = Payload::decode(BYTES.to_vec())?;
         assert_eq!(p.stream_id, 1234);
         assert_eq!(p.data, b"hello");
         assert_eq!(p.metadata, b"hello");
@@ -98,10 +106,8 @@ mod test {
             complete: true,
             next: true,
         };
-        let mut header = payload.gen_header().into_bytes();
-        let mut encoded = payload.encode();
-        header.append(&mut encoded);
-        assert_eq!(BYTES, header);
+        let encoded = payload.encode();
+        assert_eq!(BYTES, encoded);
         Ok(())
     }
 }
