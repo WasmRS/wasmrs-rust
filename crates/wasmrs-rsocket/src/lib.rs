@@ -81,7 +81,7 @@
 #![allow(unused, clippy::needless_pass_by_value, unreachable_pub)]
 
 pub mod error;
-// pub mod fragmentation;
+pub mod fragmentation;
 pub mod frames;
 pub mod util;
 

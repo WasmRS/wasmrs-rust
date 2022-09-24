@@ -43,7 +43,12 @@ type FragmentedPayload {
 	data: bytes
 }
 
-union Frame = Payload | Cancel | ErrorFrame | RequestN | RequestResponse | FireAndForget | RequestStream | RequestChannel
+type BasePayload {
+  metadata: bytes?
+  data: bytes?
+}
+
+union Frame = Payload | Cancel | ErrorFrame | RequestN | RequestResponse | RequestFnF | RequestStream | RequestChannel
 
 "A Payload frame."
 type Payload {
@@ -83,7 +88,7 @@ type RequestN {
 alias RequestChannel = RequestPayload
 alias RequestStream = RequestPayload
 alias RequestResponse = RequestPayload
-alias FireAndForget = RequestPayload
+alias RequestFnF = RequestPayload
 
 type RequestPayload {
   "The type of Request this payload creates."

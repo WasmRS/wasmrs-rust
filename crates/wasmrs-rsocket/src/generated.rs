@@ -6,7 +6,8 @@
 #![allow(
     unused_qualifications,
     missing_copy_implementations,
-    clippy::from_over_into
+    clippy::from_over_into,
+    missing_debug_implementations
 )]
 
 pub type FrameFlags = u16;
@@ -29,14 +30,14 @@ pub struct RequestResponse(pub RequestPayload);
 #[cfg_attr(not(target_family = "wasm"), derive(Debug))]
 #[must_use]
 #[derive()]
-pub struct FireAndForget(pub RequestPayload);
+pub struct RequestFnF(pub RequestPayload);
 
 /// Six (6) bytes reserved for FrameHeader information.
 #[derive()]
 #[cfg_attr(not(target_family = "wasm"), derive(Debug))]
 #[must_use]
 pub struct FrameHeader {
-    pub header: Vec<u8>,
+    pub header: bytes::Bytes,
 }
 #[derive()]
 #[cfg_attr(not(target_family = "wasm"), derive(Debug))]
@@ -44,8 +45,15 @@ pub struct FrameHeader {
 pub struct FragmentedPayload {
     pub frame_type: FrameType,
     pub initial_n: u32,
-    pub metadata: Vec<u8>,
-    pub data: Vec<u8>,
+    pub metadata: bytes::Bytes,
+    pub data: bytes::Bytes,
+}
+#[derive(Clone)]
+#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[must_use]
+pub struct BasePayload {
+    pub metadata: Option<bytes::Bytes>,
+    pub data: Option<bytes::Bytes>,
 }
 /// A Payload frame.
 #[derive()]
@@ -55,9 +63,9 @@ pub struct Payload {
     /// The stream ID this frame belongs to.
     pub stream_id: u32,
     /// Any metadata associated with the Payload as raw bytes.
-    pub metadata: Vec<u8>,
+    pub metadata: bytes::Bytes,
     /// The actual payload data as raw bytes.
-    pub data: Vec<u8>,
+    pub data: bytes::Bytes,
     /// Whether this payload is broken up into multiple frames.
     pub follows: bool,
     /// Whether or not this frame is the last frame in a stream.
@@ -98,9 +106,9 @@ pub struct RequestPayload {
     /// The stream ID this frame belongs to.
     pub stream_id: u32,
     /// Any metadata associated with the Payload as raw bytes.
-    pub metadata: Vec<u8>,
+    pub metadata: bytes::Bytes,
     /// The actual payload data as raw bytes.
-    pub data: Vec<u8>,
+    pub data: bytes::Bytes,
     /// Whether this payload is broken up into multiple frames.
     pub follows: bool,
     /// Whether or not this frame is the last frame in a stream.
@@ -118,7 +126,7 @@ pub struct Metadata {
     /// The target operation.
     pub operation: String,
     /// Instance.
-    pub instance: Vec<u8>,
+    pub instance: bytes::Bytes,
 }
 #[derive()]
 #[cfg_attr(not(target_family = "wasm"), derive(Debug))]
@@ -129,7 +137,7 @@ pub enum Frame {
     ErrorFrame(Box<ErrorFrame>),
     RequestN(Box<RequestN>),
     RequestResponse(RequestResponse),
-    FireAndForget(FireAndForget),
+    RequestFnF(RequestFnF),
     RequestStream(RequestStream),
     RequestChannel(RequestChannel),
 }
@@ -277,7 +285,7 @@ impl Into<u32> for FrameFlag {
 }
 
 /// RSocket Error Codes
-#[derive()]
+#[derive(Copy, Clone)]
 #[cfg_attr(not(target_family = "wasm"), derive(Debug))]
 #[must_use]
 pub enum ErrorCode {

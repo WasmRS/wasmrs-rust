@@ -4,13 +4,14 @@ generates:
     module: "@apexlang/codegen/rust"
     visitorClass: RustBasic
     config:
+      bytes: true
       header:
-        - "#![allow(unused_qualifications, missing_copy_implementations,clippy::from_over_into)]"
+        - "#![allow(unused_qualifications, missing_copy_implementations,clippy::from_over_into,missing_debug_implementations)]"
       newtype:
         RequestResponse: true
         RequestChannel: true
         RequestStream: true
-        FireAndForget: true
+        RequestFnF: true
       derive:
         _all:
         FrameType:
@@ -20,6 +21,11 @@ generates:
           - PartialEq
           - Debug
         Metadata:
+          - Clone
+        ErrorCode:
+          - Copy
+          - Clone
+        BasePayload:
           - Clone
       attributes:
         _all:

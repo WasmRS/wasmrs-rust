@@ -1,21 +1,21 @@
 use crate::{
-    generated::{FireAndForget, FrameHeader, FrameType},
+    generated::{FrameHeader, FrameType, RequestFnF},
     Frame,
 };
 
 use super::{Error, FrameCodec};
 use bytes::Bytes;
 
-impl FireAndForget {}
+impl RequestFnF {}
 
-impl FrameCodec<FireAndForget> for FireAndForget {
+impl FrameCodec<RequestFnF> for RequestFnF {
     const FRAME_TYPE: FrameType = FrameType::RequestFnf;
 
     fn stream_id(&self) -> u32 {
         self.0.stream_id
     }
 
-    fn decode(mut buffer: Bytes) -> Result<FireAndForget, Error> {
+    fn decode(mut buffer: Bytes) -> Result<RequestFnF, Error> {
         let header = FrameHeader::from_bytes(buffer.split_to(Frame::LEN_HEADER));
         Self::check_type(&header)?;
         Ok(Self(crate::generated::RequestPayload::decode(
@@ -48,7 +48,7 @@ mod test {
     #[test]
     fn test_decode() -> Result<()> {
         println!("RAW: {:?}", BYTES);
-        let p = FireAndForget::decode(BYTES.into())?;
+        let p = RequestFnF::decode(BYTES.into())?;
         assert_eq!(p.0.stream_id, 1234);
         Ok(())
     }
@@ -64,7 +64,7 @@ mod test {
             complete: false, // TODO THIS MAY BE A BUG IN GO VS RUST. GO BINARIES SHOULD HAVE COMPLETE SET BUT IT'S NOT.
             initial_n: 0,
         };
-        let this = FireAndForget(payload);
+        let this = RequestFnF(payload);
         let encoded = this.encode();
         assert_eq!(encoded, Bytes::from(BYTES));
         Ok(())

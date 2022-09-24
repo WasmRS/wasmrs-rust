@@ -103,7 +103,7 @@ impl Frame {
             Frame::ErrorFrame(frame) => frame.stream_id,
             Frame::RequestN(frame) => frame.stream_id,
             Frame::RequestResponse(frame) => frame.0.stream_id,
-            Frame::FireAndForget(frame) => frame.0.stream_id,
+            Frame::RequestFnF(frame) => frame.0.stream_id,
             Frame::RequestStream(frame) => frame.0.stream_id,
             Frame::RequestChannel(frame) => frame.0.stream_id,
         }
@@ -117,7 +117,7 @@ impl Frame {
             Frame::ErrorFrame(frame) => frame.get_flags(),
             Frame::RequestN(frame) => frame.get_flags(),
             Frame::RequestResponse(frame) => frame.get_flags(),
-            Frame::FireAndForget(frame) => frame.get_flags(),
+            Frame::RequestFnF(frame) => frame.get_flags(),
             Frame::RequestStream(frame) => frame.get_flags(),
             Frame::RequestChannel(frame) => frame.get_flags(),
         }
@@ -131,7 +131,7 @@ impl Frame {
             Frame::ErrorFrame(_) => FrameType::Err,
             Frame::RequestN(_) => FrameType::RequestN,
             Frame::RequestResponse(_) => FrameType::RequestResponse,
-            Frame::FireAndForget(_) => FrameType::RequestFnf,
+            Frame::RequestFnF(_) => FrameType::RequestFnf,
             Frame::RequestStream(_) => FrameType::RequestStream,
             Frame::RequestChannel(_) => FrameType::RequestChannel,
         }
@@ -150,9 +150,7 @@ impl Frame {
             FrameType::RequestResponse => {
                 frames::Frame::RequestResponse(frames::RequestResponse::decode(buffer)?)
             }
-            FrameType::RequestFnf => {
-                frames::Frame::FireAndForget(frames::FireAndForget::decode(buffer)?)
-            }
+            FrameType::RequestFnf => frames::Frame::RequestFnF(frames::RequestFnF::decode(buffer)?),
             FrameType::RequestStream => {
                 frames::Frame::RequestStream(frames::RequestStream::decode(buffer)?)
             }
@@ -183,7 +181,7 @@ impl Frame {
             Frame::ErrorFrame(f) => f.encode(),
             Frame::RequestN(f) => f.encode(),
             Frame::RequestResponse(f) => f.encode(),
-            Frame::FireAndForget(f) => f.encode(),
+            Frame::RequestFnF(f) => f.encode(),
             Frame::RequestStream(f) => f.encode(),
             Frame::RequestChannel(f) => f.encode(),
         }
