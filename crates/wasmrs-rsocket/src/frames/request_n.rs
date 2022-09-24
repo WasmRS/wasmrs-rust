@@ -1,9 +1,11 @@
 use crate::{
     generated::{FrameHeader, FrameType},
     util::from_u32_bytes,
+    Frame,
 };
 
 use super::{Error, FrameCodec};
+use bytes::Bytes;
 
 pub use crate::generated::RequestN;
 
@@ -16,17 +18,22 @@ impl FrameCodec<RequestN> for RequestN {
         self.stream_id
     }
 
-    fn decode(buffer: Vec<u8>) -> Result<RequestN, Error> {
-        let header = FrameHeader::from_reader(&*buffer)?;
+    fn decode(mut buffer: Bytes) -> Result<RequestN, Error> {
+        let header = FrameHeader::from_bytes(buffer.split_to(Frame::LEN_HEADER));
         Self::check_type(&header)?;
         Ok(RequestN {
             stream_id: header.stream_id(),
-            n: from_u32_bytes(&buffer[6..6 + 4]),
+            n: from_u32_bytes(&buffer.split_to(4)),
         })
     }
 
-    fn encode(self) -> Vec<u8> {
-        [self.gen_header().encode(), self.n.to_be_bytes().to_vec()].concat()
+    fn encode(self) -> Bytes {
+        [
+            self.gen_header().encode(),
+            self.n.to_be_bytes().to_vec().into(),
+        ]
+        .concat()
+        .into()
     }
 
     fn gen_header(&self) -> FrameHeader {
@@ -46,7 +53,7 @@ mod test {
     #[test]
     fn test_decode() -> Result<()> {
         println!("RAW {:?}", BYTES);
-        let p = RequestN::decode(BYTES.to_vec())?;
+        let p = RequestN::decode(BYTES.into())?;
         assert_eq!(p.stream_id, 1234);
         Ok(())
     }
@@ -58,7 +65,7 @@ mod test {
             n: 15,
         };
         let encoded = payload.encode();
-        assert_eq!(encoded, BYTES);
+        assert_eq!(encoded, Bytes::from(BYTES));
         Ok(())
     }
 }

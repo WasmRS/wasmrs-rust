@@ -1,4 +1,9 @@
-use crate::generated::{FrameHeader, FrameType};
+use bytes::Bytes;
+
+use crate::{
+    generated::{FrameHeader, FrameType},
+    Frame,
+};
 
 use super::{Error, FrameCodec};
 
@@ -10,8 +15,8 @@ impl FrameCodec<Cancel> for Cancel {
         self.stream_id
     }
 
-    fn decode(buffer: Vec<u8>) -> Result<Cancel, Error> {
-        let header = FrameHeader::from_reader(&*buffer)?;
+    fn decode(mut buffer: Bytes) -> Result<Cancel, Error> {
+        let header = FrameHeader::from_bytes(buffer.split_to(Frame::LEN_HEADER));
         Self::check_type(&header)?;
 
         Ok(Cancel {
@@ -19,7 +24,7 @@ impl FrameCodec<Cancel> for Cancel {
         })
     }
 
-    fn encode(self) -> Vec<u8> {
+    fn encode(self) -> Bytes {
         self.gen_header().encode()
     }
 
@@ -40,7 +45,7 @@ mod test {
     #[test]
     fn test_decode() -> Result<()> {
         println!("RAW: {:?}", BYTES);
-        let p = Cancel::decode(BYTES.to_vec())?;
+        let p = Cancel::decode(BYTES.into())?;
         println!("{:?}", p);
         assert_eq!(p.stream_id, 1234);
         Ok(())
@@ -50,7 +55,7 @@ mod test {
     fn test_encode() -> Result<()> {
         let payload = Cancel { stream_id: 1234 };
         let encoded = payload.encode();
-        assert_eq!(encoded, BYTES);
+        assert_eq!(encoded, Bytes::from(BYTES));
         Ok(())
     }
 }

@@ -4,26 +4,15 @@ use super::{
 };
 
 pub use crate::generated::Payload;
+use bytes::{BufMut, Bytes, BytesMut};
 
 use crate::{
     generated::{FrameFlags, FrameHeader, FrameType},
     util::{from_u24_bytes, to_u24_bytes},
+    Frame,
 };
 
-impl Payload {
-    fn get_flags(&self) -> FrameFlags {
-        (if self.metadata.is_empty() {
-            0
-        } else {
-            FRAME_FLAG_METADATA
-        }) | if self.complete {
-            FRAME_FLAG_COMPLETE
-        } else {
-            0
-        } | if self.next { FRAME_FLAG_NEXT } else { 0 }
-            | if self.follows { FRAME_FLAG_FOLLOWS } else { 0 }
-    }
-}
+impl Payload {}
 
 impl FrameCodec<Payload> for Payload {
     const FRAME_TYPE: FrameType = FrameType::Payload;
@@ -32,25 +21,25 @@ impl FrameCodec<Payload> for Payload {
         self.stream_id
     }
 
-    fn decode(mut buffer: Vec<u8>) -> Result<Payload, Error> {
-        let header = FrameHeader::from_reader(&*buffer)?;
+    fn decode(mut buffer: Bytes) -> Result<Payload, Error> {
+        let header = FrameHeader::from_bytes(buffer.split_to(Frame::LEN_HEADER));
         Self::check_type(&header)?;
-        let mut start = 6;
+        let mut start = Frame::LEN_HEADER;
 
         let metadata_len = if header.has_metadata() {
-            let len = from_u24_bytes(&buffer[start..start + 3]);
-            start += 3;
-            len
+            from_u24_bytes(&buffer.split_to(3)) as usize
         } else {
             0
         };
 
-        let data_start = start + metadata_len as usize;
-        let metadata_range = start..(start + metadata_len as usize);
+        let data_start = start + metadata_len;
+        let metadata_range = start..(start + metadata_len);
+
         let payload_range = (data_start)..(buffer.len());
 
-        let payload: Vec<u8> = buffer.drain(payload_range).collect();
-        let metadata: Vec<u8> = buffer.drain(metadata_range).collect();
+        let metadata: Bytes = buffer.split_to(metadata_len);
+        let payload: Bytes = buffer;
+
         Ok(Payload {
             stream_id: header.stream_id(),
             metadata,
@@ -61,19 +50,39 @@ impl FrameCodec<Payload> for Payload {
         })
     }
 
-    fn encode(self) -> Vec<u8> {
+    fn encode(self) -> Bytes {
         let header = self.gen_header().encode();
-        [
-            header,
-            to_u24_bytes(self.metadata.len() as u32),
-            self.metadata,
-            self.data,
-        ]
-        .concat()
+        let mlen = to_u24_bytes(self.metadata.len() as u32);
+        let md = self.metadata;
+        let data = self.data;
+        let mut bytes =
+            BytesMut::with_capacity(Frame::LEN_HEADER + mlen.len() + md.len() + data.len());
+        bytes.put(header);
+        bytes.put(mlen);
+        bytes.put(md);
+        bytes.put(data);
+        bytes.freeze()
     }
 
     fn gen_header(&self) -> FrameHeader {
         FrameHeader::new(self.stream_id, FrameType::Payload, self.get_flags())
+    }
+
+    fn get_flags(&self) -> FrameFlags {
+        let mut flags = 0;
+        if !self.metadata.is_empty() {
+            flags |= Frame::FLAG_METADATA;
+        }
+        if self.complete {
+            flags |= Frame::FLAG_COMPLETE;
+        }
+        if self.next {
+            flags |= Frame::FLAG_NEXT;
+        }
+        if self.follows {
+            flags |= Frame::FLAG_FOLLOW;
+        }
+        flags
     }
 }
 
@@ -89,10 +98,10 @@ mod test {
     #[test]
     fn test_decode() -> Result<()> {
         println!("RAW: {:?}", BYTES);
-        let p = Payload::decode(BYTES.to_vec())?;
+        let p = Payload::decode(BYTES.into())?;
         assert_eq!(p.stream_id, 1234);
-        assert_eq!(p.data, b"hello");
-        assert_eq!(p.metadata, b"hello");
+        assert_eq!(p.data, Bytes::from("hello"));
+        assert_eq!(p.metadata, Bytes::from("hello"));
         Ok(())
     }
 
@@ -100,14 +109,14 @@ mod test {
     fn test_encode() -> Result<()> {
         let payload = Payload {
             stream_id: 1234,
-            metadata: b"hello".to_vec(),
-            data: b"hello".to_vec(),
+            metadata: Bytes::from("hello"),
+            data: Bytes::from("hello"),
             follows: true,
             complete: true,
             next: true,
         };
         let encoded = payload.encode();
-        assert_eq!(BYTES, encoded);
+        assert_eq!(encoded, Bytes::from(BYTES));
         Ok(())
     }
 }

@@ -80,60 +80,45 @@
 // TODO REMOVE
 #![allow(unused, clippy::needless_pass_by_value, unreachable_pub)]
 
+pub mod error;
+// pub mod fragmentation;
 pub mod frames;
 pub mod util;
 
 // mod buffers;
 mod generated;
 
-use std::io::Read;
+use std::{io::Read, pin::Pin};
 
 pub use frames::FrameCodec;
+use futures_lite::Stream;
 pub use generated::{ErrorCode, FragmentedPayload, Frame, FrameType, Metadata};
 
 use self::util::from_u32_bytes;
 
-pub fn read_frame(mut buf: impl Read) -> std::io::Result<Vec<u8>> {
-    let mut len_bytes = [0u8; 4];
-    buf.read_exact(&mut len_bytes)?;
-    let len = from_u32_bytes(&len_bytes);
-    let mut frame = vec![0; len as usize];
-    buf.read_exact(&mut frame)?;
-    Ok(frame)
-}
+pub use util::read_frame;
 
-// #[no_mangle]
-// #[export_name = "init"]
-// extern "C" fn init(
-//     guest_buffer_position: u32,
-//     host_buffer_position: u32,
-//     host_max_frame_size: u32,
-// ) {
-// }
+pub type Flux<T> = Pin<Box<dyn Send + Stream<Item = T>>>;
 
-// #[no_mangle]
-// #[export_name = "send"]
-// extern "C" fn send(next_pos: u32) {}
+pub type Result<T> = std::result::Result<T, crate::error::Error>;
+pub type PayloadBytes = Vec<u8>;
 
-#[cfg(test)]
-mod test {
-    use anyhow::Result;
-    use wasmrs_ringbuffer::{RingBuffer, VecRingBuffer};
-
-    use crate::read_frame;
-
-    #[test]
-    fn test_read_frame() -> Result<()> {
-        let mut buf: &[u8] = &[0, 0, 0, 4, 1, 2, 3, 4];
-        let frame = read_frame(&mut buf)?;
-        assert_eq!(frame, vec![1, 2, 3, 4]);
-
-        let mut rb: VecRingBuffer<u8> = VecRingBuffer::new();
-        rb.write_at(0, [0, 0, 0, 4, 1, 2, 3, 4].to_vec());
-        println!("{:?}", rb.buffer());
-        let frame = read_frame(&mut rb)?;
-        assert_eq!(frame, vec![1, 2, 3, 4]);
-
-        Ok(())
-    }
+#[async_trait::async_trait]
+pub trait RSocketContext: Sync + Send {
+    /// Fire and Forget interaction model of RSocket.
+    async fn fire_and_forget(&self, stream_id: u32, req: PayloadBytes) -> Result<()>;
+    /// Request-Response interaction model of RSocket.
+    async fn request_response(
+        &self,
+        stream_id: u32,
+        req: PayloadBytes,
+    ) -> Result<Option<PayloadBytes>>;
+    /// Request-Stream interaction model of RSocket.
+    fn request_stream(&self, stream_id: u32, req: PayloadBytes) -> Flux<Result<PayloadBytes>>;
+    /// Request-Channel interaction model of RSocket.
+    fn request_channel(
+        &self,
+        stream_id: u32,
+        reqs: Flux<Result<PayloadBytes>>,
+    ) -> Flux<Result<PayloadBytes>>;
 }

@@ -150,9 +150,9 @@ impl Manager {
         println!("len: {}", len);
         let mut frame_data: Vec<_> = self.local_buffer.read(len as usize).collect();
 
-        let header = FrameHeader::from_bytes(frame_data[0..6].to_vec());
+        let header = FrameHeader::from_bytes(frame_data[0..Frame::LEN_HEADER].to_vec());
         let stream_id = header.stream_id();
-        let buffer = frame_data.drain(6..).collect();
+        let buffer = frame_data.drain(Frame::LEN_HEADER..).collect();
         println!("header:{}", header);
         println!("buffer:{:?}", buffer);
         if let Err(e) = self.handle_frame(header, buffer) {
@@ -182,7 +182,7 @@ mod test {
         manager.init(1024, 1024, 16);
         let len_bytes = (BYTES.len() as u32).to_be_bytes();
         manager.write_local(1, len_bytes);
-        manager.write_local(5, BYTES.to_vec());
+        manager.write_local(5, BYTES.into());
         manager.send(1);
         // super::guest::send(next_pos)
 

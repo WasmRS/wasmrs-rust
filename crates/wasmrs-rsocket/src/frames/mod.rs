@@ -12,9 +12,10 @@ pub use crate::generated::{
     Cancel, ErrorFrame, Payload, RequestChannel, RequestN, RequestPayload, RequestResponse,
     RequestStream,
 };
+use bytes::{BufMut, Bytes, BytesMut};
 
 use crate::{
-    generated::{self as frames, FrameFlags, FrameHeader, FrameType},
+    generated::{self as frames, BasePayload, FrameFlags, FrameHeader, FrameType},
     util::from_u16_bytes,
     Frame, Metadata,
 };
@@ -38,44 +39,62 @@ impl std::fmt::Display for Error {
     }
 }
 
-static FRAME_FLAG_METADATA: FrameFlags = 1 << 8;
-static FRAME_FLAG_FOLLOWS: FrameFlags = 1 << 7;
-static FRAME_FLAG_COMPLETE: FrameFlags = 1 << 6;
-static FRAME_FLAG_NEXT: FrameFlags = 1 << 5;
-static FRAME_FLAG_IGNORE: FrameFlags = 1 << 4;
+pub const FRAME_FLAG_METADATA: FrameFlags = 1 << 8;
+pub const FRAME_FLAG_FOLLOWS: FrameFlags = 1 << 7;
+pub const FRAME_FLAG_COMPLETE: FrameFlags = 1 << 6;
+pub const FRAME_FLAG_NEXT: FrameFlags = 1 << 5;
+pub const FRAME_FLAG_IGNORE: FrameFlags = 1 << 4;
 
 impl crate::generated::FrameFlag {}
+
+impl BasePayload {
+    pub fn new(metadata: Option<Bytes>, data: Option<Bytes>) -> Self {
+        Self { metadata, data }
+    }
+}
 
 impl Metadata {
     pub fn new(namespace: impl AsRef<str>, operation: impl AsRef<str>) -> Metadata {
         Metadata {
             namespace: namespace.as_ref().to_owned(),
             operation: operation.as_ref().to_owned(),
-            instance: vec![],
+            instance: Bytes::new(),
         }
     }
     #[must_use]
-    pub fn encode(self) -> Vec<u8> {
-        let len = self.namespace.len() + self.operation.len() + self.instance.len() + 6;
-        let vec = [
-            (self.namespace.len() as u16).to_be_bytes().to_vec(),
-            self.namespace.into_bytes(),
-            (self.operation.len() as u16).to_be_bytes().to_vec(),
-            self.operation.into_bytes(),
-            (self.instance.len() as u16).to_be_bytes().to_vec(),
-            self.instance,
-        ]
-        .concat();
+    pub fn encode(self) -> Bytes {
+        let len = self.namespace.len()
+            + self.operation.len()
+            + self.instance.len()
+            + Frame::LEN_HEADER
+            + 2
+            + 2
+            + 2;
+        let mut bytes = BytesMut::with_capacity(len);
+        bytes.put((self.namespace.len() as u16).to_be_bytes().as_slice());
+        bytes.put(self.namespace.into_bytes().as_slice());
+        bytes.put((self.operation.len() as u16).to_be_bytes().as_slice());
+        bytes.put(self.operation.into_bytes().as_slice());
+        bytes.put((self.instance.len() as u16).to_be_bytes().as_slice());
+        bytes.put(self.instance);
+
         debug_assert_eq!(
-            vec.len(),
+            bytes.len(),
             len,
             "encoded metadata is not the correct length."
         );
-        vec
+        bytes.freeze()
     }
 }
 
 impl Frame {
+    pub const LEN_HEADER: usize = 6;
+    pub const FLAG_FOLLOW: FrameFlags = FRAME_FLAG_FOLLOWS;
+    pub const FLAG_NEXT: FrameFlags = FRAME_FLAG_NEXT;
+    pub const FLAG_COMPLETE: FrameFlags = FRAME_FLAG_COMPLETE;
+    pub const FLAG_IGNORE: FrameFlags = FRAME_FLAG_IGNORE;
+    pub const FLAG_METADATA: FrameFlags = FRAME_FLAG_METADATA;
+
     #[must_use]
     pub fn stream_id(&self) -> u32 {
         match self {
@@ -87,6 +106,20 @@ impl Frame {
             Frame::FireAndForget(frame) => frame.0.stream_id,
             Frame::RequestStream(frame) => frame.0.stream_id,
             Frame::RequestChannel(frame) => frame.0.stream_id,
+        }
+    }
+
+    #[must_use]
+    pub fn get_flag(&self) -> FrameFlags {
+        match self {
+            Frame::Payload(frame) => frame.get_flags(),
+            Frame::Cancel(frame) => frame.get_flags(),
+            Frame::ErrorFrame(frame) => frame.get_flags(),
+            Frame::RequestN(frame) => frame.get_flags(),
+            Frame::RequestResponse(frame) => frame.get_flags(),
+            Frame::FireAndForget(frame) => frame.get_flags(),
+            Frame::RequestStream(frame) => frame.get_flags(),
+            Frame::RequestChannel(frame) => frame.get_flags(),
         }
     }
 
@@ -104,13 +137,13 @@ impl Frame {
         }
     }
 
-    pub fn decode(bytes: Vec<u8>) -> Result<Frame, (u32, Error)> {
-        let header = FrameHeader::from_bytes(bytes[0..6].to_vec());
+    pub fn decode(mut bytes: Bytes) -> Result<Frame, (u32, Error)> {
+        let header = FrameHeader::from_bytes(bytes.split_to(Frame::LEN_HEADER));
         let stream_id = header.stream_id();
         Self::_decode(header, bytes).map_err(|e| (stream_id, e))
     }
 
-    pub fn _decode(header: FrameHeader, buffer: Vec<u8>) -> Result<Frame, Error> {
+    pub fn _decode(header: FrameHeader, buffer: Bytes) -> Result<Frame, Error> {
         let frame = match header.frame_type() {
             FrameType::Reserved => todo!(),
             FrameType::Setup => todo!(),
@@ -143,7 +176,7 @@ impl Frame {
     }
 
     #[must_use]
-    pub fn encode(self) -> Vec<u8> {
+    pub fn encode(self) -> Bytes {
         match self {
             Frame::Payload(f) => f.encode(),
             Frame::Cancel(f) => f.encode(),
@@ -164,12 +197,7 @@ impl Frame {
         }))
     }
 
-    pub fn new_payload(
-        stream_id: u32,
-        metadata: Vec<u8>,
-        data: Vec<u8>,
-        flags: FrameFlags,
-    ) -> Frame {
+    pub fn new_payload(stream_id: u32, metadata: Bytes, data: Bytes, flags: FrameFlags) -> Frame {
         Frame::Payload(Box::new(Payload {
             stream_id,
             metadata,
@@ -194,35 +222,30 @@ pub trait FrameCodec<T> {
         Self::FRAME_TYPE
     }
     fn stream_id(&self) -> u32;
-    fn decode(buffer: Vec<u8>) -> Result<T, Error>;
-    fn encode(self) -> Vec<u8>;
+    fn decode(buffer: Bytes) -> Result<T, Error>;
+    fn encode(self) -> Bytes;
     fn gen_header(&self) -> FrameHeader;
+    fn get_flags(&self) -> FrameFlags {
+        0
+    }
 }
 
 impl FrameHeader {
     pub(crate) fn new(stream_id: u32, frame_type: FrameType, frame_flags: u16) -> Self {
+        let mut header = BytesMut::with_capacity(Frame::LEN_HEADER);
         let frame_type: u32 = frame_type.into();
         let frame_type: u16 = frame_type.try_into().unwrap();
         let frame_type = (frame_type << 10) | frame_flags;
 
-        let header = [
-            stream_id.to_be_bytes().to_vec(),
-            frame_type.to_be_bytes().to_vec(),
-        ]
-        .concat();
+        header.put(stream_id.to_be_bytes().as_slice());
+        header.put(frame_type.to_be_bytes().as_slice());
 
-        Self { header }
+        Self {
+            header: header.freeze(),
+        }
     }
 
-    pub fn from_reader(mut buff: impl std::io::Read) -> Result<Self, Error> {
-        let mut bytes = [0; 6];
-        buff.read_exact(&mut bytes).map_err(|_| Error::ReadBuffer)?;
-        Ok(Self {
-            header: bytes.to_vec(),
-        })
-    }
-
-    pub(crate) fn from_bytes(header: Vec<u8>) -> Self {
+    pub(crate) fn from_bytes(header: Bytes) -> Self {
         Self { header }
     }
 
@@ -231,7 +254,7 @@ impl FrameHeader {
         &self.header
     }
 
-    fn encode(self) -> Vec<u8> {
+    fn encode(self) -> Bytes {
         self.header
     }
 
@@ -247,7 +270,7 @@ impl FrameHeader {
 
     fn n(&self) -> u16 {
         // let bytes: [u8; 2] = [self.header[4], self.header[5]];
-        from_u16_bytes(&self.header[4..6])
+        from_u16_bytes(&self.header.slice(4..Frame::LEN_HEADER))
     }
 
     pub(crate) fn frame_type(&self) -> FrameType {
@@ -325,6 +348,7 @@ mod test {
     use crate::{
         frames::{FRAME_FLAG_FOLLOWS, FRAME_FLAG_IGNORE, FRAME_FLAG_METADATA, FRAME_FLAG_NEXT},
         generated::{FrameHeader, FrameType},
+        Frame,
     };
 
     use super::FRAME_FLAG_COMPLETE;
@@ -350,7 +374,7 @@ mod test {
     #[test]
     fn test_payload_header() -> Result<()> {
         let frame = include_bytes!("../../testdata/frame.payload.bin");
-        let header = FrameHeader::from_bytes(frame[0..6].to_vec());
+        let header = FrameHeader::from_bytes(frame[0..Frame::LEN_HEADER].into());
         print_binary(header.as_bytes());
         assert!(header.has_metadata());
         Ok(())
@@ -358,7 +382,7 @@ mod test {
 
     #[test]
     fn test_header() -> Result<()> {
-        let header = FrameHeader::from_bytes(vec![0u8, 0, 4, 210, 25, 0]);
+        let header = FrameHeader::from_bytes(vec![0u8, 0, 4, 210, 25, 0].into());
         print_binary(header.as_bytes());
         println!("{}", header);
         println!("{:?}", header.as_bytes());

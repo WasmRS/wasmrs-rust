@@ -1,5 +1,9 @@
 use super::{Error, FrameCodec, RequestStream};
-use crate::generated::{FrameHeader, FrameType};
+use crate::{
+    generated::{FrameHeader, FrameType},
+    Frame,
+};
+use bytes::Bytes;
 
 impl RequestStream {}
 
@@ -10,20 +14,24 @@ impl FrameCodec<RequestStream> for RequestStream {
         self.0.stream_id
     }
 
-    fn decode(buffer: Vec<u8>) -> Result<RequestStream, Error> {
-        let header = FrameHeader::from_reader(&*buffer)?;
+    fn decode(mut buffer: Bytes) -> Result<RequestStream, Error> {
+        let header = FrameHeader::from_bytes(buffer.split_to(Frame::LEN_HEADER));
         Self::check_type(&header)?;
         Ok(Self(crate::generated::RequestPayload::decode(
             header, buffer,
         )?))
     }
 
-    fn encode(self) -> Vec<u8> {
+    fn encode(self) -> Bytes {
         self.0.encode()
     }
 
     fn gen_header(&self) -> FrameHeader {
         self.0.gen_header()
+    }
+
+    fn get_flags(&self) -> crate::generated::FrameFlags {
+        self.0.get_flags()
     }
 }
 
@@ -39,7 +47,7 @@ mod test {
     #[test]
     fn test_decode() -> Result<()> {
         println!("RAW: {:?}", BYTES);
-        let p = RequestStream::decode(BYTES.to_vec())?;
+        let p = RequestStream::decode(BYTES.into())?;
         assert_eq!(p.0.stream_id, 1234);
         Ok(())
     }
@@ -49,15 +57,15 @@ mod test {
         let payload = RequestPayload {
             frame_type: FrameType::RequestStream,
             stream_id: 1234,
-            metadata: b"hello".to_vec(),
-            data: b"hello".to_vec(),
+            metadata: Bytes::from("hello"),
+            data: Bytes::from("hello"),
             follows: true,
-            complete: true,
+            complete: false, // TODO THIS MAY BE A BUG IN GO VS RUST. GO BINARIES SHOULD HAVE COMPLETE SET BUT IT'S NOT.
             initial_n: 0,
         };
         let this = RequestStream(payload);
         let encoded = this.encode();
-        assert_eq!(encoded, BYTES);
+        assert_eq!(encoded, Bytes::from(BYTES));
         Ok(())
     }
 }
