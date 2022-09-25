@@ -2,6 +2,7 @@ mod guest;
 
 use std::marker::PhantomData;
 
+use bytes::Bytes;
 use guest::GenericError;
 
 use rxrust::{
@@ -49,12 +50,12 @@ impl<'a> Hello<'a> {
 
 pub struct Sink<'a, T> {
     name: String,
-    observer: LocalSubject<'a, Vec<u8>, ()>,
+    observer: LocalSubject<'a, Bytes, ()>,
     phantom: PhantomData<T>,
     complete: bool,
 }
 impl<'a, T> Sink<'a, T> {
-    pub fn new(name: impl AsRef<str>, observer: LocalSubject<'a, Vec<u8>, ()>) -> Self {
+    pub fn new(name: impl AsRef<str>, observer: LocalSubject<'a, Bytes, ()>) -> Self {
         Self {
             name: name.as_ref().to_owned(),
             observer,
@@ -75,7 +76,7 @@ where
     fn next(&mut self, value: Self::Item) {
         if !self.complete {
             match serialize(&value) {
-                Ok(bytes) => self.observer.next(bytes),
+                Ok(bytes) => self.observer.next(bytes.into()),
                 Err(_) => self.observer.error(()),
             }
         }

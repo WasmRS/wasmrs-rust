@@ -1,7 +1,11 @@
+use dashmap::DashMap;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
 use std::sync::Arc;
+use tokio::sync::{mpsc, oneshot};
+use wasmrs_rsocket::Payload;
 
+use bytes::Bytes;
 use parking_lot::Mutex;
 use rxrust::ops::box_it::BoxOp;
 use rxrust::ops::ref_count::RefCount;
@@ -11,15 +15,24 @@ use rxrust::shared::{Shared, SharedObservable};
 use rxrust::subject::SharedSubject;
 use rxrust::subscription::{SingleSubscription, SubscriptionLike, SubscriptionWrapper};
 use tracing::instrument::WithSubscriber;
-use wasmrs_rsocket::Frame;
+use wasmrs_rsocket::{util::Counter, Frame};
 
 use crate::errors::Error;
 use crate::{AsyncHostCallback, HostCallback, Invocation};
-pub type OutgoingStream = SharedSubject<Vec<u8>, ()>;
-pub type ShareableStream = ConnectableObservable<OutgoingStream, OutgoingStream>;
 
-pub struct StreamState(OutgoingStream, ());
+pub struct StreamState(Handler, ());
 // pub type OutgoingStream = LocalSubject<'static, Vec<u8>, ()>;
+
+pub type OptionalResult = Result<Option<Payload>, wasmrs_rsocket::error::Error>;
+pub type StreamResult = Result<Payload, wasmrs_rsocket::error::Error>;
+
+#[allow(missing_debug_implementations)]
+pub enum Handler {
+    ReqRR(oneshot::Sender<OptionalResult>),
+    ResRRn(Counter),
+    ReqRS(mpsc::Sender<StreamResult>),
+    ReqRC(mpsc::Sender<StreamResult>),
+}
 
 #[allow(missing_debug_implementations)]
 #[derive(Default)]
@@ -27,7 +40,7 @@ pub struct StreamState(OutgoingStream, ());
 /// to read and write relevant data as different low-level functions are executed during
 /// a wasmRS conversation
 pub struct ModuleState {
-    pub(super) streams: Arc<Mutex<HashMap<u32, StreamState>>>,
+    pub(super) streams: Arc<DashMap<u32, Handler>>,
     pub(super) host_buffer_size: u32,
     pub(super) host_buffer_start: AtomicU32,
     pub(super) guest_buffer_size: u32,
@@ -40,7 +53,7 @@ pub struct ModuleState {
 impl std::fmt::Debug for ModuleState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ModuleState")
-            .field("# pending streams", &self.streams.lock().len())
+            .field("# pending streams", &self.streams.len())
             .field("stream_index", &self.stream_index)
             .field("id", &self.id)
             .finish()
@@ -50,7 +63,7 @@ impl std::fmt::Debug for ModuleState {
 impl ModuleState {
     pub(crate) fn new(id: u64) -> ModuleState {
         ModuleState {
-            streams: Arc::new(Mutex::new(HashMap::new())),
+            streams: Arc::new(DashMap::new()),
             host_buffer_size: 1024,
             host_buffer_start: AtomicU32::new(0),
             guest_buffer_size: 1024,
@@ -85,23 +98,41 @@ impl ModuleState {
         self.guest_buffer_pos.store(position, Ordering::Relaxed);
     }
 
-    pub(crate) fn new_stream(&self) -> (u32, ShareableStream) {
+    pub(crate) fn new_stream(&self, handler: Handler) -> (u32) {
         let id = self.stream_index.fetch_add(2, Ordering::SeqCst);
         trace!(module_id = self.id, id, "initializing new stream");
-        let mut lock = self.streams.lock();
-        let stream = OutgoingStream::default();
-
-        let state = StreamState(stream.clone(), ());
-
-        lock.insert(id, state);
-        (id, stream.publish())
+        self.streams.insert(id, handler);
+        id
     }
 
-    pub(crate) fn get_stream(&self, stream_id: u32) -> Option<OutgoingStream> {
+    pub(crate) fn take_stream(&self, stream_id: u32) -> Option<Handler> {
         trace!(module_id = self.id, stream_id, "getting stream");
-        let mut lock = self.streams.lock();
+        self.streams.remove(&stream_id).map(|v| v.1)
+    }
 
-        lock.get(&stream_id).map(|v| v.0.clone())
+    pub(crate) fn kick_handler(&self, stream_id: u32, result: OptionalResult) -> Result<(), Error> {
+        trace!(module_id = self.id, stream_id, "kicking handler");
+
+        match self.streams.remove(&stream_id) {
+            Some((id, handler)) => match handler {
+                Handler::ReqRR(h) => h.send(result).map_err(|_| Error::StreamSend)?,
+                Handler::ResRRn(h) => todo!(),
+                Handler::ReqRS(h) => {
+                    self.streams.insert(id, Handler::ReqRS(h));
+                }
+                Handler::ReqRC(h) => {
+                    self.streams.insert(id, Handler::ReqRS(h));
+                }
+            },
+            None => return Err(Error::StreamNotFound(stream_id)),
+        }
+        Ok(())
+    }
+
+    pub fn insert_handler(&self, stream_id: u32, handler: Handler) -> Option<Handler> {
+        trace!(module_id = self.id, stream_id, "inserting handler");
+        todo!()
+        // self.streams.get(&stream_id).map(|v| v.0)
     }
 }
 
@@ -128,27 +159,13 @@ impl ModuleState {
     }
 
     /// Invoked when the guest module wishes to send a stream frame to the host.
-    pub fn do_host_send(&self, frame_bytes: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn do_host_send(&self, frame_bytes: Bytes) -> Result<(), Box<dyn std::error::Error>> {
         let id = self.stream_index.fetch_add(1, Ordering::SeqCst);
         trace!(module_id = self.id, id, ?frame_bytes, "do_host_send");
         match Frame::decode(frame_bytes) {
-            Ok(frame) => match frame {
-                Frame::Payload(frame) => {
-                    let mut stream = self
-                        .get_stream(frame.stream_id)
-                        .ok_or(Error::StreamNotFound(frame.stream_id))?;
-                    stream.next(frame.data);
-                }
-                Frame::Cancel(_) => todo!(),
-                Frame::ErrorFrame(_) => todo!(),
-                Frame::RequestN(_) => todo!(),
-                Frame::RequestResponse(_) => todo!(),
-                Frame::FireAndForget(_) => todo!(),
-                Frame::RequestStream(_) => todo!(),
-                Frame::RequestChannel(_) => todo!(),
-            },
+            Ok(frame) => self.kick_handler(frame.stream_id(), frame.into())?,
             Err((stream_id, err)) => {
-                let stream = self.get_stream(stream_id);
+                let stream = self.take_stream(stream_id);
                 return Err(Box::new(err));
             }
         }
@@ -168,111 +185,28 @@ mod test {
     use anyhow::Result;
     use futures_core::future::BoxFuture;
 
-    #[test]
-    fn test_basic() -> Result<()> {
-        let mut i = Vec::new();
-        let mut i2 = Vec::new();
+    // #[tokio::test]
+    // async fn test_stream() -> Result<()> {
+    //     let state = ModuleState::new(0);
+    //     let (stream_id, out_stream) = state.new_stream();
+    //     let mut stream = state.take_stream(stream_id).unwrap();
+    //     stream.next(vec![0, 1, 2]);
+    //     stream.complete();
 
-        let mut stream: OutgoingStream = OutgoingStream::new();
-        let sharable = stream.clone().publish().into_ref_count();
+    //     let i = Arc::new(AtomicU32::new(0));
+    //     let i2 = i.clone();
 
-        stream.next(vec![1]);
-        sharable.clone().into_shared().subscribe(move |v| {
-            println!("first: {:?}", v);
-            i.extend(vec![0]);
-        });
-        sharable.clone().into_shared().subscribe(move |v| {
-            println!("second: {:?}", v);
-            i2.extend(vec![0]);
-        });
-        stream.next(vec![2]);
+    //     let sub = out_stream
+    //         .map(|v| v.iter().map(|v| v * 2).collect::<Vec<_>>())
+    //         .into_shared()
+    //         .subscribe(move |v| {
+    //             for v in v {
+    //                 i2.fetch_add(v as u32, Ordering::Relaxed);
+    //             }
+    //         });
+    //     sub.await;
+    //     assert_eq!(i.load(Ordering::Relaxed), 4);
 
-        Ok(())
-    }
-
-    #[test]
-    fn test_other() -> Result<()> {
-        let mut accept1 = 0;
-        let mut accept2 = 0;
-        {
-            let ref_count = of(1).publish::<LocalSubject<'_, _, _>>().into_ref_count();
-            ref_count.clone().subscribe(|v| {
-                println!("other first");
-                accept1 = v;
-            });
-            ref_count.clone().subscribe(|v| {
-                println!("other second");
-                accept2 = v;
-            });
-            ref_count.clone().subscribe(|v| {
-                println!("other third");
-            });
-        }
-
-        assert_eq!(accept1, 1);
-        assert_eq!(accept2, 0);
-        Ok(())
-    }
-
-    fn make_async_observable<T, E>(
-        f: impl FnOnce(SharedSubject<T, E>) -> BoxFuture<'static, ()>,
-    ) -> SharedSubject<T, E> {
-        let subject = SharedSubject::default();
-        tokio::spawn((f)(subject.clone()));
-        subject
-    }
-
-    #[tokio::test]
-    async fn test_map() -> Result<()> {
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-
-        let subject = make_async_observable(|mut sub| {
-            Box::pin(async move {
-                while let Some(v) = rx.recv().await {
-                    sub.next(v);
-                }
-                sub.complete();
-            })
-        });
-
-        tx.send(1);
-        tx.send(2);
-        let m = subject.clone().map(|v| {
-            println!("1: is {:?}", v);
-            v
-        });
-        m.into_shared().subscribe(|v| {
-            println!("in subscribe, got {:?}", v);
-        });
-        tx.send(3);
-        tx.send(4);
-        drop(tx);
-
-        // ref to ref can fork
-        let m = of(&1).map(|v| v);
-        m.map(|v| v).into_shared().subscribe(|_| {
-            println!("sub");
-        });
-        let mut subject = from_iter(vec![1, 2, 3]);
-        // subject.next(1);
-        // subject.next(2);
-        // subject.next(3);
-        subject.map(|v| {
-            println!("first: {}", v);
-            v * 2
-        });
-
-        // subject.clone().map(|v| {
-        //     println!("second: {}", v);
-        //     v * 2
-        // });
-        tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
-        println!("wtf");
-        // subject.next(10);
-        // subject.next(20);
-        // subject.next(30);
-        // subject.error(());
-
-        Ok(())
-    }
+    //     Ok(())
+    // }
 }

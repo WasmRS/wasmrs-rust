@@ -1,12 +1,22 @@
 use crate::{
     generated::{FrameHeader, FrameType, RequestFnF},
-    Frame,
+    Frame, FrameFlags, Payload, RequestPayload,
 };
 
 use super::{Error, FrameCodec};
 use bytes::Bytes;
 
-impl RequestFnF {}
+impl RequestFnF {
+  pub fn from_payload(stream_id: u32, payload: Payload, flags: FrameFlags, initial_n: u32) -> Self {
+        Self(RequestPayload::from_payload(
+            stream_id,
+            payload,
+            Self::FRAME_TYPE,
+            flags,
+            initial_n,
+        ))
+    }
+}
 
 impl FrameCodec<RequestFnF> for RequestFnF {
     const FRAME_TYPE: FrameType = FrameType::RequestFnf;
@@ -15,9 +25,13 @@ impl FrameCodec<RequestFnF> for RequestFnF {
         self.0.stream_id
     }
 
-    fn decode(mut buffer: Bytes) -> Result<RequestFnF, Error> {
+    fn decode_all(mut buffer: Bytes) -> Result<Self, Error> {
         let header = FrameHeader::from_bytes(buffer.split_to(Frame::LEN_HEADER));
-        Self::check_type(&header)?;
+        Self::decode_frame(&header, buffer)
+    }
+
+    fn decode_frame(header: &FrameHeader, buffer: Bytes) -> Result<Self, Error> {
+        Self::check_type(header)?;
         Ok(Self(crate::generated::RequestPayload::decode(
             header, buffer,
         )?))
@@ -31,7 +45,7 @@ impl FrameCodec<RequestFnF> for RequestFnF {
         self.0.gen_header()
     }
 
-    fn get_flags(&self) -> crate::generated::FrameFlags {
+    fn get_flags(&self) -> FrameFlags {
         self.0.get_flags()
     }
 }
@@ -48,7 +62,7 @@ mod test {
     #[test]
     fn test_decode() -> Result<()> {
         println!("RAW: {:?}", BYTES);
-        let p = RequestFnF::decode(BYTES.into())?;
+        let p = RequestFnF::decode_all(BYTES.into())?;
         assert_eq!(p.0.stream_id, 1234);
         Ok(())
     }

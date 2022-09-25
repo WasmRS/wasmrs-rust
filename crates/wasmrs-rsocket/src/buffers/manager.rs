@@ -145,16 +145,13 @@ impl Manager {
     pub(super) fn send(&mut self, next_pos: u32) {
         self.local_buffer.update_read_pos(next_pos as usize);
         let len_bytes: Vec<_> = self.local_buffer.read(4).collect();
-        println!("len bytes: {:?}", len_bytes);
         let len = from_u32_bytes(&len_bytes);
-        println!("len: {}", len);
         let mut frame_data: Vec<_> = self.local_buffer.read(len as usize).collect();
 
         let header = FrameHeader::from_bytes(frame_data[0..Frame::LEN_HEADER].to_vec());
         let stream_id = header.stream_id();
         let buffer = frame_data.drain(Frame::LEN_HEADER..).collect();
-        println!("header:{}", header);
-        println!("buffer:{:?}", buffer);
+
         if let Err(e) = self.handle_frame(header, buffer) {
             let frame = Frame::ErrorFrame(Box::new(crate::generated::ErrorFrame {
                 stream_id,

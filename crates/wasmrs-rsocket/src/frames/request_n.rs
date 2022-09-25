@@ -18,9 +18,13 @@ impl FrameCodec<RequestN> for RequestN {
         self.stream_id
     }
 
-    fn decode(mut buffer: Bytes) -> Result<RequestN, Error> {
+    fn decode_all(mut buffer: Bytes) -> Result<Self, Error> {
         let header = FrameHeader::from_bytes(buffer.split_to(Frame::LEN_HEADER));
-        Self::check_type(&header)?;
+        Self::decode_frame(&header, buffer)
+    }
+
+    fn decode_frame(header: &FrameHeader, mut buffer: Bytes) -> Result<Self, Error> {
+        Self::check_type(header)?;
         Ok(RequestN {
             stream_id: header.stream_id(),
             n: from_u32_bytes(&buffer.split_to(4)),
@@ -53,7 +57,7 @@ mod test {
     #[test]
     fn test_decode() -> Result<()> {
         println!("RAW {:?}", BYTES);
-        let p = RequestN::decode(BYTES.into())?;
+        let p = RequestN::decode_all(BYTES.into())?;
         assert_eq!(p.stream_id, 1234);
         Ok(())
     }

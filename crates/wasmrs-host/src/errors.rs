@@ -11,6 +11,10 @@ pub enum Error {
     #[error("Initialization failed: {0}")]
     InitFailed(String),
 
+    /// Creating a new context failed.
+    #[error("Could not create new context: {0}")]
+    NewContext(String),
+
     /// Error while sending a frame to the guest.
     #[error("Guest send failure: {0}")]
     SendFailure(String),
@@ -18,15 +22,12 @@ pub enum Error {
     /// Guest send response to a stream that doesn't exist.
     #[error("Guest send response to a stream ({0}) that doesn't exist.")]
     StreamNotFound(u32),
-}
 
-#[cfg(test)]
-mod tests {
-    #[allow(dead_code)]
-    fn needs_sync_send<T: Send + Sync>() {}
+    /// Error sending to a handler stream.
+    #[error("Error sending a result to handler stream.")]
+    StreamSend,
 
-    #[test]
-    fn assert_sync_send() {
-        needs_sync_send::<super::Error>();
-    }
+    /// Guest send response to a stream that doesn't exist.
+    #[error(transparent)]
+    RSocket(#[from] wasmrs_rsocket::error::Error),
 }

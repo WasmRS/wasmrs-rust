@@ -19,9 +19,14 @@ impl FrameCodec<ErrorFrame> for ErrorFrame {
         self.stream_id
     }
 
-    fn decode(mut buffer: Bytes) -> Result<ErrorFrame, Error> {
+    fn decode_all(mut buffer: Bytes) -> Result<Self, Error> {
         let header = FrameHeader::from_bytes(buffer.split_to(Frame::LEN_HEADER));
-        Self::check_type(&header)?;
+        Self::decode_frame(&header, buffer)
+    }
+
+    fn decode_frame(header: &FrameHeader, mut buffer: Bytes) -> Result<Self, Error> {
+        Self::check_type(header)?;
+
         let start = Frame::LEN_HEADER;
 
         Ok(ErrorFrame {
@@ -59,7 +64,7 @@ mod test {
     #[test]
     fn test_decode() -> Result<()> {
         println!("{:?}", BYTES);
-        let p = ErrorFrame::decode(BYTES.into())?;
+        let p = ErrorFrame::decode_all(BYTES.into())?;
         assert_eq!(p.stream_id, 1234);
         assert_eq!(&p.data, "errstr");
         assert_eq!(p.code, 11);

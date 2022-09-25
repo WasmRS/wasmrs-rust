@@ -39,19 +39,10 @@ pub struct RequestFnF(pub RequestPayload);
 pub struct FrameHeader {
     pub header: bytes::Bytes,
 }
-#[derive()]
+#[derive(Clone, Default)]
 #[cfg_attr(not(target_family = "wasm"), derive(Debug))]
 #[must_use]
-pub struct FragmentedPayload {
-    pub frame_type: FrameType,
-    pub initial_n: u32,
-    pub metadata: bytes::Bytes,
-    pub data: bytes::Bytes,
-}
-#[derive(Clone)]
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
-#[must_use]
-pub struct BasePayload {
+pub struct Payload {
     pub metadata: Option<bytes::Bytes>,
     pub data: Option<bytes::Bytes>,
 }
@@ -59,7 +50,7 @@ pub struct BasePayload {
 #[derive()]
 #[cfg_attr(not(target_family = "wasm"), derive(Debug))]
 #[must_use]
-pub struct Payload {
+pub struct PayloadFrame {
     /// The stream ID this frame belongs to.
     pub stream_id: u32,
     /// Any metadata associated with the Payload as raw bytes.
@@ -132,7 +123,7 @@ pub struct Metadata {
 #[cfg_attr(not(target_family = "wasm"), derive(Debug))]
 #[must_use]
 pub enum Frame {
-    Payload(Box<Payload>),
+    PayloadFrame(Box<PayloadFrame>),
     Cancel(Box<Cancel>),
     ErrorFrame(Box<ErrorFrame>),
     RequestN(Box<RequestN>),

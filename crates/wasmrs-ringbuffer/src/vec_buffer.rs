@@ -27,6 +27,28 @@ impl std::io::Read for VecRingBuffer<u8> {
     }
 }
 
+impl bytes::Buf for VecRingBuffer<u8> {
+    fn remaining(&self) -> usize {
+        usize::MAX
+    }
+
+    fn chunk(&self) -> &[u8] {
+        &self.buffer()[self.get_read_pos()..self.len()]
+    }
+
+    fn advance(&mut self, cnt: usize) {
+        let curr_pos = self.get_read_pos();
+        let desired_pos = curr_pos + cnt;
+        let remaining = self.len() - self.get_read_pos();
+        if desired_pos > self.len() {
+            let pos = self.len() - desired_pos;
+            self.update_read_pos(pos);
+        } else {
+            self.update_read_pos(desired_pos);
+        }
+    }
+}
+
 impl<T> VecRingBuffer<T>
 where
     T: Copy,
@@ -108,7 +130,7 @@ where
         self.readptr = position;
     }
 
-    fn get_read_pos(&mut self) -> usize {
+    fn get_read_pos(&self) -> usize {
         self.readptr
     }
 

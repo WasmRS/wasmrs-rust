@@ -36,22 +36,16 @@ type FrameHeader {
   header: bytes
 }
 
-type FragmentedPayload {
-	frameType: FrameType
-	initialN: u32
-	metadata: bytes
-	data: bytes
-}
 
-type BasePayload {
+type Payload {
   metadata: bytes?
   data: bytes?
 }
 
-union Frame = Payload | Cancel | ErrorFrame | RequestN | RequestResponse | RequestFnF | RequestStream | RequestChannel
+union Frame = PayloadFrame | Cancel | ErrorFrame | RequestN | RequestResponse | RequestFnF | RequestStream | RequestChannel
 
 "A Payload frame."
-type Payload {
+type PayloadFrame {
   "The stream ID this frame belongs to."
 	streamId: u32
   "Any metadata associated with the Payload as raw bytes."

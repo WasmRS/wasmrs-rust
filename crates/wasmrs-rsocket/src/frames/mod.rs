@@ -8,14 +8,15 @@ pub(crate) mod request_payload;
 pub(crate) mod request_response;
 pub(crate) mod request_stream;
 
-pub use crate::generated::{
-    Cancel, ErrorFrame, Payload, RequestChannel, RequestN, RequestPayload, RequestResponse,
+use crate::generated::{
+    Cancel, ErrorFrame, PayloadFrame, RequestChannel, RequestN, RequestPayload, RequestResponse,
     RequestStream,
 };
-use bytes::{BufMut, Bytes, BytesMut};
+pub use bytes::{BufMut, Bytes, BytesMut};
+pub use payload::FragmentedPayload;
 
 use crate::{
-    generated::{self as frames, BasePayload, FrameFlags, FrameHeader, FrameType},
+    generated::{self as frames, FrameFlags, FrameHeader, FrameType, Payload},
     util::from_u16_bytes,
     Frame, Metadata,
 };
@@ -47,9 +48,36 @@ pub const FRAME_FLAG_IGNORE: FrameFlags = 1 << 4;
 
 impl crate::generated::FrameFlag {}
 
-impl BasePayload {
-    pub fn new(metadata: Option<Bytes>, data: Option<Bytes>) -> Self {
+impl Payload {
+    pub fn new(metadata: Bytes, data: Bytes) -> Self {
+        Self {
+            metadata: Some(metadata),
+            data: Some(data),
+        }
+    }
+    pub fn new_optional(metadata: Option<Bytes>, data: Option<Bytes>) -> Self {
         Self { metadata, data }
+    }
+    pub fn empty() -> Self {
+        Self {
+            metadata: None,
+            data: None,
+        }
+    }
+}
+
+impl From<Frame> for Result<Option<Payload>, crate::Error> {
+    fn from(frame: Frame) -> Self {
+        match frame {
+            Frame::PayloadFrame(frame) => Ok(Some(Payload::new(frame.metadata, frame.data))),
+            Frame::Cancel(frame) => todo!(),
+            Frame::ErrorFrame(frame) => Err(crate::Error::RequestError(frame.code, frame.data)),
+            Frame::RequestN(frame) => todo!(),
+            Frame::RequestResponse(frame) => Ok(Some(Payload::new(frame.0.metadata, frame.0.data))),
+            Frame::RequestFnF(frame) => Ok(Some(Payload::new(frame.0.metadata, frame.0.data))),
+            Frame::RequestStream(frame) => Ok(Some(Payload::new(frame.0.metadata, frame.0.data))),
+            Frame::RequestChannel(frame) => Ok(Some(Payload::new(frame.0.metadata, frame.0.data))),
+        }
     }
 }
 
@@ -63,13 +91,7 @@ impl Metadata {
     }
     #[must_use]
     pub fn encode(self) -> Bytes {
-        let len = self.namespace.len()
-            + self.operation.len()
-            + self.instance.len()
-            + Frame::LEN_HEADER
-            + 2
-            + 2
-            + 2;
+        let len = self.namespace.len() + self.operation.len() + self.instance.len() + 2 + 2 + 2;
         let mut bytes = BytesMut::with_capacity(len);
         bytes.put((self.namespace.len() as u16).to_be_bytes().as_slice());
         bytes.put(self.namespace.into_bytes().as_slice());
@@ -98,7 +120,7 @@ impl Frame {
     #[must_use]
     pub fn stream_id(&self) -> u32 {
         match self {
-            Frame::Payload(frame) => frame.stream_id,
+            Frame::PayloadFrame(frame) => frame.stream_id,
             Frame::Cancel(frame) => frame.stream_id,
             Frame::ErrorFrame(frame) => frame.stream_id,
             Frame::RequestN(frame) => frame.stream_id,
@@ -112,7 +134,7 @@ impl Frame {
     #[must_use]
     pub fn get_flag(&self) -> FrameFlags {
         match self {
-            Frame::Payload(frame) => frame.get_flags(),
+            Frame::PayloadFrame(frame) => frame.get_flags(),
             Frame::Cancel(frame) => frame.get_flags(),
             Frame::ErrorFrame(frame) => frame.get_flags(),
             Frame::RequestN(frame) => frame.get_flags(),
@@ -126,7 +148,7 @@ impl Frame {
     #[must_use]
     pub fn frame_type(&self) -> FrameType {
         match self {
-            Frame::Payload(_) => FrameType::Payload,
+            Frame::PayloadFrame(_) => FrameType::Payload,
             Frame::Cancel(_) => FrameType::Cancel,
             Frame::ErrorFrame(_) => FrameType::Err,
             Frame::RequestN(_) => FrameType::RequestN,
@@ -147,28 +169,30 @@ impl Frame {
         let frame = match header.frame_type() {
             FrameType::Reserved => todo!(),
             FrameType::Setup => todo!(),
-            FrameType::RequestResponse => {
-                frames::Frame::RequestResponse(frames::RequestResponse::decode(buffer)?)
+            FrameType::RequestResponse => frames::Frame::RequestResponse(
+                frames::RequestResponse::decode_frame(&header, buffer)?,
+            ),
+            FrameType::RequestFnf => {
+                frames::Frame::RequestFnF(frames::RequestFnF::decode_frame(&header, buffer)?)
             }
-            FrameType::RequestFnf => frames::Frame::RequestFnF(frames::RequestFnF::decode(buffer)?),
             FrameType::RequestStream => {
-                frames::Frame::RequestStream(frames::RequestStream::decode(buffer)?)
+                frames::Frame::RequestStream(frames::RequestStream::decode_frame(&header, buffer)?)
             }
-            FrameType::RequestChannel => {
-                frames::Frame::RequestChannel(frames::RequestChannel::decode(buffer)?)
-            }
+            FrameType::RequestChannel => frames::Frame::RequestChannel(
+                frames::RequestChannel::decode_frame(&header, buffer)?,
+            ),
             FrameType::RequestN => todo!(),
             FrameType::Cancel => frames::Frame::Cancel(Box::new(Cancel {
                 stream_id: header.stream_id(),
             })),
-            FrameType::Payload => {
-                frames::Frame::Payload(Box::new(frames::Payload::decode(buffer)?))
-            }
-            FrameType::Err => {
-                frames::Frame::ErrorFrame(Box::new(frames::ErrorFrame::decode(buffer)?))
-            }
+            FrameType::Payload => frames::Frame::PayloadFrame(Box::new(
+                frames::PayloadFrame::decode_frame(&header, buffer)?,
+            )),
+            FrameType::Err => frames::Frame::ErrorFrame(Box::new(
+                frames::ErrorFrame::decode_frame(&header, buffer)?,
+            )),
             FrameType::Ext => todo!(),
-            _ => todo!(), // Maybe not todo?,
+            _ => unreachable!(), // Maybe not todo?,
         };
         Ok(frame)
     }
@@ -176,7 +200,7 @@ impl Frame {
     #[must_use]
     pub fn encode(self) -> Bytes {
         match self {
-            Frame::Payload(f) => f.encode(),
+            Frame::PayloadFrame(f) => f.encode(),
             Frame::Cancel(f) => f.encode(),
             Frame::ErrorFrame(f) => f.encode(),
             Frame::RequestN(f) => f.encode(),
@@ -195,15 +219,21 @@ impl Frame {
         }))
     }
 
-    pub fn new_payload(stream_id: u32, metadata: Bytes, data: Bytes, flags: FrameFlags) -> Frame {
-        Frame::Payload(Box::new(Payload {
-            stream_id,
-            metadata,
-            data,
-            follows: flags & FRAME_FLAG_FOLLOWS == FRAME_FLAG_FOLLOWS,
-            complete: flags & FRAME_FLAG_COMPLETE == FRAME_FLAG_COMPLETE,
-            next: flags & FRAME_FLAG_NEXT == FRAME_FLAG_NEXT,
-        }))
+    pub fn new_request_response(
+        stream_id: u32,
+        payload: Payload,
+        flags: FrameFlags,
+        initial_n: u32,
+    ) -> Frame {
+        Frame::RequestResponse(RequestResponse::from_payload(
+            stream_id, payload, flags, initial_n,
+        ))
+    }
+
+    pub fn new_payload(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
+        Frame::PayloadFrame(Box::new(PayloadFrame::from_payload(
+            stream_id, payload, flags,
+        )))
     }
 }
 
@@ -220,11 +250,42 @@ pub trait FrameCodec<T> {
         Self::FRAME_TYPE
     }
     fn stream_id(&self) -> u32;
-    fn decode(buffer: Bytes) -> Result<T, Error>;
+    fn decode_all(buffer: Bytes) -> Result<T, Error>;
+    fn decode_frame(header: &FrameHeader, buffer: Bytes) -> Result<T, Error>;
     fn encode(self) -> Bytes;
     fn gen_header(&self) -> FrameHeader;
     fn get_flags(&self) -> FrameFlags {
         0
+    }
+}
+
+pub trait RSocketFlags {
+    fn flag_next(&self) -> bool;
+    fn flag_metadata(&self) -> bool;
+    fn flag_complete(&self) -> bool;
+    fn flag_follows(&self) -> bool;
+    fn flag_ignore(&self) -> bool;
+}
+
+impl RSocketFlags for FrameFlags {
+    fn flag_next(&self) -> bool {
+        self & Frame::FLAG_NEXT == Frame::FLAG_NEXT
+    }
+
+    fn flag_metadata(&self) -> bool {
+        self & Frame::FLAG_METADATA == Frame::FLAG_METADATA
+    }
+
+    fn flag_complete(&self) -> bool {
+        self & Frame::FLAG_COMPLETE == Frame::FLAG_COMPLETE
+    }
+
+    fn flag_follows(&self) -> bool {
+        self & Frame::FLAG_FOLLOW == Frame::FLAG_FOLLOW
+    }
+
+    fn flag_ignore(&self) -> bool {
+        self & Frame::FLAG_IGNORE == Frame::FLAG_IGNORE
     }
 }
 

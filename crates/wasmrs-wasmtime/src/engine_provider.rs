@@ -1,12 +1,14 @@
+use bytes::{BufMut, Bytes, BytesMut};
+use parking_lot::Mutex;
 use std::sync::Arc;
 use std::time::Instant;
-
-use parking_lot::Mutex;
-use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::mpsc::{self, UnboundedReceiver};
 use tokio::task::JoinHandle;
 use wasmrs_host::{
-    GuestExports, ModuleState, ProviderCallContext, WasiParams, WebAssemblyEngineProvider,
+    GuestExports, Handler, ModuleState, ProviderCallContext, WasiParams, WebAssemblyEngineProvider,
 };
+use wasmrs_rsocket::fragmentation::Splitter;
+use wasmrs_rsocket::{runtime, Flux, Frame, Payload, PayloadFrame, RequestResponse};
 use wasmtime::{AsContextMut, Engine, Instance, Linker, Module, Store, TypedFunc};
 
 use super::Result;
@@ -102,18 +104,17 @@ impl WebAssemblyEngineProvider for WasmtimeEngineProvider {
         &self,
         state: Arc<ModuleState>,
     ) -> std::result::Result<
-        Box<(dyn ProviderCallContext + Send + Sync + 'static)>,
-        Box<(dyn std::error::Error + Send + Sync + 'static)>,
+        Arc<Mutex<(dyn ProviderCallContext + Send + Sync + 'static)>>,
+        wasmrs_host::errors::Error,
     > {
         // TODO: this is not cheap. Make it faster.
-        let store = new_store(&self.wasi_params, &self.engine)?;
+        let store = new_store(&self.wasi_params, &self.engine)
+            .map_err(|e| wasmrs_host::errors::Error::NewContext(e.to_string()))?;
 
-        Ok(Box::new(WasmtimeCallContext::new(
-            state,
-            self.linker.clone(),
-            &self.module,
-            store,
-        )?))
+        Ok(Arc::new(Mutex::new(
+            WasmtimeCallContext::new(state, self.linker.clone(), &self.module, store)
+                .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?,
+        )))
     }
 }
 
@@ -152,12 +153,14 @@ impl WasmtimeCallContext {
     }
 }
 
-impl ProviderCallContext for WasmtimeCallContext {
-    fn request_response(
-        &mut self,
-        stream_id: u32,
-        payload: Vec<u8>,
-    ) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
+impl wasmrs_rsocket::FrameWriter for WasmtimeCallContext {
+    /// Request-Response interaction model of RSocket.
+    fn write_frame(&mut self, stream_id: u32, req: Frame) -> wasmrs_rsocket::Result<()> {
+        let (tx, rx) = tokio::sync::oneshot::channel::<wasmrs_rsocket::Result<Option<Payload>>>();
+        let sid = stream_id;
+        let state = self.state.clone();
+        let bytes = req.encode();
+
         let func: TypedFunc<i32, ()> = self
             .instance
             .get_typed_func(&mut self.store, GuestExports::Send.as_ref())
@@ -165,10 +168,15 @@ impl ProviderCallContext for WasmtimeCallContext {
         let mem = self.instance.get_memory(&mut self.store, "memory").unwrap();
 
         let read_pos = self.state.get_guest_buffer_pos();
+        let buffer_len_bytes = (bytes.len() as u32).to_be_bytes();
+        let mut buffer = BytesMut::with_capacity(buffer_len_bytes.len() + bytes.len());
+        buffer.put(buffer_len_bytes.as_slice());
+        buffer.put(bytes);
+
         let written = write_bytes_to_memory(
             &mut self.store,
             mem,
-            &[(payload.len() as u32).to_be_bytes().to_vec(), payload].concat(),
+            &buffer,
             read_pos,
             self.state.get_guest_buffer_start(),
             self.state.get_guest_buffer_size(),
@@ -179,12 +187,14 @@ impl ProviderCallContext for WasmtimeCallContext {
 
         Ok(())
     }
+}
 
-    fn init(&mut self) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
+impl ProviderCallContext for WasmtimeCallContext {
+    fn init(&mut self) -> std::result::Result<(), wasmrs_host::errors::Error> {
         let init: TypedFunc<(u32, u32, u32), ()> = self
             .instance
             .get_typed_func(&mut self.store, GuestExports::Init.as_ref())
-            .map_err(|e| Error::GuestInit)?;
+            .map_err(|e| wasmrs_host::errors::Error::InitFailed(Error::GuestInit.to_string()))?;
         init.call(&mut self.store, (1024, 1024, 128));
         Ok(())
     }

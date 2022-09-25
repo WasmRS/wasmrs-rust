@@ -1,3 +1,4 @@
+use bytes::{BufMut, Bytes, BytesMut};
 use rxrust::{
     prelude::{Observer, SubscribeNext},
     subject::LocalSubject,
@@ -5,7 +6,7 @@ use rxrust::{
 use std::cell::RefCell;
 use std::{cell::UnsafeCell, collections::HashMap, rc::Rc, sync::atomic::Ordering};
 use wasmrs_ringbuffer::{ReadOnlyRingBuffer, RingBuffer, VecRingBuffer};
-use wasmrs_rsocket::{FragmentedPayload, Frame, FrameType, Metadata};
+use wasmrs_rsocket::{FragmentedPayload, Frame, FrameType, Metadata, Payload};
 
 use std::sync::atomic::AtomicU32;
 
@@ -17,7 +18,7 @@ pub type FragmentMap = HashMap<u32, FragmentedPayload>;
 pub type ProcessFactory = fn(IncomingStream) -> std::result::Result<OutgoingStream, GenericError>;
 
 pub type IncomingStream = LocalSubject<'static, GuestPayload, ()>;
-pub type OutgoingStream = LocalSubject<'static, Vec<u8>, ()>;
+pub type OutgoingStream = LocalSubject<'static, Bytes, ()>;
 
 #[derive(Clone)]
 pub struct GuestPayload {
@@ -117,7 +118,7 @@ extern "C" fn __wasmrs_init(
     }
 }
 
-fn read_frame(read_pos: u32) -> Result<Vec<u8>> {
+fn read_frame(read_pos: u32) -> Result<Bytes> {
     GUEST_BUFFER
         .with(|cell| {
             let mut buff = unsafe { &mut *cell.get() };
@@ -154,15 +155,13 @@ extern "C" fn __wasmrs_send(read_pos: u32) {
 
 fn handle_frame(frame: Frame) -> Result<()> {
     match frame {
-        Frame::Payload(frame) => {
+        Frame::PayloadFrame(frame) => {
             update_fragment(
                 frame.stream_id,
-                FragmentedPayload {
-                    frame_type: FrameType::Payload,
-                    initial_n: 0,
-                    metadata: frame.metadata,
-                    data: frame.data,
-                },
+                FragmentedPayload::new(
+                    FrameType::Payload,
+                    Payload::new(frame.metadata, frame.data),
+                ),
             );
             if frame.follows {
                 return Ok(());
@@ -172,8 +171,8 @@ fn handle_frame(frame: Frame) -> Result<()> {
                 FrameType::RequestResponse => {
                     handle_request_response(
                         frame.stream_id,
-                        complete_payload.metadata,
-                        complete_payload.data,
+                        complete_payload.metadata.to_vec(),
+                        complete_payload.data.to_vec(),
                     )?;
                 }
                 FrameType::RequestFnf => {
@@ -182,15 +181,15 @@ fn handle_frame(frame: Frame) -> Result<()> {
                 FrameType::RequestStream => {
                     handle_request_stream(
                         frame.stream_id,
-                        complete_payload.metadata,
-                        complete_payload.data,
+                        complete_payload.metadata.to_vec(),
+                        complete_payload.data.to_vec(),
                     )?;
                 }
                 FrameType::RequestChannel => {
                     handle_request_channel(
                         frame.stream_id,
-                        complete_payload.metadata,
-                        complete_payload.data,
+                        complete_payload.metadata.to_vec(),
+                        complete_payload.data.to_vec(),
                     )?;
                 }
                 FrameType::Payload => {
@@ -199,7 +198,7 @@ fn handle_frame(frame: Frame) -> Result<()> {
                         let metadata = parse_metadata(&mut complete_payload.metadata)?;
                         stream.next(GuestPayload::new(
                             frame.stream_id,
-                            complete_payload.data,
+                            complete_payload.data.to_vec(),
                             metadata,
                         ))
                     }
@@ -227,25 +226,37 @@ fn handle_frame(frame: Frame) -> Result<()> {
         }
         Frame::RequestResponse(frame) => {
             if !frame.0.follows {
-                handle_request_response(frame.0.stream_id, frame.0.metadata, frame.0.data)?;
+                handle_request_response(
+                    frame.0.stream_id,
+                    frame.0.metadata.to_vec(),
+                    frame.0.data.to_vec(),
+                )?;
             }
         }
-        Frame::FireAndForget(_) => todo!(),
+        Frame::RequestFnF(_) => todo!(),
         Frame::RequestStream(frame) => {
             if !frame.0.follows {
-                handle_request_stream(frame.0.stream_id, frame.0.metadata, frame.0.data)?;
+                handle_request_stream(
+                    frame.0.stream_id,
+                    frame.0.metadata.to_vec(),
+                    frame.0.data.to_vec(),
+                )?;
             }
         }
         Frame::RequestChannel(frame) => {
             if !frame.0.follows {
-                handle_request_channel(frame.0.stream_id, frame.0.metadata, frame.0.data)?;
+                handle_request_channel(
+                    frame.0.stream_id,
+                    frame.0.metadata.to_vec(),
+                    frame.0.data.to_vec(),
+                )?;
             }
         }
     };
     Ok(())
 }
 
-fn send_host_payload(payload: Vec<u8>) {
+fn send_host_payload(payload: Bytes) {
     let host_start = HOST_BUFFER.with(|cell| {
         let buff = unsafe { &mut *cell.get() };
         let start = buff.get_write_pos();
@@ -263,8 +274,8 @@ fn send_host_payload(payload: Vec<u8>) {
 fn update_fragment(id: u32, mut fragment: FragmentedPayload) {
     FRAGMENTS.with(|cell| match cell.borrow_mut().get_mut(&id) {
         Some(existing_fragment) => {
-            existing_fragment.metadata.append(&mut fragment.metadata);
-            existing_fragment.data.append(&mut fragment.data);
+            existing_fragment.metadata.put(&mut fragment.metadata);
+            existing_fragment.data.put(&mut fragment.data);
         }
         None => {
             cell.borrow_mut().insert(id, fragment);
@@ -272,14 +283,14 @@ fn update_fragment(id: u32, mut fragment: FragmentedPayload) {
     })
 }
 
-fn parse_metadata(bytes: &mut [u8]) -> Result<Metadata> {
-    let (namespace, nslen) = read_string(0, &*bytes)?;
-    let (operation, oplen) = read_string(nslen, &*bytes)?;
-    let (instance, _) = read_data(nslen + oplen, &*bytes)?;
+fn parse_metadata(bytes: &[u8]) -> Result<Metadata> {
+    let (namespace, nslen) = read_string(0, bytes)?;
+    let (operation, oplen) = read_string(nslen, bytes)?;
+    let (instance, _) = read_data(nslen + oplen, bytes)?;
     Ok(Metadata {
         namespace,
         operation,
-        instance,
+        instance: instance.into(),
     })
 }
 
@@ -346,7 +357,7 @@ fn handle_request_response(
     mut metadata_bytes: Vec<u8>,
     data: Vec<u8>,
 ) -> Result<()> {
-    let metadata = parse_metadata(&mut metadata_bytes)?;
+    let metadata = parse_metadata(&metadata_bytes)?;
     let handler = get_process_handler(
         &REQUEST_RESPONSE_HANDLERS,
         &metadata.namespace,
@@ -358,7 +369,12 @@ fn handle_request_response(
         Ok(outgoing) => {
             outgoing.subscribe(move |payload| {
                 send_host_payload(
-                    Frame::new_payload(stream_id, metadata_bytes.clone(), payload, 0).encode(),
+                    Frame::new_payload(
+                        stream_id,
+                        Payload::new(Bytes::from(metadata_bytes.clone()), payload),
+                        0,
+                    )
+                    .encode(),
                 )
             });
         }
@@ -368,7 +384,7 @@ fn handle_request_response(
             e.to_string(),
         ),
     };
-    incoming.next(GuestPayload::new(stream_id, data, metadata));
+    incoming.next(GuestPayload::new(stream_id, data.to_vec(), metadata));
 
     Ok(())
 }

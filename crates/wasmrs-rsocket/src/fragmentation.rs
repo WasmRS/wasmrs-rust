@@ -4,28 +4,30 @@ use bytes::{Bytes, BytesMut};
 
 use crate::{
     frames::FRAME_FLAG_FOLLOWS,
-    generated::{BasePayload, FrameFlag, Payload},
+    generated::{FrameFlag, Payload, PayloadFrame},
     Frame,
 };
 
-pub(crate) const MIN_MTU: usize = 64;
+pub const MIN_MTU: usize = 64;
 
-pub(crate) struct Joiner {
+#[allow(missing_debug_implementations)]
+pub struct Joiner {
     inner: LinkedList<Frame>,
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct Splitter {
+#[derive(Debug, Copy, Clone)]
+#[must_use]
+pub struct Splitter {
     mtu: usize,
 }
 
 impl Splitter {
-    pub(crate) fn new(mtu: usize) -> Splitter {
+    pub fn new(mtu: usize) -> Splitter {
         assert!(mtu > Frame::LEN_HEADER, "mtu is too small!");
         Splitter { mtu }
     }
 
-    pub(crate) fn cut(&self, input: BasePayload, skip: usize) -> impl Iterator<Item = BasePayload> {
+    pub fn cut(&self, input: Payload, skip: usize) -> impl Iterator<Item = Payload> {
         SplitterIter {
             mtu: self.mtu,
             skip,
@@ -43,9 +45,9 @@ struct SplitterIter {
 }
 
 impl Iterator for SplitterIter {
-    type Item = BasePayload;
+    type Item = Payload;
 
-    fn next(&mut self) -> Option<BasePayload> {
+    fn next(&mut self) -> Option<Payload> {
         if self.meta.is_none() && self.data.is_none() {
             return None;
         }
@@ -74,12 +76,12 @@ impl Iterator for SplitterIter {
             }
         }
         self.skip = 0;
-        Some(BasePayload::new(d, m))
+        Some(Payload::new_optional(m, d))
     }
 }
 
-impl Into<BasePayload> for Joiner {
-    fn into(self) -> BasePayload {
+impl Into<Payload> for Joiner {
+    fn into(self) -> Payload {
         let mut data_buff = BytesMut::new();
         let mut md_buff = BytesMut::new();
         self.inner.into_iter().for_each(|frame: Frame| {
@@ -88,7 +90,7 @@ impl Into<BasePayload> for Joiner {
                 Frame::RequestStream(frame) => (Some(frame.0.data), Some(frame.0.metadata)),
                 Frame::RequestChannel(frame) => (Some(frame.0.data), Some(frame.0.metadata)),
                 Frame::RequestFnF(frame) => (Some(frame.0.data), Some(frame.0.metadata)),
-                Frame::Payload(frame) => (Some(frame.data), Some(frame.metadata)),
+                Frame::PayloadFrame(frame) => (Some(frame.data), Some(frame.metadata)),
                 _ => (None, None),
             };
             if let Some(raw) = d {
@@ -109,7 +111,7 @@ impl Into<BasePayload> for Joiner {
         } else {
             Some(md_buff.freeze())
         };
-        BasePayload::new(data, metadata)
+        Payload::new_optional(data, metadata)
     }
 }
 
@@ -144,7 +146,7 @@ mod tests {
 
     use crate::{
         fragmentation::{Joiner, Splitter},
-        generated::BasePayload,
+        generated::Payload,
         Frame,
     };
 
@@ -152,8 +154,7 @@ mod tests {
     fn test_joiner() {
         let first = Frame::new_payload(
             1,
-            Bytes::from("(ROOT)"),
-            Bytes::from("(ROOT)"),
+            Payload::new(Bytes::from("(ROOT)"), Bytes::from("(ROOT)")),
             Frame::FLAG_FOLLOW,
         );
         let mut joiner = Joiner::new();
@@ -163,19 +164,22 @@ mod tests {
             let flag = if i == 9 { 0u16 } else { Frame::FLAG_FOLLOW };
             let next = Frame::new_payload(
                 1,
-                Bytes::from(format!("(data{:04})", i)),
-                Bytes::from(format!("(data{:04})", i)),
+                Payload::new(
+                    Bytes::from(format!("(data{:04})", i)),
+                    Bytes::from(format!("(data{:04})", i)),
+                ),
                 Frame::FLAG_FOLLOW,
             );
             joiner.push(next);
         }
-        let pa: BasePayload = joiner.into();
+        let pa: Payload = joiner.into();
         println!("payload: {:?}", pa);
     }
 
     #[test]
     fn test_splitter() {
-        let input = BasePayload::new(Some(Bytes::from("foobar")), Some(Bytes::from("helloworld")));
+        let input =
+            Payload::new_optional(Some(Bytes::from("foobar")), Some(Bytes::from("helloworld")));
         let mut sp = Splitter::new(13);
         for (i, it) in sp.cut(input.clone(), 0).enumerate() {
             println!("{}: {:?}", i, it);

@@ -1,3 +1,8 @@
+use std::sync::{
+    atomic::{AtomicI64, AtomicU32, Ordering},
+    Arc,
+};
+
 use bytes::{BufMut, Bytes, BytesMut};
 
 #[must_use]
@@ -39,14 +44,54 @@ pub fn to_u24_bytes(num: u32) -> Bytes {
     num_parts.freeze()
 }
 
-pub fn read_frame(mut buf: impl std::io::Read) -> std::io::Result<Vec<u8>> {
+pub fn read_frame(mut buf: impl std::io::Read) -> std::io::Result<Bytes> {
     let mut len_bytes = [0u8; 4];
     buf.read_exact(&mut len_bytes)?;
     let len = from_u32_bytes(&len_bytes);
 
     let mut frame = vec![0; len as usize];
     buf.read_exact(&mut frame)?;
-    Ok(frame)
+    Ok(frame.into())
+}
+
+#[derive(Debug, Clone)]
+pub struct StreamID {
+    inner: Arc<AtomicU32>,
+}
+
+impl StreamID {
+    pub(crate) fn new(value: u32) -> StreamID {
+        let inner = Arc::new(AtomicU32::new(value));
+        StreamID { inner }
+    }
+
+    pub(crate) fn next(&self) -> u32 {
+        let counter = self.inner.clone();
+        counter.fetch_add(2, Ordering::SeqCst)
+    }
+}
+
+impl From<u32> for StreamID {
+    fn from(v: u32) -> StreamID {
+        StreamID::new(v)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Counter {
+    inner: Arc<AtomicI64>,
+}
+
+impl Counter {
+    pub(crate) fn new(value: i64) -> Counter {
+        Counter {
+            inner: Arc::new(AtomicI64::new(value)),
+        }
+    }
+
+    pub(crate) fn count_down(&self) -> i64 {
+        self.inner.fetch_add(-1, Ordering::SeqCst) - 1
+    }
 }
 
 #[cfg(test)]

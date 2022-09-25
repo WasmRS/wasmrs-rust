@@ -1,10 +1,11 @@
 use std::time::Instant;
 
-use rxrust::prelude::*;
-use wasmrs_host::{OutgoingStream, WasiParams, WasmRsHostBuilder};
+use wasmrs_host::{WasiParams, WasmRsHostBuilder};
+use wasmrs_rsocket::{Metadata, Payload};
 use wasmrs_wasmtime::WasmtimeEngineProviderBuilder;
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     env_logger::init();
     // let module_bytes =
     //     include_bytes!("../../../target/wasm32-unknown-unknown/release/wasmrs_component.wasm");
@@ -17,12 +18,12 @@ fn main() -> anyhow::Result<()> {
     let mut context = host.new_context()?;
     let start = Instant::now();
     let num = 10000;
+    let metadata = Metadata::new("greeting", "sayHello");
+    let mbytes = metadata.encode();
+    println!("metadata: {:?}", mbytes);
+    let payload = Payload::new(mbytes, bytes.into());
     for _ in 0..num {
-        let stream = context.request_response("greeting", "sayHello", bytes.clone())?;
-        stream
-            .clone()
-            .subscribe(|v| println!("got something {:?}", v));
-        // stream.clone().map(|_v| println!("yay"));
+        let _ = context.request_response(payload.clone()).await?;
     }
     let end = Instant::now();
     let duration = end - start;

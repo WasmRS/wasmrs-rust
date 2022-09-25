@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use bytes::Bytes;
 use wasmrs_host::{HostExports, IntoEnumIterator, ModuleState};
 use wasmrs_ringbuffer::{ReadOnlyRingBuffer, RingBuffer, SharedReadOnlyRingBuffer};
 use wasmtime::{
@@ -31,7 +32,7 @@ pub(crate) fn get_vec_from_ringbuffer<'a, T: 'a>(
     recv_pos: u32,
     ring_start: u32,
     ring_len: u32,
-) -> super::Result<Vec<u8>> {
+) -> super::Result<Bytes> {
     let data = mem.data(store);
     let buff = SharedReadOnlyRingBuffer::new(
         data,
@@ -53,6 +54,7 @@ pub(crate) fn write_bytes_to_memory(
     let len = buffer.len();
     let remaining: usize = (ring_len - recv_pos) as _;
     let start_offset = ring_start + recv_pos;
+
 
     #[allow(unsafe_code)]
     unsafe {
@@ -117,7 +119,7 @@ fn linker_send(
             )
             .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
 
-            host.do_host_send(bytes);
+            host.do_host_send(bytes.into());
             Ok(())
         },
     )

@@ -1,29 +1,72 @@
 use super::{
-    Error, FrameCodec, FRAME_FLAG_COMPLETE, FRAME_FLAG_FOLLOWS, FRAME_FLAG_METADATA,
+    Error, FrameCodec, RSocketFlags, FRAME_FLAG_COMPLETE, FRAME_FLAG_FOLLOWS, FRAME_FLAG_METADATA,
     FRAME_FLAG_NEXT,
 };
 
-pub use crate::generated::Payload;
+pub use crate::generated::PayloadFrame;
 use bytes::{BufMut, Bytes, BytesMut};
 
 use crate::{
     generated::{FrameFlags, FrameHeader, FrameType},
     util::{from_u24_bytes, to_u24_bytes},
-    Frame,
+    Frame, Payload,
 };
 
-impl Payload {}
+#[derive()]
+#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[allow(missing_debug_implementations)]
+#[must_use]
+pub struct FragmentedPayload {
+    pub frame_type: FrameType,
+    pub initial_n: u32,
+    pub metadata: BytesMut,
+    pub data: BytesMut,
+}
 
-impl FrameCodec<Payload> for Payload {
+impl FragmentedPayload {
+    pub fn new(frame_type: FrameType, payload: Payload) -> Self {
+        let mut metadata = BytesMut::new();
+        metadata.put(payload.metadata.unwrap_or_default());
+        let mut data = BytesMut::new();
+        data.put(payload.data.unwrap_or_default());
+
+        Self {
+            frame_type,
+            initial_n: 0,
+            metadata,
+            data,
+        }
+    }
+}
+
+impl PayloadFrame {
+    pub fn from_payload(stream_id: u32, payload: Payload, flags: FrameFlags) -> Self {
+        let header = FrameHeader::new(stream_id, Self::FRAME_TYPE, flags);
+        Self {
+            stream_id,
+            metadata: payload.metadata.unwrap_or_default(),
+            data: payload.data.unwrap_or_default(),
+            follows: flags.flag_follows(),
+            complete: flags.flag_complete(),
+            next: flags.flag_next(),
+        }
+    }
+}
+
+impl FrameCodec<PayloadFrame> for PayloadFrame {
     const FRAME_TYPE: FrameType = FrameType::Payload;
 
     fn stream_id(&self) -> u32 {
         self.stream_id
     }
 
-    fn decode(mut buffer: Bytes) -> Result<Payload, Error> {
+    fn decode_all(mut buffer: Bytes) -> Result<Self, Error> {
         let header = FrameHeader::from_bytes(buffer.split_to(Frame::LEN_HEADER));
-        Self::check_type(&header)?;
+        Self::decode_frame(&header, buffer)
+    }
+
+    fn decode_frame(header: &FrameHeader, mut buffer: Bytes) -> Result<Self, Error> {
+        Self::check_type(header)?;
         let mut start = Frame::LEN_HEADER;
 
         let metadata_len = if header.has_metadata() {
@@ -40,7 +83,7 @@ impl FrameCodec<Payload> for Payload {
         let metadata: Bytes = buffer.split_to(metadata_len);
         let payload: Bytes = buffer;
 
-        Ok(Payload {
+        Ok(PayloadFrame {
             stream_id: header.stream_id(),
             metadata,
             data: payload,
@@ -98,7 +141,7 @@ mod test {
     #[test]
     fn test_decode() -> Result<()> {
         println!("RAW: {:?}", BYTES);
-        let p = Payload::decode(BYTES.into())?;
+        let p = PayloadFrame::decode_all(BYTES.into())?;
         assert_eq!(p.stream_id, 1234);
         assert_eq!(p.data, Bytes::from("hello"));
         assert_eq!(p.metadata, Bytes::from("hello"));
@@ -107,7 +150,7 @@ mod test {
 
     #[test]
     fn test_encode() -> Result<()> {
-        let payload = Payload {
+        let payload = PayloadFrame {
             stream_id: 1234,
             metadata: Bytes::from("hello"),
             data: Bytes::from("hello"),

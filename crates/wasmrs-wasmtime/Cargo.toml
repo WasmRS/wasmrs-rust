@@ -20,9 +20,10 @@ cfg-if = "1.0.0"
 parking_lot = "0.12"
 futures-core = "0.3"
 once_cell = "1.13"
-
+# rsocket_rust = "0.7.2"
+async-trait = "0.1.57"
 tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
-
+bytes = "1.2.1"
 
 [dev-dependencies]
 wasmflow-codec = "0.10.0"
@@ -35,4 +36,4 @@ tracing-subscriber = { version = "0.3", default-features = false, features = [
 ] }
 futures = "0.3"
 anyhow = { version = "1.0" }
-rxrust = { path = "../../crates/rxRust", features = [] }
+rxrust = { path = "../../crates/rxRust", features = ["tokio-scheduler"] }

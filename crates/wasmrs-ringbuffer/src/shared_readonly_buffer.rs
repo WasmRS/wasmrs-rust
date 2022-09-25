@@ -21,7 +21,7 @@ where
         self.readptr = position;
     }
 
-    fn get_read_pos(&mut self) -> usize {
+    fn get_read_pos(&self) -> usize {
         self.readptr
     }
 

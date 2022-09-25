@@ -6,33 +6,33 @@ use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use bytes::Bytes;
 use futures_core::Stream;
+use parking_lot::Mutex;
 use rxrust::prelude::*;
-use wasmrs_rsocket::frames::{Payload, RequestPayload};
-use wasmrs_rsocket::{Frame, Metadata};
+use tokio::sync::mpsc::UnboundedSender;
+use tokio::task::yield_now;
+use wasmrs_rsocket::fragmentation::Splitter;
+use wasmrs_rsocket::{runtime, ErrorCode, Frame, Metadata, Payload};
+use wasmrs_rsocket::{PayloadFrame, RequestPayload};
 
-use self::modulestate::{ModuleState, ShareableStream};
+use self::modulestate::ModuleState;
 use self::traits::WebAssemblyEngineProvider;
-use crate::{
-    errors, AsyncHostCallback, HostCallback, Invocation, OutgoingStream, ProviderCallContext,
-};
+use crate::{errors, AsyncHostCallback, Handler, HostCallback, Invocation, ProviderCallContext};
 
 static GLOBAL_MODULE_COUNT: AtomicU64 = AtomicU64::new(1);
 static GLOBAL_CONTEXT_COUNT: AtomicU64 = AtomicU64::new(1);
 
 type Result<T> = std::result::Result<T, crate::errors::Error>;
 
-/// A WebAssembly host runtime for wasmRS-compliant modules
-///
-/// Use an instance of this struct to provide a means of invoking procedure calls by
-/// specifying an operation name and a set of bytes representing the opaque operation payload.
-/// `WasmRsHost` makes no assumptions about the contents or format of either the payload or the
-/// operation name, other than that the operation name is a UTF-8 encoded string.
+type SharedContext = Arc<Mutex<dyn ProviderCallContext + Send + Sync>>;
+
 #[must_use]
 #[allow(missing_debug_implementations)]
 pub struct WasmRsHost {
     engine: RefCell<Box<dyn WebAssemblyEngineProvider>>,
     id: u64,
+    mtu: usize,
 }
 
 impl WasmRsHost {
@@ -40,14 +40,11 @@ impl WasmRsHost {
         GLOBAL_MODULE_COUNT.fetch_add(1, Ordering::SeqCst)
     }
 
-    pub fn new(
-        engine: Box<dyn WebAssemblyEngineProvider>,
-        sync_hostcall: Option<Arc<HostCallback>>,
-        async_hostcall: Option<Arc<AsyncHostCallback>>,
-    ) -> Result<Self> {
+    pub fn new(engine: Box<dyn WebAssemblyEngineProvider>) -> Result<Self> {
         let id = Self::next_id();
         let mh = WasmRsHost {
             engine: RefCell::new(engine),
+            mtu: 256,
             id,
         };
 
@@ -74,27 +71,18 @@ impl WasmRsHost {
             .borrow()
             .new_context(state.clone())
             .map_err(|e| crate::errors::Error::Context(e.to_string()))?;
-        WasmRsCallContext::new(context, state)
+        WasmRsCallContext::new(self.mtu, context, state)
     }
 }
 
 /// A builder for [WasmRsHost]s
 #[must_use]
-#[derive(Default)]
-pub struct WasmRsHostBuilder {
-    async_hostcall: Option<Arc<AsyncHostCallback>>,
-    sync_hostcall: Option<Arc<HostCallback>>,
-}
+#[derive(Default, Copy, Clone)]
+pub struct WasmRsHostBuilder {}
 
 impl std::fmt::Debug for WasmRsHostBuilder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("WasmRsHostBuilder")
-            .field(
-                "async_hostcall",
-                &self.async_hostcall.as_ref().map(|_| "Fn"),
-            )
-            .field("sync_hostcall", &self.sync_hostcall.as_ref().map(|_| "Fn"))
-            .finish()
+        f.debug_struct("WasmRsHostBuilder").finish()
     }
 }
 
@@ -105,27 +93,17 @@ impl WasmRsHostBuilder {
     }
 
     /// Configure a synchronous callback for this WasmRsHost.
-    pub fn callback(mut self, callback: Arc<HostCallback>) -> Self {
-        self.sync_hostcall = Some(callback);
-        self
-    }
-
-    /// Configure a synchronous callback for this WasmRsHost.
-    pub fn async_callback(mut self, callback: Arc<AsyncHostCallback>) -> Self {
-        self.async_hostcall = Some(callback);
-        self
-    }
-
-    /// Configure a synchronous callback for this WasmRsHost.
     pub fn build<T: WebAssemblyEngineProvider + 'static>(self, engine: T) -> Result<WasmRsHost> {
-        WasmRsHost::new(Box::new(engine), self.sync_hostcall, self.async_hostcall)
+        WasmRsHost::new(Box::new(engine))
     }
 }
 
 /// An isolated call context that is meant to be cheap to create and throw away.
 pub struct WasmRsCallContext {
-    context: Box<dyn ProviderCallContext + Send + Sync>,
+    context: SharedContext,
     state: Arc<ModuleState>,
+    splitter: Option<Splitter>,
+    sender: UnboundedSender<Frame>,
     id: u64,
 }
 
@@ -139,56 +117,114 @@ impl std::fmt::Debug for WasmRsCallContext {
 
 impl WasmRsCallContext {
     fn new(
-        mut context: Box<dyn ProviderCallContext + Send + Sync>,
+        mtu: usize,
+        mut context: Arc<Mutex<dyn ProviderCallContext + Send + Sync>>,
         state: Arc<ModuleState>,
     ) -> Result<Self> {
         let id = GLOBAL_CONTEXT_COUNT.fetch_add(1, Ordering::SeqCst);
         context
+            .lock()
             .init()
             .map_err(|e| crate::errors::Error::InitFailed(e.to_string()))?;
-        Ok(Self { context, state, id })
-    }
 
-    /// Return the unique id associated with this context.
-    #[must_use]
-    pub fn id(&self) -> u64 {
-        self.id
-    }
+        let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<Frame>();
+        let inner_state = state.clone();
+        runtime::spawn(async move {
+            while let Some(frame) = receiver.recv().await {
+                let stream_id = frame.stream_id();
+                if let Frame::ErrorFrame(e) = &frame {
+                    if e.stream_id == 0 {
+                        error!("wasmrs internal error (code:{}, data:{})", e.code, e.data);
+                        break;
+                    }
+                }
+                if let Err(e) = inner_state.kick_handler(stream_id, frame.into()) {
+                    error!("write frame failed: {}", e);
+                    break;
+                };
+            }
+        });
 
-    /// Invokes the `__guest_call` function within the guest module as per the wasmRS specification.
-    /// Provide an operation name and an opaque payload of bytes and the function returns a `Result`
-    /// containing either an error or an opaque reply of bytes.
-    ///
-    /// It is worth noting that the _first_ time `call` is invoked, the WebAssembly module
-    /// might incur a "cold start" penalty, depending on which underlying engine you're using. This
-    /// might be due to lazy initialization or JIT-compilation.
-    pub fn request_response(
-        &mut self,
-        namespace: impl AsRef<str>,
-        operation: impl AsRef<str>,
-        data: Vec<u8>,
-    ) -> Result<ShareableStream> {
-        let (stream_id, stream) = self.state.new_stream();
-        let metadata = Metadata::new(namespace, operation).encode();
-        let payload = RequestPayload {
-            stream_id,
-            metadata,
-            data,
-            follows: false,
-            complete: true,
-            frame_type: wasmrs_rsocket::FrameType::RequestResponse,
-            initial_n: 0,
+        let splitter = if mtu == 0 {
+            None
+        } else {
+            Some(Splitter::new(mtu))
         };
-        let bytes = payload.encode();
-        // let out = empty();
+        Ok(Self {
+            context,
+            sender,
+            state,
+            id,
+            splitter,
+        })
+    }
 
-        match self.context.request_response(stream_id, bytes) {
-            Ok(c) => c,
-            Err(e) => {
-                return Err(errors::Error::SendFailure(e.to_string()));
+    fn write_frame(&self, stream_id: u32, frame: Frame) -> wasmrs_rsocket::Result<()> {
+        self.context.lock().write_frame(stream_id, frame)
+    }
+
+    pub async fn request_response(&mut self, payload: Payload) -> Result<Option<Payload>> {
+        let (tx, rx) = tokio::sync::oneshot::channel::<wasmrs_rsocket::Result<Option<Payload>>>();
+        let handler = Handler::ReqRR(tx);
+        let stream_id = self.state.new_stream(handler);
+
+        send_request_response_payload(self.context.clone(), self.splitter, stream_id, payload);
+
+        match rx.await {
+            Ok(v) => Ok(v?),
+            Err(e) => Err(wasmrs_rsocket::Error::RequestResponse(e.to_string()).into()),
+        }
+    }
+}
+
+fn send_request_response_payload(
+    context: SharedContext,
+    splitter: Option<Splitter>,
+    stream_id: u32,
+    payload: Payload,
+) {
+    match splitter {
+        None => {
+            // crate request frame
+            let sending = Frame::new_request_response(stream_id, payload, Frame::FLAG_FOLLOW, 0);
+            // send frame
+            if let Err(e) = context.lock().write_frame(stream_id, sending) {
+                error!("send request_response failed: {}", e);
             }
         }
+        Some(sp) => {
+            let mut cuts: usize = 0;
+            let mut prev: Option<Payload> = None;
+            for next in sp.cut(payload, 0) {
+                if let Some(cur) = prev.take() {
+                    let sending = if cuts == 1 {
+                        // make first frame as request_response.
+                        Frame::new_request_response(stream_id, cur, Frame::FLAG_FOLLOW, 0)
+                    } else {
+                        // make other frames as payload.
+                        Frame::new_payload(stream_id, cur, Frame::FLAG_FOLLOW)
+                    };
+                    // send frame
+                    if let Err(e) = context.lock().write_frame(stream_id, sending) {
+                        error!("send request_response failed: {}", e);
+                        return;
+                    }
+                }
+                prev = Some(next);
+                cuts += 1;
+            }
 
-        Ok(stream)
+            let sending = if cuts == 0 {
+                Frame::new_request_response(stream_id, Payload::empty(), 0, 0)
+            } else if cuts == 1 {
+                Frame::new_request_response(stream_id, prev.unwrap_or_default(), 0, 0)
+            } else {
+                Frame::new_payload(stream_id, prev.unwrap_or_default(), 0)
+            };
+            // send frame
+            if let Err(e) = context.lock().write_frame(stream_id, sending) {
+                error!("send request_response failed: {}", e);
+            }
+        }
     }
 }

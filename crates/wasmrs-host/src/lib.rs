@@ -83,7 +83,7 @@
 extern crate tracing;
 
 pub mod errors;
-pub use host::modulestate::OutgoingStream;
+pub use host::modulestate::Handler;
 
 use std::error::Error;
 
@@ -91,17 +91,17 @@ use std::error::Error;
 pub const HOST_NAMESPACE: &str = "wasmrs";
 
 /// A list of the function names that are part of each wasmRS conversation
-pub mod wasmrs_functions;
+pub mod protocol;
 
 mod host;
 mod wasi;
 
 use futures_core::future::BoxFuture;
 pub use host::modulestate::ModuleState;
-pub use host::traits::{ModuleHost, ProviderCallContext, WebAssemblyEngineProvider};
+pub use host::traits::{ProviderCallContext, WebAssemblyEngineProvider};
 pub use host::{WasmRsCallContext, WasmRsHost, WasmRsHostBuilder};
+pub use protocol::*;
 pub use wasi::WasiParams;
-pub use wasmrs_functions::*;
 use wasmrs_rsocket::Frame;
 
 /// The signature of a Host Callback function.

@@ -11,14 +11,18 @@ pub use crate::generated::Cancel;
 
 impl FrameCodec<Cancel> for Cancel {
     const FRAME_TYPE: FrameType = FrameType::Cancel;
+
     fn stream_id(&self) -> u32 {
         self.stream_id
     }
 
-    fn decode(mut buffer: Bytes) -> Result<Cancel, Error> {
+    fn decode_all(mut buffer: Bytes) -> Result<Self, Error> {
         let header = FrameHeader::from_bytes(buffer.split_to(Frame::LEN_HEADER));
-        Self::check_type(&header)?;
+        Self::decode_frame(&header, buffer)
+    }
 
+    fn decode_frame(header: &FrameHeader, buffer: Bytes) -> Result<Self, Error> {
+        Self::check_type(header)?;
         Ok(Cancel {
             stream_id: header.stream_id(),
         })
@@ -45,7 +49,7 @@ mod test {
     #[test]
     fn test_decode() -> Result<()> {
         println!("RAW: {:?}", BYTES);
-        let p = Cancel::decode(BYTES.into())?;
+        let p = Cancel::decode_all(BYTES.into())?;
         println!("{:?}", p);
         assert_eq!(p.stream_id, 1234);
         Ok(())

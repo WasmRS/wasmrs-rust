@@ -83,6 +83,7 @@
 pub mod error;
 pub mod fragmentation;
 pub mod frames;
+pub mod runtime;
 pub mod util;
 
 // mod buffers;
@@ -90,35 +91,33 @@ mod generated;
 
 use std::{io::Read, pin::Pin};
 
-pub use frames::FrameCodec;
-use futures_lite::Stream;
-pub use generated::{ErrorCode, FragmentedPayload, Frame, FrameType, Metadata};
-
 use self::util::from_u32_bytes;
+use bytes::Bytes;
+pub use error::Error;
+pub use frames::{FragmentedPayload, FrameCodec};
+use futures_lite::Stream;
+pub use generated::*;
 
 pub use util::read_frame;
 
 pub type Flux<T> = Pin<Box<dyn Send + Stream<Item = T>>>;
 
-pub type Result<T> = std::result::Result<T, crate::error::Error>;
-pub type PayloadBytes = Vec<u8>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[async_trait::async_trait]
 pub trait RSocketContext: Sync + Send {
     /// Fire and Forget interaction model of RSocket.
-    async fn fire_and_forget(&self, stream_id: u32, req: PayloadBytes) -> Result<()>;
+    async fn fire_and_forget(&self, stream_id: u32, req: Payload) -> Result<()>;
     /// Request-Response interaction model of RSocket.
-    async fn request_response(
-        &self,
-        stream_id: u32,
-        req: PayloadBytes,
-    ) -> Result<Option<PayloadBytes>>;
+    async fn request_response(&self, stream_id: u32, req: Payload) -> Result<Option<Payload>>;
     /// Request-Stream interaction model of RSocket.
-    fn request_stream(&self, stream_id: u32, req: PayloadBytes) -> Flux<Result<PayloadBytes>>;
+    fn request_stream(&self, stream_id: u32, req: Payload) -> Flux<Result<Payload>>;
     /// Request-Channel interaction model of RSocket.
-    fn request_channel(
-        &self,
-        stream_id: u32,
-        reqs: Flux<Result<PayloadBytes>>,
-    ) -> Flux<Result<PayloadBytes>>;
+    fn request_channel(&self, stream_id: u32, reqs: Flux<Result<Payload>>)
+        -> Flux<Result<Payload>>;
+}
+
+pub trait FrameWriter: Sync + Send {
+    /// Fire and Forget interaction model of RSocket.
+    fn write_frame(&mut self, stream_id: u32, req: Frame) -> Result<()>;
 }

@@ -38,7 +38,7 @@ where
     #[must_use]
     fn as_ptr(&self) -> usize;
 
-    fn get_read_pos(&mut self) -> usize;
+    fn get_read_pos(&self) -> usize;
 
     fn update_read_pos(&mut self, position: usize);
 
