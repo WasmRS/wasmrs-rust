@@ -1,5 +1,4 @@
 mod guest;
-mod select_all;
 
 use futures::future::select_all;
 use futures::stream::StreamExt;

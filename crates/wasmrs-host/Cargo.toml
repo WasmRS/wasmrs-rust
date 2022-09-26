@@ -13,7 +13,6 @@ futures-core = "0.3"
 tokio = { version = "1", features = ["sync", "rt-multi-thread"] }
 strum = { version = "0.24", features = ["derive"] }
 tracing = "0.1"
-rxrust = { path = "../../crates/rxRust", features = ["tokio-scheduler"] }
 # rsocket_rust = "0.7.2"
 async-trait = "0.1.57"
 bytes = "1.2.1"

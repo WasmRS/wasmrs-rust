@@ -9,7 +9,6 @@ use std::time::Duration;
 use bytes::Bytes;
 use futures_core::Stream;
 use parking_lot::Mutex;
-use rxrust::prelude::*;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::yield_now;
 use wasmrs_rsocket::fragmentation::Splitter;
