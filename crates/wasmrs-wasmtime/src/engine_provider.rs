@@ -174,6 +174,14 @@ impl wasmrs_rsocket::FrameWriter for WasmtimeCallContext {
 
         self.state.update_guest_buffer_pos(written);
 
+        let instant = std::time::SystemTime::now();
+        println!(
+            "Guest>>: Sending frame at {:?}",
+            instant
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
         let start = std::time::Instant::now();
         let _call = self.guest_send.call(&mut self.store, read_pos as i32);
         let end = std::time::Instant::now();

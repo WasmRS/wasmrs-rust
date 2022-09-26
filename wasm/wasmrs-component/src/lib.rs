@@ -1,12 +1,14 @@
 mod guest;
 
-use futures::future::select_all;
+use futures::stream::select_all;
 use futures::stream::StreamExt;
+
 use guest::GenericError;
 
-use wasmflow_codec::messagepack::{deserialize, serialize};
+use wapc_codec::messagepack::{deserialize, serialize};
 use wasmrs_rsocket::flux::{FluxBox, FluxChannel};
 
+use self::guest::spawn;
 use self::guest::{IncomingStream, OutgoingStream, Process, ProcessReturnValue};
 
 fn init() {
@@ -52,7 +54,7 @@ impl Process for Hello {
         //println!("started task");
         let hello_msg_channel = FluxChannel::<String, ()>::new();
         let hello_msg_stream = hello_msg_channel.take_receiver().unwrap();
-        yielding_executor::single_threaded::spawn(async move {
+        spawn(async move {
             //println!("in async stream processor");
             while let Ok(Some(Ok(payload))) = input_stream.recv().await {
                 let result = match payload.metadata.namespace.as_str() {
@@ -60,7 +62,7 @@ impl Process for Hello {
                         Ok(v) => hello_msg_channel.send(v),
                         Err(_) => hello_msg_channel.error(()),
                     },
-                    _ => Err(99),
+                    x => Err(wasmrs_rsocket::Error::PortNotFound(x.to_owned())),
                 };
             }
         });
@@ -70,12 +72,11 @@ impl Process for Hello {
         let output_stream = OutgoingStream::new();
         let output_hello_msg_channel = FluxChannel::<String, ()>::new();
         let output_hello_msg_stream = output_hello_msg_channel.take_receiver().unwrap();
-        let mut output_hello_msg_stream = output_hello_msg_stream.map(|v| serialize(&v).unwrap());
+        let output_hello_msg_stream = output_hello_msg_stream.map(|v| serialize(&v).unwrap());
         let inner = output_stream.clone();
-        yielding_executor::single_threaded::spawn(async move {
-            let futs = vec![output_hello_msg_stream.next()];
-            let (result, this, left) = select_all(futs).await;
-            if let Some(bytes) = result {
+        spawn(async move {
+            let mut futs = select_all(vec![output_hello_msg_stream]);
+            while let Some(bytes) = futs.next().await {
                 inner.send(bytes.into());
             }
         });
@@ -85,10 +86,10 @@ impl Process for Hello {
         };
 
         let component = Hello { inputs, outputs };
-        // yielding_executor::single_threaded::spawn(async move {
-        //   while select
-        // });
-        yielding_executor::single_threaded::spawn(component.task());
+
+        spawn(async move {
+            component.task().await;
+        });
 
         Ok(output_stream)
     }

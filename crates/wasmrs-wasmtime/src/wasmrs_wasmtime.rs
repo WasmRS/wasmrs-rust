@@ -105,6 +105,15 @@ fn linker_send(
                 ?params,
                 "guest calling host"
             );
+            let instant = std::time::SystemTime::now();
+            println!(
+                "<<Host: Getting frame at {:?}",
+                instant
+                    .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            );
+
             let recv_pos = params[0].unwrap_i32() as u32;
             let memory = get_caller_memory(&mut caller);
             let bytes = get_vec_from_ringbuffer(

@@ -1,8 +1,9 @@
-use async_channel::Sender;
 use bytes::{BufMut, Bytes, BytesMut};
+use futures::task::{LocalSpawnExt, SpawnError};
 use wasmrs_rsocket::flux::{FluxChannel, Signal};
 
 use std::cell::RefCell;
+use std::str::SplitWhitespace;
 use std::{cell::UnsafeCell, collections::HashMap, rc::Rc, sync::atomic::Ordering};
 use wasmrs_ringbuffer::{ReadOnlyRingBuffer, RingBuffer, VecRingBuffer};
 use wasmrs_rsocket::{Flux, FragmentedPayload, Frame, FrameType, Metadata, Payload, PayloadError};
@@ -19,17 +20,17 @@ pub type ProcessFactory = fn(IncomingStream) -> std::result::Result<OutgoingStre
 pub type IncomingStream = FluxChannel<GuestPayload, PayloadError>;
 pub type OutgoingStream = FluxChannel<Bytes, PayloadError>;
 
-use yielding_executor::single_threaded as runtime;
+use futures::{executor as runtime, Future};
 
 #[derive(Clone)]
 pub struct GuestPayload {
     pub stream_id: u32,
-    pub data: Vec<u8>,
+    pub data: Bytes,
     pub metadata: Metadata,
 }
 
 impl GuestPayload {
-    pub fn new(stream_id: u32, data: Vec<u8>, metadata: Metadata) -> Self {
+    pub fn new(stream_id: u32, data: Bytes, metadata: Metadata) -> Self {
         Self {
             stream_id,
             data,
@@ -46,9 +47,14 @@ pub enum Error {
     HandlerFail(String),
     StringDecode,
     BufferRead,
+    Internal(wasmrs_rsocket::Error),
 }
 
-pub struct GuestError(u32, String);
+impl From<wasmrs_rsocket::Error> for Error {
+    fn from(e: wasmrs_rsocket::Error) -> Self {
+        Self::Internal(e)
+    }
+}
 
 impl std::error::Error for Error {}
 impl std::fmt::Display for Error {
@@ -71,6 +77,25 @@ thread_local! {
   static STREAM_ID: AtomicU32 = AtomicU32::new(2);
   static REQUEST_STREAM_HANDLERS: UnsafeCell<NamespaceMap> = UnsafeCell::new(NamespaceMap::new());
   static REQUEST_RESPONSE_HANDLERS: UnsafeCell<NamespaceMap> = UnsafeCell::new(NamespaceMap::new());
+  static SPAWNER: UnsafeCell<runtime::LocalPool> = UnsafeCell::new(runtime::LocalPool::new());
+}
+
+pub fn spawn<Fut>(future: Fut)
+where
+    Fut: Future<Output = ()> + 'static,
+{
+    SPAWNER.with(|cell| {
+        let pool = unsafe { &mut *cell.get() };
+        let spawner = pool.spawner();
+        let _ = spawner.spawn_local(future);
+    });
+}
+
+pub fn exhaust_pool() {
+    SPAWNER.with(|cell| {
+        let pool = unsafe { &mut *cell.get() };
+        pool.run_until_stalled();
+    });
 }
 
 fn next_stream_id() -> u32 {
@@ -156,13 +181,7 @@ extern "C" fn __wasmrs_send(read_pos: u32) {
     let frame = frame.unwrap();
 
     let _ = handle_frame(frame);
-    //println!("handled frame");
-    //println!("queued tasks: {:?}", runtime::queued_tasks_count());
-    runtime::run_while(move || {
-        //println!("[[queued tasks: {:?}", runtime::queued_tasks_count());
-        //println!("[[tasks: {:?}", runtime::tasks_count());
-        runtime::queued_tasks_count() > 0
-    });
+    exhaust_pool();
 }
 
 fn handle_frame(frame: Frame) -> Result<()> {
@@ -178,13 +197,13 @@ fn handle_frame(frame: Frame) -> Result<()> {
             if frame.follows {
                 return Ok(());
             }
-            let mut complete_payload = get_fragment(frame.stream_id).unwrap();
+            let complete_payload = get_fragment(frame.stream_id).unwrap();
             match complete_payload.frame_type {
                 FrameType::RequestResponse => {
                     handle_request_response(
                         frame.stream_id,
-                        complete_payload.metadata.to_vec(),
-                        complete_payload.data.to_vec(),
+                        complete_payload.metadata.freeze(),
+                        complete_payload.data.freeze(),
                     )?;
                 }
                 FrameType::RequestFnf => {
@@ -193,24 +212,24 @@ fn handle_frame(frame: Frame) -> Result<()> {
                 FrameType::RequestStream => {
                     handle_request_stream(
                         frame.stream_id,
-                        complete_payload.metadata.to_vec(),
-                        complete_payload.data.to_vec(),
+                        complete_payload.metadata.freeze(),
+                        complete_payload.data.freeze(),
                     )?;
                 }
                 FrameType::RequestChannel => {
                     handle_request_channel(
                         frame.stream_id,
-                        complete_payload.metadata.to_vec(),
-                        complete_payload.data.to_vec(),
+                        complete_payload.metadata.freeze(),
+                        complete_payload.data.freeze(),
                     )?;
                 }
                 FrameType::Payload => {
                     if frame.next {
-                        let mut stream = get_stream(frame.stream_id).unwrap();
-                        let metadata = parse_metadata(&mut complete_payload.metadata)?;
-                        stream.send(GuestPayload::new(
+                        let stream = get_stream(frame.stream_id).unwrap();
+                        let metadata = parse_metadata(&complete_payload.metadata)?;
+                        let _ = stream.send(GuestPayload::new(
                             frame.stream_id,
-                            complete_payload.data.to_vec(),
+                            complete_payload.data.freeze(),
                             metadata,
                         ));
                     }
@@ -226,8 +245,8 @@ fn handle_frame(frame: Frame) -> Result<()> {
             end_stream(frame.stream_id);
         }
         Frame::ErrorFrame(frame) => {
-            let mut stream = get_stream(frame.stream_id).unwrap();
-            stream.error(PayloadError::new(frame.code, frame.data));
+            let stream = get_stream(frame.stream_id).unwrap();
+            stream.error(PayloadError::new(frame.code, frame.data))?;
             end_stream(frame.stream_id);
         }
         Frame::RequestN(frame) => {
@@ -238,30 +257,18 @@ fn handle_frame(frame: Frame) -> Result<()> {
         }
         Frame::RequestResponse(frame) => {
             if !frame.0.follows {
-                handle_request_response(
-                    frame.0.stream_id,
-                    frame.0.metadata.to_vec(),
-                    frame.0.data.to_vec(),
-                )?;
+                handle_request_response(frame.0.stream_id, frame.0.metadata, frame.0.data)?;
             }
         }
         Frame::RequestFnF(_) => todo!(),
         Frame::RequestStream(frame) => {
             if !frame.0.follows {
-                handle_request_stream(
-                    frame.0.stream_id,
-                    frame.0.metadata.to_vec(),
-                    frame.0.data.to_vec(),
-                )?;
+                handle_request_stream(frame.0.stream_id, frame.0.metadata, frame.0.data)?;
             }
         }
         Frame::RequestChannel(frame) => {
             if !frame.0.follows {
-                handle_request_channel(
-                    frame.0.stream_id,
-                    frame.0.metadata.to_vec(),
-                    frame.0.data.to_vec(),
-                )?;
+                handle_request_channel(frame.0.stream_id, frame.0.metadata, frame.0.data)?;
             }
         }
     };
@@ -347,7 +354,7 @@ fn remove_stream(id: u32) {
 
 fn end_stream(id: u32) {
     STREAMS.with(|cell| match cell.borrow_mut().remove(&id) {
-        Some(mut stream) => stream.complete(),
+        Some(stream) => stream.complete(),
         None => print("ending stream without a stream available"),
     });
 }
@@ -365,11 +372,7 @@ fn get_process_handler(
     })
 }
 
-fn handle_request_response(
-    stream_id: u32,
-    mut metadata_bytes: Vec<u8>,
-    data: Vec<u8>,
-) -> Result<()> {
+fn handle_request_response(stream_id: u32, metadata_bytes: Bytes, data: Bytes) -> Result<()> {
     let metadata = parse_metadata(&metadata_bytes)?;
     let handler = get_process_handler(
         &REQUEST_RESPONSE_HANDLERS,
@@ -377,10 +380,10 @@ fn handle_request_response(
         &metadata.operation,
     )
     .ok_or(Error::NoHandler)?;
-    let mut incoming = new_stream(stream_id);
+    let incoming = new_stream(stream_id);
     let result = handler(incoming.clone()).map_err(|e| Error::HandlerFail(e.to_string()));
 
-    yielding_executor::single_threaded::spawn(async move {
+    spawn(async move {
         //println!("in outgoing stream processor");
 
         match result {
@@ -393,7 +396,7 @@ fn handle_request_response(
                         Ok(payload) => send_host_payload(
                             Frame::new_payload(
                                 stream_id,
-                                Payload::new(Bytes::from(metadata_bytes.clone()), payload),
+                                Payload::new(metadata_bytes.clone(), payload),
                                 0,
                             )
                             .encode(),
@@ -411,14 +414,14 @@ fn handle_request_response(
         //println!("Done processing output");
     });
     //println!("outgoing task started");
-    let _ = incoming.send(GuestPayload::new(stream_id, data.to_vec(), metadata));
+    let _ = incoming.send(GuestPayload::new(stream_id, data, metadata));
     //println!("done with reqres");
 
     Ok(())
 }
 
-fn handle_request_stream(stream_id: u32, mut metadata: Vec<u8>, data: Vec<u8>) -> Result<()> {
-    let metadata = parse_metadata(&mut metadata)?;
+fn handle_request_stream(stream_id: u32, mut metadata: Bytes, data: Bytes) -> Result<()> {
+    let metadata = parse_metadata(&metadata)?;
     let handler = get_process_handler(
         &REQUEST_STREAM_HANDLERS,
         &metadata.namespace,
@@ -440,7 +443,7 @@ fn handle_request_stream(stream_id: u32, mut metadata: Vec<u8>, data: Vec<u8>) -
     Ok(())
 }
 
-fn handle_request_channel(stream_id: u32, mut metadata: Vec<u8>, data: Vec<u8>) -> Result<()> {
+fn handle_request_channel(stream_id: u32, mut metadata: Bytes, data: Bytes) -> Result<()> {
     let metadata = parse_metadata(&mut metadata);
     Ok(())
 }

@@ -29,7 +29,6 @@ impl RequestPayload {
         flags: FrameFlags,
         initial_n: u32,
     ) -> Self {
-        let header = FrameHeader::new(stream_id, frame_type, flags);
         Self {
             stream_id,
             metadata: payload.metadata.unwrap_or_default(),

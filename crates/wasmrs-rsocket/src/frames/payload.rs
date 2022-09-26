@@ -1,7 +1,4 @@
-use super::{
-    Error, FrameCodec, RSocketFlags, FRAME_FLAG_COMPLETE, FRAME_FLAG_FOLLOWS, FRAME_FLAG_METADATA,
-    FRAME_FLAG_NEXT,
-};
+use super::{Error, FrameCodec, RSocketFlags};
 
 pub use crate::generated::PayloadFrame;
 use bytes::{BufMut, Bytes, BytesMut};
@@ -41,7 +38,6 @@ impl FragmentedPayload {
 
 impl PayloadFrame {
     pub fn from_payload(stream_id: u32, payload: Payload, flags: FrameFlags) -> Self {
-        let header = FrameHeader::new(stream_id, Self::FRAME_TYPE, flags);
         Self {
             stream_id,
             metadata: payload.metadata.unwrap_or_default(),
@@ -67,18 +63,12 @@ impl FrameCodec<PayloadFrame> for PayloadFrame {
 
     fn decode_frame(header: &FrameHeader, mut buffer: Bytes) -> Result<Self, Error> {
         Self::check_type(header)?;
-        let mut start = Frame::LEN_HEADER;
 
         let metadata_len = if header.has_metadata() {
             from_u24_bytes(&buffer.split_to(3)) as usize
         } else {
             0
         };
-
-        let data_start = start + metadata_len;
-        let metadata_range = start..(start + metadata_len);
-
-        let payload_range = (data_start)..(buffer.len());
 
         let metadata: Bytes = buffer.split_to(metadata_len);
         let payload: Bytes = buffer;

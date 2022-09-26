@@ -21,7 +21,7 @@ impl FrameCodec<Cancel> for Cancel {
         Self::decode_frame(&header, buffer)
     }
 
-    fn decode_frame(header: &FrameHeader, buffer: Bytes) -> Result<Self, Error> {
+    fn decode_frame(header: &FrameHeader, _buffer: Bytes) -> Result<Self, Error> {
         Self::check_type(header)?;
         Ok(Cancel {
             stream_id: header.stream_id(),

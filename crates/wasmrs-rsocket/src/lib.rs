@@ -84,39 +84,21 @@ pub mod error;
 pub mod flux;
 pub mod fragmentation;
 pub mod frames;
+// pub mod manager;
 pub mod runtime;
+// pub mod safemap;
 mod util;
 
 // mod buffers;
 mod generated;
 
-use std::{io::Read, pin::Pin};
-
-use bytes::Bytes;
 pub use error::{Error, PayloadError};
 pub use flux::Flux;
 pub use frames::{FragmentedPayload, FrameCodec};
-use futures_lite::Stream;
 pub use generated::*;
 pub use util::*;
 
 pub type Result<T> = std::result::Result<T, Error>;
-
-#[async_trait::async_trait]
-pub trait RSocketContext: Sync + Send {
-    /// Fire and Forget interaction model of RSocket.
-    async fn fire_and_forget(&self, stream_id: u32, req: Payload) -> Result<()>;
-    /// Request-Response interaction model of RSocket.
-    async fn request_response(&self, stream_id: u32, req: Payload) -> Result<Option<Payload>>;
-    /// Request-Stream interaction model of RSocket.
-    fn request_stream(&self, stream_id: u32, req: Payload) -> dyn Flux<Payload, Error>;
-    /// Request-Channel interaction model of RSocket.
-    fn request_channel(
-        &self,
-        stream_id: u32,
-        reqs: impl Flux<Payload, Error>,
-    ) -> Box<dyn Flux<Payload, Error>>;
-}
 
 pub trait FrameWriter: Sync + Send {
     /// Fire and Forget interaction model of RSocket.

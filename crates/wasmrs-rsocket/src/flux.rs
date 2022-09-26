@@ -4,7 +4,8 @@ mod observer;
 pub use observer::*;
 use std::{pin::Pin, sync::Arc, task::Poll};
 
-use futures_lite::Stream;
+// use futures_lite::Stream;
+use futures_core::Stream;
 
 // pub type Flux<Item, Err> = dyn Send + Stream<Item = Result<Item, Err>>;
 
@@ -14,6 +15,8 @@ use parking_lot::Mutex;
 // pub type Sender<Item, Err> = async_channel::Sender<Signal<Item, Err>>;
 // pub type Receiver<Item, Err> = async_channel::Receiver<Signal<Item, Err>>;
 pub use tokio::sync::mpsc::unbounded_channel as channel;
+
+use crate::Error;
 pub type Sender<Item, Err> = tokio::sync::mpsc::UnboundedSender<Signal<Item, Err>>;
 pub type Receiver<Item, Err> = tokio::sync::mpsc::UnboundedReceiver<Signal<Item, Err>>;
 
@@ -57,24 +60,31 @@ where
         }
     }
 
-    pub fn send(&self, item: Item) -> Result<(), u8> {
-        self.tx.send(Signal::Ok(item)).map_err(|_| 1)
+    pub fn send(&self, item: Item) -> Result<(), Error> {
+        self.tx
+            .send(Signal::Ok(item))
+            .map_err(|_| Error::SendFailed(0))
     }
 
-    pub fn error(&self, err: Err) -> Result<(), u8> {
-        self.tx.send(Signal::Err(err)).map_err(|_| 1)
+    pub fn error(&self, err: Err) -> Result<(), Error> {
+        self.tx
+            .send(Signal::Err(err))
+            .map_err(|_| Error::SendFailed(1))
     }
 
     pub fn complete(&self) {
         let _ = self.tx.send(Signal::Complete);
     }
 
-    pub async fn recv(&self) -> Result<Option<Result<Item, Err>>, u8> {
+    pub async fn recv(&self) -> Result<Option<Result<Item, Err>>, Error> {
         self.rx.recv().await
     }
 
-    pub fn take_receiver(&self) -> Result<Pin<Box<FluxStream<Item, Err>>>, u8> {
-        self.rx.take().map(Box::pin).ok_or(3)
+    pub fn take_receiver(&self) -> Result<Pin<Box<FluxStream<Item, Err>>>, Error> {
+        self.rx
+            .take()
+            .map(Box::pin)
+            .ok_or(Error::ReceiverAlreadyGone)
     }
 
     #[must_use]
@@ -195,15 +205,15 @@ where
     Item: Send + Sync,
     Err: Send + Sync,
 {
-    pub async fn recv(&self) -> Result<Option<Result<Item, Err>>, u8> {
+    pub async fn recv(&self) -> Result<Option<Result<Item, Err>>, Error> {
         let opt = self.rx.lock().take();
         match opt {
             Some(mut rx) => {
                 let signal = rx.recv().await;
-                self.rx.lock().insert(rx);
+                let _ = self.rx.lock().insert(rx);
                 Ok(signal_into_result(signal))
             }
-            None => Err(2),
+            None => Err(Error::RecvFailed(0)),
         }
     }
 
@@ -212,7 +222,7 @@ where
         let opt = self.rx.lock().take();
         opt.map_or(std::task::Poll::Ready(None), |mut rx| {
             let poll = rx.poll_recv(cx);
-            self.rx.lock().insert(rx);
+            let _ = self.rx.lock().insert(rx);
             match poll {
                 Poll::Ready(Some(Signal::Complete)) => Poll::Ready(None),
                 Poll::Ready(Some(Signal::Ok(v))) => Poll::Ready(Some(Ok(v))),
@@ -268,7 +278,7 @@ where
 mod test {
     use super::*;
     use anyhow::Result;
-    use futures_lite::StreamExt;
+    use futures::StreamExt;
 
     async fn recv_flux<Item, Err>(mut flux: FluxBox<Item, Err>) -> Option<Result<Item, Err>>
     where
@@ -283,11 +293,11 @@ mod test {
     #[tokio::test]
     async fn test_fluxchannel() -> Result<()> {
         let flux = FluxChannel::<u32, u32>::new();
-        flux.send(1);
+        flux.send(1)?;
         let value = recv_flux(flux.clone_box()).await;
         assert_eq!(value, Some(Ok(1)));
         let stream = flux.take_receiver().unwrap();
-        flux.send(2);
+        flux.send(2)?;
         let value = recv_flux(stream).await;
         assert_eq!(value, Some(Ok(2)));
         let stream = flux.take_receiver();

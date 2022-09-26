@@ -8,9 +8,9 @@ pub(crate) mod request_payload;
 pub(crate) mod request_response;
 pub(crate) mod request_stream;
 
-use crate::generated::{
-    Cancel, ErrorFrame, PayloadFrame, RequestChannel, RequestN, RequestPayload, RequestResponse,
-    RequestStream,
+use crate::{
+    generated::{Cancel, ErrorFrame, PayloadFrame, RequestChannel, RequestResponse, RequestStream},
+    RequestFnF,
 };
 pub use bytes::{BufMut, Bytes, BytesMut};
 pub use payload::FragmentedPayload;
@@ -70,9 +70,9 @@ impl From<Frame> for Result<Option<Payload>, crate::PayloadError> {
     fn from(frame: Frame) -> Self {
         match frame {
             Frame::PayloadFrame(frame) => Ok(Some(Payload::new(frame.metadata, frame.data))),
-            Frame::Cancel(frame) => todo!(),
+            Frame::Cancel(_frame) => todo!(),
             Frame::ErrorFrame(frame) => Err(crate::PayloadError::new(frame.code, frame.data)),
-            Frame::RequestN(frame) => todo!(),
+            Frame::RequestN(_frame) => todo!(),
             Frame::RequestResponse(frame) => Ok(Some(Payload::new(frame.0.metadata, frame.0.data))),
             Frame::RequestFnF(frame) => Ok(Some(Payload::new(frame.0.metadata, frame.0.data))),
             Frame::RequestStream(frame) => Ok(Some(Payload::new(frame.0.metadata, frame.0.data))),
@@ -116,6 +116,17 @@ impl Frame {
     pub const FLAG_COMPLETE: FrameFlags = FRAME_FLAG_COMPLETE;
     pub const FLAG_IGNORE: FrameFlags = FRAME_FLAG_IGNORE;
     pub const FLAG_METADATA: FrameFlags = FRAME_FLAG_METADATA;
+
+    pub fn is_followable_or_payload(&self) -> (bool, bool) {
+        match &self {
+            Frame::RequestFnF(_) => (true, false),
+            Frame::RequestResponse(_) => (true, false),
+            Frame::RequestStream(_) => (true, false),
+            Frame::RequestChannel(_) => (true, false),
+            Frame::PayloadFrame(_) => (true, true),
+            _ => (false, false),
+        }
+    }
 
     #[must_use]
     pub fn stream_id(&self) -> u32 {
@@ -230,6 +241,39 @@ impl Frame {
         ))
     }
 
+    pub fn new_request_stream(
+        stream_id: u32,
+        payload: Payload,
+        flags: FrameFlags,
+        initial_n: u32,
+    ) -> Frame {
+        Frame::RequestStream(RequestStream::from_payload(
+            stream_id, payload, flags, initial_n,
+        ))
+    }
+
+    pub fn new_request_channel(
+        stream_id: u32,
+        payload: Payload,
+        flags: FrameFlags,
+        initial_n: u32,
+    ) -> Frame {
+        Frame::RequestChannel(RequestChannel::from_payload(
+            stream_id, payload, flags, initial_n,
+        ))
+    }
+
+    pub fn new_request_fnf(
+        stream_id: u32,
+        payload: Payload,
+        flags: FrameFlags,
+        initial_n: u32,
+    ) -> Frame {
+        Frame::RequestFnF(RequestFnF::from_payload(
+            stream_id, payload, flags, initial_n,
+        ))
+    }
+
     pub fn new_payload(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
         Frame::PayloadFrame(Box::new(PayloadFrame::from_payload(
             stream_id, payload, flags,
@@ -333,7 +377,7 @@ impl FrameHeader {
     }
 
     pub(crate) fn frame_type(&self) -> FrameType {
-        let id: u8 = (self.header[4] >> 2);
+        let id: u8 = self.header[4] >> 2;
         id.try_into().unwrap()
     }
 

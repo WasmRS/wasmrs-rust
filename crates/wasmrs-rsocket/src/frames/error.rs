@@ -27,8 +27,6 @@ impl FrameCodec<ErrorFrame> for ErrorFrame {
     fn decode_frame(header: &FrameHeader, mut buffer: Bytes) -> Result<Self, Error> {
         Self::check_type(header)?;
 
-        let start = Frame::LEN_HEADER;
-
         Ok(ErrorFrame {
             stream_id: header.stream_id(),
             code: from_u32_bytes(&buffer.split_to(4)),

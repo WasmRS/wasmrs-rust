@@ -1,7 +1,5 @@
 //! Library-specific error types and utility functions
 
-use crate::ErrorCode;
-
 /// Error type for wasmRS RSocket errors.
 #[derive(Debug, Clone)]
 pub enum Error {
@@ -10,6 +8,10 @@ pub enum Error {
     RequestChannel(String),
     RequestStream(String),
     RequestFnF(String),
+    SendFailed(u8),
+    RecvFailed(u8),
+    ReceiverAlreadyGone,
+    PortNotFound(String),
 }
 
 impl std::error::Error for Error {}

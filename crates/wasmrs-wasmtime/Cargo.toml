@@ -28,7 +28,7 @@ bytes = "1.2.1"
 [dev-dependencies]
 wasmflow-codec = "0.10.0"
 env_logger = "0.9"
-tokio = { version = "1", features = ["macros", "time"] }
+tokio = { version = "1", features = ["macros", "rt", "time"] }
 test-log = "0.2.10"
 tracing-subscriber = { version = "0.3", default-features = false, features = [
   "env-filter",

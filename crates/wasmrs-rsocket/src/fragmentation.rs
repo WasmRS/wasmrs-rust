@@ -2,15 +2,12 @@ use std::collections::LinkedList;
 
 use bytes::{Bytes, BytesMut};
 
-use crate::{
-    frames::FRAME_FLAG_FOLLOWS,
-    generated::{FrameFlag, Payload, PayloadFrame},
-    Frame,
-};
+use crate::{frames::FRAME_FLAG_FOLLOWS, generated::Payload, Frame};
 
 pub const MIN_MTU: usize = 64;
 
 #[allow(missing_debug_implementations)]
+#[must_use]
 pub struct Joiner {
     inner: LinkedList<Frame>,
 }
@@ -116,26 +113,28 @@ impl Into<Payload> for Joiner {
 }
 
 impl Joiner {
-    pub(crate) fn new() -> Joiner {
+    pub fn new() -> Joiner {
         Joiner {
             inner: LinkedList::new(),
         }
     }
 
-    pub(crate) fn get_stream_id(&self) -> u32 {
+    #[must_use]
+    pub fn get_stream_id(&self) -> u32 {
         self.first().stream_id()
     }
 
-    pub(crate) fn get_flag(&self) -> u16 {
+    #[must_use]
+    pub fn get_flag(&self) -> u16 {
         self.first().get_flag() & !FRAME_FLAG_FOLLOWS
     }
 
-    pub(crate) fn first(&self) -> &Frame {
+    pub fn first(&self) -> &Frame {
         #[allow(clippy::expect_used)]
         self.inner.front().expect("No frames pushed!")
     }
 
-    pub(crate) fn push(&mut self, next: Frame) {
+    pub fn push(&mut self, next: Frame) {
         self.inner.push_back(next);
     }
 }

@@ -7,12 +7,18 @@ edition = "2021"
 
 [dependencies]
 wasmrs-ringbuffer = { path = "../wasmrs-ringbuffer" }
-async-trait = "0.1.57"
-futures-lite = "1.12.0"
-bytes = "1.2.1"
-tokio = { version = "1", features = ["rt", "sync"] }
+# async-trait = "0.1.57"
+# futures-lite = "1.12.0"
+futures-core = "0.3"
+bytes = "1.2"
+tokio = { version = "1", features = ["sync"] }
 parking_lot = "0.12"
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies.tokio]
+version = "1"
+features = ["rt"]
 
 [dev-dependencies]
 anyhow = { version = "1.0" }
-tokio = { version = "1", features = ["macros"] }
+tokio = { version = "1", features = ["rt", "macros"] }
+futures = "0.3"

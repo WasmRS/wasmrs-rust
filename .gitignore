@@ -2,3 +2,4 @@ target/
 /build
 Cargo.lock
 /archive
+.DS_Store

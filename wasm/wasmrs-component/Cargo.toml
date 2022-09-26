@@ -18,10 +18,6 @@ crate-type = ["cdylib"]
 wasmrs-ringbuffer = { path = "../../crates/wasmrs-ringbuffer" }
 wasmrs-rsocket = { path = "../../crates/wasmrs-rsocket" }
 bytes = "1.2"
-futures-lite = "1.12.0"
 futures = "0.3"
-async-channel = "1.7"
-
-yielding-executor = { version = "0.10" }
 serde = { version = "1", features = ["derive"] }
-wasmflow-codec = "0.10.0"
+wapc-codec = "1.0.0"
