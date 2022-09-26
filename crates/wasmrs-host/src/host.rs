@@ -1,114 +1,49 @@
-pub(crate) mod modulestate;
-pub(crate) mod traits;
-
 use std::cell::RefCell;
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 
-use bytes::Bytes;
-use dashmap::DashMap;
-use futures_core::Stream;
-use parking_lot::Mutex;
-use tokio::sync::mpsc::UnboundedSender;
-use tokio::task::yield_now;
-use wasmrs::fragmentation::{Joiner, Splitter};
-use wasmrs::frames::RSocketFlags;
-use wasmrs::{runtime, ErrorCode, Frame, Metadata, Payload, PayloadError};
-use wasmrs::{PayloadFrame, RequestPayload};
+use wasmrs::fragmentation::Splitter;
+use wasmrs::{Frame, Handler, Payload, PayloadError, SocketManager};
 
-use self::modulestate::ModuleState;
-use self::traits::{SharedContext, WebAssemblyEngineProvider};
-use crate::{errors, AsyncHostCallback, Handler, HostCallback, Invocation, ProviderCallContext};
-
-static GLOBAL_MODULE_COUNT: AtomicU64 = AtomicU64::new(1);
-static GLOBAL_CONTEXT_COUNT: AtomicU64 = AtomicU64::new(1);
+use crate::context::{EngineProvider, SharedContext};
 
 type Result<T> = std::result::Result<T, crate::errors::Error>;
 
-type ArcMutContext = Arc<Mutex<dyn ProviderCallContext + Send + Sync>>;
-
 #[must_use]
 #[allow(missing_debug_implementations)]
-pub struct WasmRsHost {
-    engine: RefCell<Box<dyn WebAssemblyEngineProvider>>,
-    id: u64,
+pub struct Host {
+    engine: RefCell<Box<dyn EngineProvider>>,
     mtu: usize,
 }
 
-impl WasmRsHost {
-    pub fn next_id() -> u64 {
-        GLOBAL_MODULE_COUNT.fetch_add(1, Ordering::SeqCst)
-    }
-
-    pub fn new(engine: Box<dyn WebAssemblyEngineProvider>) -> Result<Self> {
-        let id = Self::next_id();
-        let mh = WasmRsHost {
-            engine: RefCell::new(engine),
+impl Host {
+    pub fn new<T: EngineProvider + 'static>(engine: T) -> Result<Self> {
+        let host = Host {
+            engine: RefCell::new(Box::new(engine)),
             mtu: 256,
-            id,
         };
 
-        mh.initialize()?;
+        host.engine.borrow_mut().init()?;
 
-        Ok(mh)
+        Ok(host)
     }
 
-    fn initialize(&self) -> Result<()> {
-        match self.engine.borrow_mut().init() {
-            Ok(_) => Ok(()),
-            Err(e) => Err(errors::Error::InitFailed(e.to_string())),
-        }
-    }
+    pub fn new_context(&self) -> Result<CallContext> {
+        let state = Arc::new(SocketManager::new());
 
-    pub fn id(&self) -> u64 {
-        self.id
-    }
+        let context = self.engine.borrow().new_context(state.clone())?;
 
-    pub fn new_context(&self) -> Result<WasmRsCallContext> {
-        let state = Arc::new(ModuleState::new(self.id));
-        let context = self
-            .engine
-            .borrow()
-            .new_context(state.clone())
-            .map_err(|e| crate::errors::Error::Context(e.to_string()))?;
-        WasmRsCallContext::new(self.mtu, context, state)
-    }
-}
-
-/// A builder for [WasmRsHost]s
-#[must_use]
-#[derive(Default, Copy, Clone)]
-pub struct WasmRsHostBuilder {}
-
-impl std::fmt::Debug for WasmRsHostBuilder {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("WasmRsHostBuilder").finish()
-    }
-}
-
-impl WasmRsHostBuilder {
-    /// Instantiate a new [WasmRsHostBuilder].
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Configure a synchronous callback for this WasmRsHost.
-    pub fn build<T: WebAssemblyEngineProvider + 'static>(self, engine: T) -> Result<WasmRsHost> {
-        WasmRsHost::new(Box::new(engine))
+        CallContext::new(self.mtu, context, state)
     }
 }
 
 /// An isolated call context that is meant to be cheap to create and throw away.
-pub struct WasmRsCallContext {
+pub struct CallContext {
     context: SharedContext,
-    state: Arc<ModuleState>,
+    state: Arc<SocketManager>,
     splitter: Option<Splitter>,
-    sender: UnboundedSender<Frame>,
-    id: u64,
 }
 
-impl std::fmt::Debug for WasmRsCallContext {
+impl std::fmt::Debug for CallContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WasmRsCallContext")
             .field("state", &self.state)
@@ -116,31 +51,9 @@ impl std::fmt::Debug for WasmRsCallContext {
     }
 }
 
-impl WasmRsCallContext {
-    fn new(mtu: usize, mut context: SharedContext, state: Arc<ModuleState>) -> Result<Self> {
-        let id = GLOBAL_CONTEXT_COUNT.fetch_add(1, Ordering::SeqCst);
-        context
-            .init()
-            .map_err(|e| crate::errors::Error::InitFailed(e.to_string()))?;
-
-        let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<Frame>();
-        let inner_state = state.clone();
-        runtime::spawn(async move {
-            while let Some(frame) = receiver.recv().await {
-                let stream_id = frame.stream_id();
-                trace!("Received frame from stream {}", stream_id);
-                if let Frame::ErrorFrame(e) = &frame {
-                    if e.stream_id == 0 {
-                        error!("wasmrs internal error (code:{}, data:{})", e.code, e.data);
-                        break;
-                    }
-                }
-                if let Err(e) = inner_state.kick_handler(stream_id, frame.into()) {
-                    error!("write frame failed: {}", e);
-                    break;
-                };
-            }
-        });
+impl CallContext {
+    fn new(mtu: usize, context: SharedContext, state: Arc<SocketManager>) -> Result<Self> {
+        context.init()?;
 
         let splitter = if mtu == 0 {
             None
@@ -149,9 +62,7 @@ impl WasmRsCallContext {
         };
         Ok(Self {
             context,
-            sender,
             state,
-            id,
             splitter,
         })
     }
@@ -162,16 +73,10 @@ impl WasmRsCallContext {
         let handler = Handler::ReqRR(tx);
         let stream_id = self.state.new_stream(handler);
 
-        // let start = std::time::Instant::now();
         send_request_response_payload(self.context.clone(), self.splitter, stream_id, payload);
-        // let end = std::time::Instant::now();
-        // println!("write frame duration: {}ns", (end - start).as_nanos());
+
         match rx.await {
-            Ok(v) => {
-                // let end = std::time::Instant::now();
-                // println!("total request duration: {}ns", (end - start).as_nanos());
-                Ok(v?)
-            }
+            Ok(v) => Ok(v?),
             Err(e) => Err(wasmrs::Error::RequestResponse(e.to_string()).into()),
         }
     }

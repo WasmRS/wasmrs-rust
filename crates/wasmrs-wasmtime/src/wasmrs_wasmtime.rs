@@ -1,77 +1,19 @@
 use std::sync::Arc;
 
-use bytes::Bytes;
-use wasmrs_host::{HostExports, IntoEnumIterator, ModuleState};
-use wasmrs_ringbuffer::SharedReadOnlyRingBuffer;
-use wasmtime::{AsContext, Caller, FuncType, Linker, Memory, StoreContext, Trap, Val, ValType};
+use wasmrs::SocketManager;
+use wasmrs_host::{HostExports, IntoEnumIterator};
+use wasmtime::{AsContext, Caller, FuncType, Linker, Trap, Val, ValType};
 
-use crate::{errors::Error, store::WasmRsStore};
-
-fn get_vec_from_memory<'a, T: 'a>(
-    store: impl Into<StoreContext<'a, T>>,
-    mem: Memory,
-    ptr: i32,
-    len: i32,
-) -> Vec<u8> {
-    let data = mem.data(store);
-    data[ptr as usize..(ptr + len) as usize].to_vec()
-}
-
-fn get_caller_memory<T>(caller: &mut Caller<T>) -> Memory {
-    let memory = caller
-        .get_export("memory")
-        .map(|e| e.into_memory().unwrap());
-    memory.unwrap()
-}
-
-pub(crate) fn get_vec_from_ringbuffer<'a, T: 'a>(
-    store: impl Into<StoreContext<'a, T>>,
-    mem: Memory,
-    recv_pos: u32,
-    ring_start: u32,
-    ring_len: u32,
-) -> super::Result<Bytes> {
-    let data = mem.data(store);
-    let buff = SharedReadOnlyRingBuffer::new(
-        data,
-        ring_start as usize,
-        ring_len as usize,
-        recv_pos as usize,
-    );
-    wasmrs::read_frame(buff).map_err(|_| Error::GuestMemory)
-}
-
-pub(crate) fn write_bytes_to_memory(
-    store: impl AsContext,
-    memory: Memory,
-    buffer: &[u8],
-    recv_pos: u32,
-    ring_start: u32,
-    ring_len: u32,
-) -> u32 {
-    let len = buffer.len();
-    let remaining: usize = (ring_len - recv_pos) as _;
-    let start_offset = ring_start + recv_pos;
-
-    #[allow(unsafe_code)]
-    unsafe {
-        let mut guest_ptr = memory.data_ptr(&store).offset(start_offset as isize);
-        if len > remaining {
-            guest_ptr.copy_from(buffer.as_ptr(), remaining);
-            guest_ptr = memory.data_ptr(store).offset(ring_start as isize);
-            guest_ptr.copy_from(buffer.as_ptr().add(remaining), len - remaining);
-        } else {
-            guest_ptr.copy_from(buffer.as_ptr(), len);
-        }
-    }
-    len as u32
-}
+use crate::{
+    memory::{get_caller_memory, get_vec_from_memory, get_vec_from_ringbuffer},
+    store::ProviderStore,
+};
 
 pub(crate) fn add_to_linker(
-    linker: &mut Linker<WasmRsStore>,
-    host: &Arc<ModuleState>,
+    linker: &mut Linker<ProviderStore>,
+    host: &Arc<SocketManager>,
 ) -> super::Result<()> {
-    let module_name = "wasmrs";
+    let module_name = wasmrs_host::HOST_NAMESPACE;
     for export in HostExports::iter() {
         match export {
             HostExports::Send => {
@@ -92,10 +34,10 @@ pub(crate) fn add_to_linker(
 }
 
 fn linker_send(
-    host: Arc<ModuleState>,
+    host: Arc<SocketManager>,
 ) -> (
     FuncType,
-    impl Fn(Caller<'_, WasmRsStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
+    impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
 ) {
     (
         FuncType::new(vec![ValType::I32], vec![]),
@@ -112,8 +54,8 @@ fn linker_send(
                 caller.as_context(),
                 memory,
                 recv_pos,
-                host.get_host_buffer_start(),
-                host.get_host_buffer_size(),
+                host.host_buffer().get_start(),
+                host.host_buffer().get_size(),
             )
             .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
 
@@ -125,10 +67,10 @@ fn linker_send(
 }
 
 fn linker_init(
-    host: Arc<ModuleState>,
+    host: Arc<SocketManager>,
 ) -> (
     FuncType,
-    impl Fn(Caller<'_, WasmRsStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
+    impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
 ) {
     (
         FuncType::new(vec![ValType::I32, ValType::I32], vec![]),
@@ -154,10 +96,10 @@ fn linker_init(
 }
 
 fn linker_console_log(
-    host: Arc<ModuleState>,
+    host: Arc<SocketManager>,
 ) -> (
     FuncType,
-    impl Fn(Caller<'_, WasmRsStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
+    impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
 ) {
     (
         FuncType::new(vec![ValType::I32, ValType::I32], vec![]),

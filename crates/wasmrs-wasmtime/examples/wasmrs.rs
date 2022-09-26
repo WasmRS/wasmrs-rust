@@ -1,7 +1,8 @@
 use std::time::Instant;
 
+use wasmflow_codec::messagepack::deserialize;
 use wasmrs::{Metadata, Payload};
-use wasmrs_host::{WasiParams, WasmRsHostBuilder};
+use wasmrs_host::WasiParams;
 use wasmrs_wasmtime::WasmtimeEngineProviderBuilder;
 
 #[tokio::main]
@@ -14,7 +15,7 @@ async fn main() -> anyhow::Result<()> {
     let engine = WasmtimeEngineProviderBuilder::new(module_bytes)
         .wasi_params(WasiParams::default())
         .build()?;
-    let host = WasmRsHostBuilder::new().build(engine)?;
+    let host = wasmrs_host::Host::new(engine)?;
     let bytes = wasmflow_codec::messagepack::serialize("Hello world").unwrap();
     // let bytes = b"Hello world".to_vec();
     let mut context = host.new_context()?;
@@ -25,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
     println!("metadata: {:?}", mbytes);
     let payload = Payload::new(mbytes, bytes.into());
     for _ in 0..num {
-        let _ = context.request_response(payload.clone()).await?;
+        let result = context.request_response(payload.clone()).await?;
     }
     let end = Instant::now();
     let duration = end - start;

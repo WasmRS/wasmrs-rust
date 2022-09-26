@@ -6,7 +6,12 @@ use crate::{
 use bytes::Bytes;
 
 impl RequestStream {
-  pub fn from_payload(stream_id: u32, payload: Payload, flags: FrameFlags, initial_n: u32) -> Self {
+    pub fn from_payload(
+        stream_id: u32,
+        payload: Payload,
+        flags: FrameFlags,
+        initial_n: u32,
+    ) -> Self {
         Self(RequestPayload::from_payload(
             stream_id,
             payload,
@@ -74,7 +79,7 @@ mod test {
             metadata: Bytes::from("hello"),
             data: Bytes::from("hello"),
             follows: true,
-            complete: false, // TODO THIS MAY BE A BUG IN GO VS RUST. GO BINARIES SHOULD HAVE COMPLETE SET BUT IT'S NOT.
+            complete: true,
             initial_n: 0,
         };
         let this = RequestStream(payload);

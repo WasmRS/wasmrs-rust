@@ -12,6 +12,8 @@ pub enum Error {
     RecvFailed(u8),
     ReceiverAlreadyGone,
     PortNotFound(String),
+    StreamSend,
+    StreamNotFound(u32),
 }
 
 impl std::error::Error for Error {}

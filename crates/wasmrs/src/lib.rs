@@ -84,7 +84,7 @@ pub mod error;
 pub mod flux;
 pub mod fragmentation;
 pub mod frames;
-// pub mod manager;
+pub mod manager;
 pub mod runtime;
 // pub mod safemap;
 mod util;
@@ -96,7 +96,9 @@ pub use error::{Error, PayloadError};
 pub use flux::Flux;
 pub use frames::{FragmentedPayload, FrameCodec};
 pub use generated::*;
+pub use manager::*;
 pub use util::*;
+
 
 pub type Result<T> = std::result::Result<T, Error>;
 

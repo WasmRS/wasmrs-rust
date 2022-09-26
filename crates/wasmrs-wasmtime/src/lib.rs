@@ -79,6 +79,7 @@
 #![doc = include_str!("../README.md")]
 #![allow(unused_attributes)]
 mod builder;
+mod memory;
 mod wasi;
 mod wasmrs_wasmtime;
 

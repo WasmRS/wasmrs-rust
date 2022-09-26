@@ -9,9 +9,7 @@ use crate::WasmtimeEngineProvider;
 pub struct WasmtimeEngineProviderBuilder<'a> {
     engine: Option<wasmtime::Engine>,
     module_bytes: &'a [u8],
-    #[cfg(feature = "cache")]
     cache_enabled: bool,
-    #[cfg(feature = "cache")]
     cache_path: Option<std::path::PathBuf>,
     wasi_params: Option<wasmrs_host::WasiParams>,
     epoch_deadlines: Option<EpochDeadlines>,
@@ -51,8 +49,6 @@ impl<'a> WasmtimeEngineProviderBuilder<'a> {
     /// **Warning:** this has no effect when a custom [`wasmtime::Engine`] is provided via
     /// the [`WasmtimeEngineProviderBuilder::engine`] helper. In that case, it's up to the
     /// user to provide a [`wasmtime::Engine`] instance with the cache values properly configured.
-    #[cfg(feature = "cache")]
-    #[must_use]
     pub fn enable_cache(mut self, path: Option<&std::path::Path>) -> Self {
         self.cache_enabled = true;
         self.cache_path = path.map(|p| p.to_path_buf());
@@ -112,16 +108,12 @@ impl<'a> WasmtimeEngineProviderBuilder<'a> {
                     config.epoch_interruption(true);
                 }
 
-                cfg_if::cfg_if! {
-                    if #[cfg(feature = "cache")] {
-                          if self.cache_enabled {
-                            config.strategy(wasmtime::Strategy::Cranelift);
-                            if let Some(cache) = &self.cache_path {
-                              config.cache_config_load(cache)?;
-                            } else if let Err(e) = config.cache_config_load_default() {
-                              warn!("Wasmtime cache configuration not found ({}). Repeated loads will speed up significantly with a cache configuration. See https://docs.wasmtime.dev/cli-cache.html for more information.",e);
-                            }
-                        }
+                if self.cache_enabled {
+                    config.strategy(wasmtime::Strategy::Cranelift);
+                    if let Some(cache) = &self.cache_path {
+                        config.cache_config_load(cache)?;
+                    } else if let Err(e) = config.cache_config_load_default() {
+                        warn!("Wasmtime cache configuration not found ({}). Repeated loads will speed up significantly with a cache configuration. See https://docs.wasmtime.dev/cli-cache.html for more information.",e);
                     }
                 }
 

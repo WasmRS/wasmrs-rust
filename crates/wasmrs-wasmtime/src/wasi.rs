@@ -2,7 +2,6 @@ use std::error::Error;
 use std::ffi::OsStr;
 use std::path::{Component, Path};
 
-// use wasi_cap_std_sync::{ambient_authority, Dir};
 use wasi_common::WasiCtx;
 use wasmtime_wasi::{ambient_authority, Dir};
 
@@ -64,7 +63,6 @@ pub(crate) fn compute_argv(module: &Path, module_args: &[String]) -> Vec<String>
 }
 
 pub(crate) fn init_wasi(params: &wasmrs_host::WasiParams) -> super::Result<WasiCtx> {
-    trace!("initializing wasi");
     init_ctx(
         &compute_preopen_dirs(&params.preopened_dirs, &params.map_dirs).unwrap(),
         &params.argv,

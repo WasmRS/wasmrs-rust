@@ -78,14 +78,14 @@
 )]
 #![doc = include_str!("../README.md")]
 // TODO REMOVE
-#![allow(unused, clippy::needless_pass_by_value, unreachable_pub)]
+#![allow(clippy::needless_pass_by_value, unreachable_pub)]
 #[macro_use]
 extern crate tracing;
 
+mod context;
 pub mod errors;
-pub use host::modulestate::Handler;
 
-use std::error::Error;
+pub use context::*;
 
 /// The host module name / namespace that guest modules must use for imports
 pub const HOST_NAMESPACE: &str = "wasmrs";
@@ -97,48 +97,9 @@ mod host;
 mod wasi;
 
 use futures_core::future::BoxFuture;
-pub use host::modulestate::ModuleState;
-pub use host::traits::{ProviderCallContext, SharedContext, WebAssemblyEngineProvider};
-pub use host::{WasmRsCallContext, WasmRsHost, WasmRsHostBuilder};
+pub use host::{CallContext, Host};
 pub use protocol::*;
 pub use wasi::WasiParams;
-use wasmrs::Frame;
-
-/// The signature of a Host Callback function.
-pub type AsyncHostCallback = dyn Fn(i32, String, String, String, Vec<u8>) -> BoxFuture<'static, HostResult>
-    + Sync
-    + Send
-    + 'static;
-
-/// The signature of a Host Callback function.
-pub type HostCallback =
-    dyn Fn(i32, String, String, String, Vec<u8>) -> HostResult + Sync + Send + 'static;
-
-/// The result type that hostcalls produce.
-pub type HostResult = Result<Vec<u8>, Box<dyn Error + Send + Sync>>;
 
 /// The signature of a Host response ready callback.
 pub type HostResponseReady = dyn Fn(i32, i32) -> BoxFuture<'static, ()> + Sync + Send + 'static;
-
-#[derive(Debug)]
-/// Represents a wasmRS invocation, which is a combination of an operation string and the
-/// corresponding binary payload
-pub struct Invocation {
-    /// The wasmRS command to execute.
-    pub operation: String,
-    /// The wasmRS command to execute.
-    pub namespace: String,
-    /// The frame to send.
-    pub payload: Vec<u8>,
-}
-
-impl Invocation {
-    /// Creates a new invocation
-    fn new(namespace: impl AsRef<str>, operation: impl AsRef<str>, payload: Vec<u8>) -> Invocation {
-        Invocation {
-            namespace: namespace.as_ref().to_owned(),
-            operation: operation.as_ref().to_owned(),
-            payload,
-        }
-    }
-}

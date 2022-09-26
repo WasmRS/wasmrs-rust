@@ -40,7 +40,7 @@ impl Process for Hello {
         let output_hello_msg_stream = output_hello_msg_channel
             .take_receiver()
             .unwrap()
-            .map(|v| serialize(&v).unwrap());
+            .map(|v| serialize(&v.unwrap()).unwrap());
 
         let inner = output_stream.clone();
         spawn(async move {

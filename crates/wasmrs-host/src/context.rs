@@ -1,13 +1,9 @@
-use std::error::Error;
-use std::pin::Pin;
 use std::sync::Arc;
 
-use futures_core::Stream;
 use parking_lot::Mutex;
-use wasmrs::Frame;
+use wasmrs::{Frame, SocketManager};
 
-use crate::host::modulestate::ModuleState;
-use crate::Invocation;
+type Result<T> = std::result::Result<T, crate::errors::Error>;
 
 #[derive(Clone)]
 #[allow(missing_debug_implementations)]
@@ -30,15 +26,13 @@ impl SharedContext {
     }
 }
 
-pub trait WebAssemblyEngineProvider {
+pub trait EngineProvider {
     fn init(&mut self) -> Result<()> {
         Ok(())
     }
 
-    fn new_context(&self, state: Arc<ModuleState>) -> Result<SharedContext>;
+    fn new_context(&self, state: Arc<SocketManager>) -> Result<SharedContext>;
 }
-
-type Result<T> = std::result::Result<T, crate::errors::Error>;
 
 pub trait ProviderCallContext: wasmrs::FrameWriter {
     fn init(&mut self) -> Result<()>;

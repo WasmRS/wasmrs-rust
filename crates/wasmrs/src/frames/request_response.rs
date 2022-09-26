@@ -84,7 +84,7 @@ mod test {
             metadata: Bytes::from("hello"),
             data: Bytes::from("hello"),
             follows: true,
-            complete: false, // TODO THIS MAY BE A BUG IN GO VS RUST. GO BINARIES SHOULD HAVE COMPLETE SET BUT IT'S NOT.
+            complete: true,
             initial_n: 1,
         };
         let this = RequestResponse(payload);

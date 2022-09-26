@@ -45,10 +45,7 @@ impl RequestPayload {
         if !self.metadata.is_empty() {
             flags |= FRAME_FLAG_METADATA;
         }
-        if self.complete {
-            flags |= FRAME_FLAG_COMPLETE;
-        }
-        if self.frame_type == FrameType::RequestChannel {
+        if self.complete && self.frame_type == FrameType::RequestChannel {
             flags |= FRAME_FLAG_COMPLETE;
         }
         flags

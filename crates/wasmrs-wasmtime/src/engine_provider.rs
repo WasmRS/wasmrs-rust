@@ -1,23 +1,21 @@
 use bytes::{BufMut, BytesMut};
 use std::sync::Arc;
-use wasmrs::Frame;
-use wasmrs_host::{
-    GuestExports, ModuleState, ProviderCallContext, SharedContext, WasiParams,
-    WebAssemblyEngineProvider,
-};
+use wasmrs::{Frame, SocketManager};
+use wasmrs_host::{EngineProvider, GuestExports, ProviderCallContext, SharedContext, WasiParams};
 use wasmtime::{Engine, Instance, Linker, Memory, Module, Store, TypedFunc};
 
 use super::Result;
 use crate::errors::Error;
-use crate::store::{new_store, WasmRsStore};
-use crate::wasmrs_wasmtime::{self, write_bytes_to_memory};
+use crate::memory::write_bytes_to_memory;
+use crate::store::{new_store, ProviderStore};
+use crate::wasmrs_wasmtime::{self};
 
 /// A wasmRS engine provider that encapsulates the Wasmtime WebAssembly runtime
 #[allow(missing_debug_implementations)]
 pub struct WasmtimeEngineProvider {
     module: Module,
     engine: Arc<Engine>,
-    linker: Linker<WasmRsStore>,
+    linker: Linker<ProviderStore>,
     wasi_params: Option<WasiParams>,
     pub(crate) epoch_deadlines: Option<EpochDeadlines>,
 }
@@ -50,39 +48,15 @@ impl Clone for WasmtimeEngineProvider {
 }
 
 impl WasmtimeEngineProvider {
-    /// Creates a new instance of a [WasmtimeEngineProvider].
-    pub fn new(buf: &[u8], wasi: Option<WasiParams>) -> Result<WasmtimeEngineProvider> {
-        let engine = Engine::default();
-        Self::new_with_engine(buf, engine, wasi)
-    }
-
-    /// Creates a new instance of a [WasmtimeEngineProvider] with caching enabled.
-    pub fn new_with_cache(
-        buf: &[u8],
-        wasi: Option<WasiParams>,
-        cache_path: Option<&std::path::Path>,
-    ) -> Result<WasmtimeEngineProvider> {
-        let mut config = wasmtime::Config::new();
-        config.strategy(wasmtime::Strategy::Cranelift);
-        if let Some(cache) = cache_path {
-            config.cache_config_load(cache)?;
-        } else if let Err(e) = config.cache_config_load_default() {
-            warn!("Wasmtime cache configuration not found ({}). Repeated loads will speed up significantly with a cache configuration. See https://docs.wasmtime.dev/cli-cache.html for more information.",e);
-        }
-        config.wasm_reference_types(false);
-        let engine = Engine::new(&config)?;
-        Self::new_with_engine(buf, engine, wasi)
-    }
-
     /// Creates a new instance of a [WasmtimeEngineProvider] from a separately created [wasmtime::Engine].
-    pub fn new_with_engine(
+    pub(crate) fn new_with_engine(
         buf: &[u8],
         engine: Engine,
         wasi_params: Option<WasiParams>,
     ) -> Result<Self> {
         let module = Module::new(&engine, buf)?;
 
-        let mut linker: Linker<WasmRsStore> = Linker::new(&engine);
+        let mut linker: Linker<ProviderStore> = Linker::new(&engine);
         wasmtime_wasi::add_to_linker(&mut linker, |s| s.wasi_ctx.as_mut().unwrap()).unwrap();
 
         Ok(WasmtimeEngineProvider {
@@ -95,12 +69,11 @@ impl WasmtimeEngineProvider {
     }
 }
 
-impl WebAssemblyEngineProvider for WasmtimeEngineProvider {
+impl EngineProvider for WasmtimeEngineProvider {
     fn new_context(
         &self,
-        state: Arc<ModuleState>,
+        state: Arc<SocketManager>,
     ) -> std::result::Result<SharedContext, wasmrs_host::errors::Error> {
-        // TODO: this is not cheap. Make it faster.
         let store = new_store(&self.wasi_params, &self.engine)
             .map_err(|e| wasmrs_host::errors::Error::NewContext(e.to_string()))?;
 
@@ -116,19 +89,18 @@ impl WebAssemblyEngineProvider for WasmtimeEngineProvider {
 struct WasmtimeCallContext {
     guest_send: TypedFunc<i32, ()>,
     memory: Memory,
-    store: Store<WasmRsStore>,
+    store: Store<ProviderStore>,
     instance: Instance,
-    state: Arc<ModuleState>,
+    state: Arc<SocketManager>,
 }
 
 impl WasmtimeCallContext {
     pub(crate) fn new(
-        state: Arc<ModuleState>,
-        mut linker: Linker<WasmRsStore>,
+        state: Arc<SocketManager>,
+        mut linker: Linker<ProviderStore>,
         module: &Module,
-        mut store: Store<WasmRsStore>,
+        mut store: Store<ProviderStore>,
     ) -> Result<Self> {
-        // THIS IS EXPENSIVE! DO IT ELSEWHERE.
         wasmrs_wasmtime::add_to_linker(&mut linker, &state)?;
         let instance = linker.instantiate(&mut store, module)?;
 
@@ -145,11 +117,6 @@ impl WasmtimeCallContext {
             store,
         })
     }
-
-    // pub(crate) fn link(linker: &mut Linker<WasmRsStore>, state: &Arc<ModuleState>) -> Result<()> {
-    //     wasmrs_wasmtime::add_to_linker(linker, state)?;
-    //     Ok(())
-    // }
 }
 
 impl wasmrs::FrameWriter for WasmtimeCallContext {
@@ -157,7 +124,7 @@ impl wasmrs::FrameWriter for WasmtimeCallContext {
     fn write_frame(&mut self, _stream_id: u32, req: Frame) -> wasmrs::Result<()> {
         let bytes = req.encode();
 
-        let read_pos = self.state.get_guest_buffer_pos();
+        let read_pos = self.state.guest_buffer().get_pos();
         let buffer_len_bytes = (bytes.len() as u32).to_be_bytes();
         let mut buffer = BytesMut::with_capacity(buffer_len_bytes.len() + bytes.len());
         buffer.put(buffer_len_bytes.as_slice());
@@ -168,11 +135,11 @@ impl wasmrs::FrameWriter for WasmtimeCallContext {
             self.memory,
             &buffer,
             read_pos,
-            self.state.get_guest_buffer_start(),
-            self.state.get_guest_buffer_size(),
+            self.state.guest_buffer().get_start(),
+            self.state.guest_buffer().get_size(),
         );
 
-        self.state.update_guest_buffer_pos(written);
+        self.state.guest_buffer().update_post(written);
 
         let _call = self.guest_send.call(&mut self.store, read_pos as i32);
 
