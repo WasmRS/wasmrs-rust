@@ -15,7 +15,7 @@ use rxrust::shared::{Shared, SharedObservable};
 use rxrust::subject::SharedSubject;
 use rxrust::subscription::{SingleSubscription, SubscriptionLike, SubscriptionWrapper};
 use tracing::instrument::WithSubscriber;
-use wasmrs_rsocket::{util::Counter, Frame};
+use wasmrs_rsocket::{Counter, Frame};
 
 use crate::errors::Error;
 use crate::{AsyncHostCallback, HostCallback, Invocation};
@@ -23,15 +23,15 @@ use crate::{AsyncHostCallback, HostCallback, Invocation};
 pub struct StreamState(Handler, ());
 // pub type OutgoingStream = LocalSubject<'static, Vec<u8>, ()>;
 
-pub type OptionalResult = Result<Option<Payload>, wasmrs_rsocket::error::Error>;
-pub type StreamResult = Result<Payload, wasmrs_rsocket::error::Error>;
+pub type OptionalResult = Result<Option<Payload>, wasmrs_rsocket::PayloadError>;
+pub type StreamResult = Result<Payload, wasmrs_rsocket::PayloadError>;
 
 #[allow(missing_debug_implementations)]
 pub enum Handler {
     ReqRR(oneshot::Sender<OptionalResult>),
     ResRRn(Counter),
-    ReqRS(mpsc::Sender<StreamResult>),
-    ReqRC(mpsc::Sender<StreamResult>),
+    ReqRS(mpsc::UnboundedSender<StreamResult>),
+    ReqRC(mpsc::UnboundedSender<StreamResult>),
 }
 
 #[allow(missing_debug_implementations)]
@@ -118,9 +118,13 @@ impl ModuleState {
                 Handler::ReqRR(h) => h.send(result).map_err(|_| Error::StreamSend)?,
                 Handler::ResRRn(h) => todo!(),
                 Handler::ReqRS(h) => {
+                    h.send(result.map(|v| v.unwrap()))
+                        .map_err(|_| Error::StreamSend)?;
                     self.streams.insert(id, Handler::ReqRS(h));
                 }
                 Handler::ReqRC(h) => {
+                    h.send(result.map(|v| v.unwrap()))
+                        .map_err(|_| Error::StreamSend)?;
                     self.streams.insert(id, Handler::ReqRS(h));
                 }
             },

@@ -1,15 +1,11 @@
-use bytes::{BufMut, Bytes, BytesMut};
-use parking_lot::Mutex;
+use bytes::{BufMut, BytesMut};
 use std::sync::Arc;
-use std::time::Instant;
-use tokio::sync::mpsc::{self, UnboundedReceiver};
-use tokio::task::JoinHandle;
 use wasmrs_host::{
-    GuestExports, Handler, ModuleState, ProviderCallContext, WasiParams, WebAssemblyEngineProvider,
+    GuestExports, ModuleState, ProviderCallContext, SharedContext, WasiParams,
+    WebAssemblyEngineProvider,
 };
-use wasmrs_rsocket::fragmentation::Splitter;
-use wasmrs_rsocket::{runtime, Flux, Frame, Payload, PayloadFrame, RequestResponse};
-use wasmtime::{AsContextMut, Engine, Instance, Linker, Module, Store, TypedFunc};
+use wasmrs_rsocket::Frame;
+use wasmtime::{Engine, Instance, Linker, Memory, Module, Store, TypedFunc};
 
 use super::Result;
 use crate::errors::Error;
@@ -103,22 +99,23 @@ impl WebAssemblyEngineProvider for WasmtimeEngineProvider {
     fn new_context(
         &self,
         state: Arc<ModuleState>,
-    ) -> std::result::Result<
-        Arc<Mutex<(dyn ProviderCallContext + Send + Sync + 'static)>>,
-        wasmrs_host::errors::Error,
-    > {
+    ) -> std::result::Result<SharedContext, wasmrs_host::errors::Error> {
         // TODO: this is not cheap. Make it faster.
         let store = new_store(&self.wasi_params, &self.engine)
             .map_err(|e| wasmrs_host::errors::Error::NewContext(e.to_string()))?;
 
-        Ok(Arc::new(Mutex::new(
+        let context = SharedContext::new(
             WasmtimeCallContext::new(state, self.linker.clone(), &self.module, store)
                 .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?,
-        )))
+        );
+
+        Ok(context)
     }
 }
 
 struct WasmtimeCallContext {
+    guest_send: TypedFunc<i32, ()>,
+    memory: Memory,
     store: Store<WasmRsStore>,
     instance: Instance,
     state: Arc<ModuleState>,
@@ -135,37 +132,30 @@ impl WasmtimeCallContext {
         wasmrs_wasmtime::add_to_linker(&mut linker, &state)?;
         let instance = linker.instantiate(&mut store, module)?;
 
-        let func = instance
-            .get_typed_func::<(i32), (), _>(&mut store, GuestExports::Send.as_ref())
+        let guest_send = instance
+            .get_typed_func::<i32, (), _>(&mut store, GuestExports::Send.as_ref())
             .map_err(|_| crate::errors::Error::GuestSend)?;
-        let store = store;
+        let memory = instance.get_memory(&mut store, "memory").unwrap();
 
         Ok(Self {
+            guest_send,
+            memory,
             state,
             instance,
             store,
         })
     }
 
-    pub(crate) fn link(linker: &mut Linker<WasmRsStore>, state: &Arc<ModuleState>) -> Result<()> {
-        wasmrs_wasmtime::add_to_linker(linker, state)?;
-        Ok(())
-    }
+    // pub(crate) fn link(linker: &mut Linker<WasmRsStore>, state: &Arc<ModuleState>) -> Result<()> {
+    //     wasmrs_wasmtime::add_to_linker(linker, state)?;
+    //     Ok(())
+    // }
 }
 
 impl wasmrs_rsocket::FrameWriter for WasmtimeCallContext {
     /// Request-Response interaction model of RSocket.
-    fn write_frame(&mut self, stream_id: u32, req: Frame) -> wasmrs_rsocket::Result<()> {
-        let (tx, rx) = tokio::sync::oneshot::channel::<wasmrs_rsocket::Result<Option<Payload>>>();
-        let sid = stream_id;
-        let state = self.state.clone();
+    fn write_frame(&mut self, _stream_id: u32, req: Frame) -> wasmrs_rsocket::Result<()> {
         let bytes = req.encode();
-
-        let func: TypedFunc<i32, ()> = self
-            .instance
-            .get_typed_func(&mut self.store, GuestExports::Send.as_ref())
-            .map_err(|_| crate::errors::Error::GuestSend)?;
-        let mem = self.instance.get_memory(&mut self.store, "memory").unwrap();
 
         let read_pos = self.state.get_guest_buffer_pos();
         let buffer_len_bytes = (bytes.len() as u32).to_be_bytes();
@@ -175,15 +165,19 @@ impl wasmrs_rsocket::FrameWriter for WasmtimeCallContext {
 
         let written = write_bytes_to_memory(
             &mut self.store,
-            mem,
+            self.memory,
             &buffer,
             read_pos,
             self.state.get_guest_buffer_start(),
             self.state.get_guest_buffer_size(),
         );
+
         self.state.update_guest_buffer_pos(written);
 
-        let _call = func.call(&mut self.store, read_pos as i32);
+        let start = std::time::Instant::now();
+        let _call = self.guest_send.call(&mut self.store, read_pos as i32);
+        let end = std::time::Instant::now();
+        println!("Core guest send call {}ns", (end - start).as_nanos());
 
         Ok(())
     }
@@ -194,8 +188,9 @@ impl ProviderCallContext for WasmtimeCallContext {
         let init: TypedFunc<(u32, u32, u32), ()> = self
             .instance
             .get_typed_func(&mut self.store, GuestExports::Init.as_ref())
-            .map_err(|e| wasmrs_host::errors::Error::InitFailed(Error::GuestInit.to_string()))?;
-        init.call(&mut self.store, (1024, 1024, 128));
+            .map_err(|_e| wasmrs_host::errors::Error::InitFailed(Error::GuestInit.to_string()))?;
+        init.call(&mut self.store, (1024, 1024, 128))
+            .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?;
         Ok(())
     }
 }

@@ -77,7 +77,7 @@
     missing_docs
 )]
 #![doc = include_str!("../README.md")]
-#![allow(unused)]
+#![allow(unused_attributes)]
 mod builder;
 mod wasi;
 mod wasmrs_wasmtime;

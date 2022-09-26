@@ -1,16 +1,12 @@
 mod guest;
+mod select_all;
 
-use std::marker::PhantomData;
-
-use bytes::Bytes;
+use futures::future::select_all;
+use futures::stream::StreamExt;
 use guest::GenericError;
 
-use rxrust::{
-    prelude::{Observer, SubscribeNext},
-    subject::LocalSubject,
-};
-use serde::Serialize;
 use wasmflow_codec::messagepack::{deserialize, serialize};
+use wasmrs_rsocket::flux::{FluxBox, FluxChannel};
 
 use self::guest::{IncomingStream, OutgoingStream, Process, ProcessReturnValue};
 
@@ -20,99 +16,80 @@ fn init() {
 
 fn hello_wrapper(input_stream: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let stream = crate::Hello::start(input_stream)?;
+    //println!("returning from wrapper");
     Ok(stream)
 }
 
-#[derive(Default, Clone)]
-struct HelloInputs<'a> {
-    pub msg: LocalSubject<'a, String, ()>,
+#[derive()]
+struct HelloInputs {
+    pub msg: FluxBox<String, ()>,
 }
 
-struct HelloOutputs<'a> {
-    pub msg: Sink<'a, String>,
+struct HelloOutputs {
+    pub msg: FluxChannel<String, ()>,
 }
 
-struct Hello<'a> {
-    inputs: HelloInputs<'a>,
-    outputs: HelloOutputs<'a>,
+struct Hello {
+    inputs: HelloInputs,
+    outputs: HelloOutputs,
 }
 
-impl<'a> Hello<'a> {
-    fn task(mut self) -> Result<(), GenericError> {
-        self.inputs.msg.subscribe(move |msg| {
+impl Hello {
+    async fn task(mut self) -> Result<(), GenericError> {
+        //println!("in component task");
+        while let Some(Ok(msg)) = self.inputs.msg.next().await {
+            //println!("Got message! {}", msg);
             self.outputs
                 .msg
-                .next("This is my return message".to_owned());
-        });
+                .send("This is my return message".to_owned())
+                .unwrap();
+        }
         Ok(())
     }
 }
 
-pub struct Sink<'a, T> {
-    name: String,
-    observer: LocalSubject<'a, Bytes, ()>,
-    phantom: PhantomData<T>,
-    complete: bool,
-}
-impl<'a, T> Sink<'a, T> {
-    pub fn new(name: impl AsRef<str>, observer: LocalSubject<'a, Bytes, ()>) -> Self {
-        Self {
-            name: name.as_ref().to_owned(),
-            observer,
-            phantom: PhantomData::default(),
-            complete: false,
-        }
-    }
-}
-
-impl<'a, T> Observer for Sink<'a, T>
-where
-    T: Serialize,
-{
-    type Item = T;
-
-    type Err = ();
-
-    fn next(&mut self, value: Self::Item) {
-        if !self.complete {
-            match serialize(&value) {
-                Ok(bytes) => self.observer.next(bytes.into()),
-                Err(_) => self.observer.error(()),
-            }
-        }
-    }
-
-    fn error(&mut self, err: Self::Err) {
-        if !self.complete {
-            self.observer.error(())
-        }
-    }
-
-    fn complete(&mut self) {
-        self.complete = true;
-    }
-}
-
-impl<'a> Process for Hello<'a> {
+impl Process for Hello {
     fn start(input_stream: IncomingStream) -> ProcessReturnValue {
-        let inputs = HelloInputs::default();
-        let mut output_stream = OutgoingStream::new();
-        let outputs = HelloOutputs {
-            msg: Sink::new("msg", output_stream.clone()),
-        };
-
-        let mut inner = inputs.clone();
-        input_stream.subscribe(move |payload| match payload.metadata.namespace.as_str() {
-            "greeting" => {
-                inner.msg.next(deserialize(&payload.data).unwrap());
+        //println!("started task");
+        let hello_msg_channel = FluxChannel::<String, ()>::new();
+        let hello_msg_stream = hello_msg_channel.take_receiver().unwrap();
+        yielding_executor::single_threaded::spawn(async move {
+            //println!("in async stream processor");
+            while let Ok(Some(Ok(payload))) = input_stream.recv().await {
+                let result = match payload.metadata.namespace.as_str() {
+                    "greeting" => match deserialize(&payload.data) {
+                        Ok(v) => hello_msg_channel.send(v),
+                        Err(_) => hello_msg_channel.error(()),
+                    },
+                    _ => Err(99),
+                };
             }
-            _ => {}
+        });
+        let inputs = HelloInputs {
+            msg: hello_msg_stream,
+        };
+        let output_stream = OutgoingStream::new();
+        let output_hello_msg_channel = FluxChannel::<String, ()>::new();
+        let output_hello_msg_stream = output_hello_msg_channel.take_receiver().unwrap();
+        let mut output_hello_msg_stream = output_hello_msg_stream.map(|v| serialize(&v).unwrap());
+        let inner = output_stream.clone();
+        yielding_executor::single_threaded::spawn(async move {
+            let futs = vec![output_hello_msg_stream.next()];
+            let (result, this, left) = select_all(futs).await;
+            if let Some(bytes) = result {
+                inner.send(bytes.into());
+            }
         });
 
-        let component = Hello { inputs, outputs };
-        if let Err(e) = component.task() {
-            output_stream.error(());
+        let outputs = HelloOutputs {
+            msg: output_hello_msg_channel,
         };
+
+        let component = Hello { inputs, outputs };
+        // yielding_executor::single_threaded::spawn(async move {
+        //   while select
+        // });
+        yielding_executor::single_threaded::spawn(component.task());
 
         Ok(output_stream)
     }

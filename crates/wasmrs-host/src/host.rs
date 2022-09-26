@@ -13,11 +13,11 @@ use rxrust::prelude::*;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::yield_now;
 use wasmrs_rsocket::fragmentation::Splitter;
-use wasmrs_rsocket::{runtime, ErrorCode, Frame, Metadata, Payload};
+use wasmrs_rsocket::{runtime, ErrorCode, Frame, Metadata, Payload, PayloadError};
 use wasmrs_rsocket::{PayloadFrame, RequestPayload};
 
 use self::modulestate::ModuleState;
-use self::traits::WebAssemblyEngineProvider;
+use self::traits::{SharedContext, WebAssemblyEngineProvider};
 use crate::{errors, AsyncHostCallback, Handler, HostCallback, Invocation, ProviderCallContext};
 
 static GLOBAL_MODULE_COUNT: AtomicU64 = AtomicU64::new(1);
@@ -25,7 +25,7 @@ static GLOBAL_CONTEXT_COUNT: AtomicU64 = AtomicU64::new(1);
 
 type Result<T> = std::result::Result<T, crate::errors::Error>;
 
-type SharedContext = Arc<Mutex<dyn ProviderCallContext + Send + Sync>>;
+type ArcMutContext = Arc<Mutex<dyn ProviderCallContext + Send + Sync>>;
 
 #[must_use]
 #[allow(missing_debug_implementations)]
@@ -116,14 +116,9 @@ impl std::fmt::Debug for WasmRsCallContext {
 }
 
 impl WasmRsCallContext {
-    fn new(
-        mtu: usize,
-        mut context: Arc<Mutex<dyn ProviderCallContext + Send + Sync>>,
-        state: Arc<ModuleState>,
-    ) -> Result<Self> {
+    fn new(mtu: usize, mut context: SharedContext, state: Arc<ModuleState>) -> Result<Self> {
         let id = GLOBAL_CONTEXT_COUNT.fetch_add(1, Ordering::SeqCst);
         context
-            .lock()
             .init()
             .map_err(|e| crate::errors::Error::InitFailed(e.to_string()))?;
 
@@ -132,6 +127,7 @@ impl WasmRsCallContext {
         runtime::spawn(async move {
             while let Some(frame) = receiver.recv().await {
                 let stream_id = frame.stream_id();
+                trace!("Received frame from stream {}", stream_id);
                 if let Frame::ErrorFrame(e) = &frame {
                     if e.stream_id == 0 {
                         error!("wasmrs internal error (code:{}, data:{})", e.code, e.data);
@@ -159,19 +155,22 @@ impl WasmRsCallContext {
         })
     }
 
-    fn write_frame(&self, stream_id: u32, frame: Frame) -> wasmrs_rsocket::Result<()> {
-        self.context.lock().write_frame(stream_id, frame)
-    }
-
     pub async fn request_response(&mut self, payload: Payload) -> Result<Option<Payload>> {
-        let (tx, rx) = tokio::sync::oneshot::channel::<wasmrs_rsocket::Result<Option<Payload>>>();
+        let (tx, rx) =
+            tokio::sync::oneshot::channel::<std::result::Result<Option<Payload>, PayloadError>>();
         let handler = Handler::ReqRR(tx);
         let stream_id = self.state.new_stream(handler);
 
+        let start = std::time::Instant::now();
         send_request_response_payload(self.context.clone(), self.splitter, stream_id, payload);
-
+        let end = std::time::Instant::now();
+        println!("write frame duration: {}ns", (end - start).as_nanos());
         match rx.await {
-            Ok(v) => Ok(v?),
+            Ok(v) => {
+                let end = std::time::Instant::now();
+                println!("total request duration: {}ns", (end - start).as_nanos());
+                Ok(v?)
+            }
             Err(e) => Err(wasmrs_rsocket::Error::RequestResponse(e.to_string()).into()),
         }
     }
@@ -185,12 +184,8 @@ fn send_request_response_payload(
 ) {
     match splitter {
         None => {
-            // crate request frame
             let sending = Frame::new_request_response(stream_id, payload, Frame::FLAG_FOLLOW, 0);
-            // send frame
-            if let Err(e) = context.lock().write_frame(stream_id, sending) {
-                error!("send request_response failed: {}", e);
-            }
+            let _ = context.write_frame(stream_id, sending);
         }
         Some(sp) => {
             let mut cuts: usize = 0;
@@ -204,9 +199,7 @@ fn send_request_response_payload(
                         // make other frames as payload.
                         Frame::new_payload(stream_id, cur, Frame::FLAG_FOLLOW)
                     };
-                    // send frame
-                    if let Err(e) = context.lock().write_frame(stream_id, sending) {
-                        error!("send request_response failed: {}", e);
+                    if context.write_frame(stream_id, sending).is_err() {
                         return;
                     }
                 }
@@ -221,10 +214,7 @@ fn send_request_response_payload(
             } else {
                 Frame::new_payload(stream_id, prev.unwrap_or_default(), 0)
             };
-            // send frame
-            if let Err(e) = context.lock().write_frame(stream_id, sending) {
-                error!("send request_response failed: {}", e);
-            }
+            let _ = context.write_frame(stream_id, sending);
         }
     }
 }

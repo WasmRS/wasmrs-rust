@@ -9,22 +9,19 @@ codegen-units = 1
 debug = false
 lto = true
 opt-level = "z"
+panic = "abort"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-# wasmrs = { path = "../../crates/wasmrs" }
 wasmrs-ringbuffer = { path = "../../crates/wasmrs-ringbuffer" }
 wasmrs-rsocket = { path = "../../crates/wasmrs-rsocket" }
-rxrust = { path = "../../crates/rxRust", features = [
-  "wasm-yielding-scheduler",
-], default-features = false }
 bytes = "1.2"
-
+futures-lite = "1.12.0"
+futures = "0.3"
 async-channel = "1.7"
-tokio = { version = "1", features = ["sync"] }
+
 yielding-executor = { version = "0.10" }
 serde = { version = "1", features = ["derive"] }
-async-trait = "0.1"
 wasmflow-codec = "0.10.0"

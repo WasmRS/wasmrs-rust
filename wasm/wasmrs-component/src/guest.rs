@@ -1,12 +1,14 @@
+use async_channel::Sender;
 use bytes::{BufMut, Bytes, BytesMut};
-use rxrust::{
-    prelude::{Observer, SubscribeNext},
-    subject::LocalSubject,
-};
+use wasmrs_rsocket::flux::{FluxChannel, Signal};
+// use rxrust::{
+//     prelude::{Observer, SubscribeNext},
+//     subject::LocalSubject,
+// };
 use std::cell::RefCell;
 use std::{cell::UnsafeCell, collections::HashMap, rc::Rc, sync::atomic::Ordering};
 use wasmrs_ringbuffer::{ReadOnlyRingBuffer, RingBuffer, VecRingBuffer};
-use wasmrs_rsocket::{FragmentedPayload, Frame, FrameType, Metadata, Payload};
+use wasmrs_rsocket::{Flux, FragmentedPayload, Frame, FrameType, Metadata, Payload, PayloadError};
 
 use std::sync::atomic::AtomicU32;
 
@@ -17,8 +19,10 @@ pub type StreamMap = HashMap<u32, IncomingStream>;
 pub type FragmentMap = HashMap<u32, FragmentedPayload>;
 pub type ProcessFactory = fn(IncomingStream) -> std::result::Result<OutgoingStream, GenericError>;
 
-pub type IncomingStream = LocalSubject<'static, GuestPayload, ()>;
-pub type OutgoingStream = LocalSubject<'static, Bytes, ()>;
+pub type IncomingStream = FluxChannel<GuestPayload, PayloadError>;
+pub type OutgoingStream = FluxChannel<Bytes, PayloadError>;
+
+use yielding_executor::single_threaded as runtime;
 
 #[derive(Clone)]
 pub struct GuestPayload {
@@ -46,6 +50,8 @@ pub enum Error {
     StringDecode,
     BufferRead,
 }
+
+pub struct GuestError(u32, String);
 
 impl std::error::Error for Error {}
 impl std::fmt::Display for Error {
@@ -101,6 +107,7 @@ extern "C" fn __wasmrs_init(
     host_buffer_size: u32,
     max_host_frame_len: u32,
 ) {
+    //println!("in guest: __wasmrs_init");
     let guest_ptr = GUEST_BUFFER.with(|cell| {
         let buffer = unsafe { &mut *cell.get() };
         buffer.resize(guest_buffer_size as usize, || 0);
@@ -136,6 +143,7 @@ fn send_error_frame(stream_id: u32, code: u32, msg: impl AsRef<str>) {
 
 #[no_mangle]
 extern "C" fn __wasmrs_send(read_pos: u32) {
+    //println!("in guest: __wasmrs_send");
     let read_result = read_frame(read_pos);
     if read_result.is_err() {
         send_error_frame(0, 0, "Could not read local buffer");
@@ -151,6 +159,13 @@ extern "C" fn __wasmrs_send(read_pos: u32) {
     let frame = frame.unwrap();
 
     let _ = handle_frame(frame);
+    //println!("handled frame");
+    //println!("queued tasks: {:?}", runtime::queued_tasks_count());
+    runtime::run_while(move || {
+        //println!("[[queued tasks: {:?}", runtime::queued_tasks_count());
+        //println!("[[tasks: {:?}", runtime::tasks_count());
+        runtime::queued_tasks_count() > 0
+    });
 }
 
 fn handle_frame(frame: Frame) -> Result<()> {
@@ -196,11 +211,11 @@ fn handle_frame(frame: Frame) -> Result<()> {
                     if frame.next {
                         let mut stream = get_stream(frame.stream_id).unwrap();
                         let metadata = parse_metadata(&mut complete_payload.metadata)?;
-                        stream.next(GuestPayload::new(
+                        stream.send(GuestPayload::new(
                             frame.stream_id,
                             complete_payload.data.to_vec(),
                             metadata,
-                        ))
+                        ));
                     }
                 }
                 _ => unreachable!(),
@@ -215,7 +230,7 @@ fn handle_frame(frame: Frame) -> Result<()> {
         }
         Frame::ErrorFrame(frame) => {
             let mut stream = get_stream(frame.stream_id).unwrap();
-            stream.error(());
+            stream.error(PayloadError::new(frame.code, frame.data));
             end_stream(frame.stream_id);
         }
         Frame::RequestN(frame) => {
@@ -257,6 +272,7 @@ fn handle_frame(frame: Frame) -> Result<()> {
 }
 
 fn send_host_payload(payload: Bytes) {
+    //println!("sending host payload");
     let host_start = HOST_BUFFER.with(|cell| {
         let buff = unsafe { &mut *cell.get() };
         let start = buff.get_write_pos();
@@ -307,7 +323,7 @@ fn read_string(start: usize, buffer: &[u8]) -> Result<(String, usize)> {
 fn read_data(start: usize, buffer: &[u8]) -> Result<(Vec<u8>, usize)> {
     let len_bytes: &mut [u8] = &mut [0_u8; 2];
     len_bytes.copy_from_slice(&buffer[start..start + 2]);
-    let len = wasmrs_rsocket::util::from_u16_bytes(len_bytes) as usize;
+    let len = wasmrs_rsocket::from_u16_bytes(len_bytes) as usize;
     let mut data_bytes = vec![0_u8; len];
     data_bytes.copy_from_slice(&buffer[start + 2..start + 2 + len]);
     Ok((data_bytes, 2 + len))
@@ -365,26 +381,41 @@ fn handle_request_response(
     )
     .ok_or(Error::NoHandler)?;
     let mut incoming = new_stream(stream_id);
-    match handler(incoming.clone()).map_err(|e| Error::HandlerFail(e.to_string())) {
-        Ok(outgoing) => {
-            outgoing.subscribe(move |payload| {
-                send_host_payload(
-                    Frame::new_payload(
-                        stream_id,
-                        Payload::new(Bytes::from(metadata_bytes.clone()), payload),
-                        0,
-                    )
-                    .encode(),
-                )
-            });
-        }
-        Err(e) => send_error_frame(
-            stream_id,
-            wasmrs_rsocket::ErrorCode::ApplicationError.into(),
-            e.to_string(),
-        ),
-    };
-    incoming.next(GuestPayload::new(stream_id, data.to_vec(), metadata));
+    let result = handler(incoming.clone()).map_err(|e| Error::HandlerFail(e.to_string()));
+
+    yielding_executor::single_threaded::spawn(async move {
+        //println!("in outgoing stream processor");
+
+        match result {
+            Ok(outgoing) => {
+                //println!("waiting for outgoing signals");
+
+                while let Ok(Some(signal)) = outgoing.recv().await {
+                    //println!("got signal: {:?}", signal);
+                    match signal {
+                        Ok(payload) => send_host_payload(
+                            Frame::new_payload(
+                                stream_id,
+                                Payload::new(Bytes::from(metadata_bytes.clone()), payload),
+                                0,
+                            )
+                            .encode(),
+                        ),
+                        Err(e) => send_error_frame(stream_id, e.code, e.msg),
+                    }
+                }
+            }
+            Err(e) => send_error_frame(
+                stream_id,
+                wasmrs_rsocket::ErrorCode::ApplicationError.into(),
+                e.to_string(),
+            ),
+        };
+        //println!("Done processing output");
+    });
+    //println!("outgoing task started");
+    let _ = incoming.send(GuestPayload::new(stream_id, data.to_vec(), metadata));
+    //println!("done with reqres");
 
     Ok(())
 }
@@ -398,17 +429,17 @@ fn handle_request_stream(stream_id: u32, mut metadata: Vec<u8>, data: Vec<u8>) -
     )
     .ok_or(Error::NoHandler)?;
     let incoming = new_stream(stream_id);
-    match handler(incoming).map_err(|e| Error::HandlerFail(e.to_string())) {
-        Ok(outgoing) => {
-            outgoing.subscribe(|wat| {});
-        }
-        Err(e) => send_error_frame(
-            stream_id,
-            wasmrs_rsocket::ErrorCode::ApplicationError.into(),
-            e.to_string(),
-        ),
-    };
-
+    // match handler(incoming).map_err(|e| Error::HandlerFail(e.to_string())) {
+    //     Ok(outgoing) => {
+    //         outgoing.subscribe(|wat| {});
+    //     }
+    //     Err(e) => send_error_frame(
+    //         stream_id,
+    //         wasmrs_rsocket::ErrorCode::ApplicationError.into(),
+    //         e.to_string(),
+    //     ),
+    // };
+    todo!();
     Ok(())
 }
 
@@ -419,11 +450,6 @@ fn handle_request_channel(stream_id: u32, mut metadata: Vec<u8>, data: Vec<u8>) 
 
 pub trait Process {
     fn start(input_stream: IncomingStream) -> ProcessReturnValue;
-}
-
-#[async_trait::async_trait]
-pub trait Task {
-    async fn task(&mut self) -> std::result::Result<(), GenericError>;
 }
 
 pub type ProcessReturnValue = std::result::Result<OutgoingStream, GenericError>;

@@ -8,7 +8,8 @@ use wasmrs_wasmtime::WasmtimeEngineProviderBuilder;
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
     // let module_bytes =
-    //     include_bytes!("../../../target/wasm32-unknown-unknown/release/wasmrs_component.wasm");
+    // include_bytes!("../../../target/wasm32-unknown-unknown/release/wasmrs_component.wasm");
+    // let module_bytes = include_bytes!("../../../target/wasm32-wasi/release/wasmrs_component.wasm");
     let module_bytes = include_bytes!("../../../build/wasmrs_component.wasm");
     let engine = WasmtimeEngineProviderBuilder::new(module_bytes)
         .wasi_params(WasiParams::default())

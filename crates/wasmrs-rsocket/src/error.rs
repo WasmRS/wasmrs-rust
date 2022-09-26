@@ -10,7 +10,6 @@ pub enum Error {
     RequestChannel(String),
     RequestStream(String),
     RequestFnF(String),
-    RequestError(u32, String),
 }
 
 impl std::error::Error for Error {}
@@ -20,5 +19,24 @@ impl std::fmt::Display for Error {
             Error::RSocket(code) => f.write_str((Into::<u32>::into(*code)).to_string().as_str()),
             _ => f.write_str("Error"),
         }
+    }
+}
+
+#[derive(Debug)]
+#[must_use]
+pub struct PayloadError {
+    pub code: u32,
+    pub msg: String,
+}
+
+impl PayloadError {
+    pub fn new(code: u32, msg: String) -> Self {
+        Self { code, msg }
+    }
+}
+impl std::error::Error for PayloadError {}
+impl std::fmt::Display for PayloadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.msg)
     }
 }

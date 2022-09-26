@@ -81,26 +81,24 @@
 #![allow(unused, clippy::needless_pass_by_value, unreachable_pub)]
 
 pub mod error;
+pub mod flux;
 pub mod fragmentation;
 pub mod frames;
 pub mod runtime;
-pub mod util;
+mod util;
 
 // mod buffers;
 mod generated;
 
 use std::{io::Read, pin::Pin};
 
-use self::util::from_u32_bytes;
 use bytes::Bytes;
-pub use error::Error;
+pub use error::{Error, PayloadError};
+pub use flux::Flux;
 pub use frames::{FragmentedPayload, FrameCodec};
 use futures_lite::Stream;
 pub use generated::*;
-
-pub use util::read_frame;
-
-pub type Flux<T> = Pin<Box<dyn Send + Stream<Item = T>>>;
+pub use util::*;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -111,10 +109,13 @@ pub trait RSocketContext: Sync + Send {
     /// Request-Response interaction model of RSocket.
     async fn request_response(&self, stream_id: u32, req: Payload) -> Result<Option<Payload>>;
     /// Request-Stream interaction model of RSocket.
-    fn request_stream(&self, stream_id: u32, req: Payload) -> Flux<Result<Payload>>;
+    fn request_stream(&self, stream_id: u32, req: Payload) -> dyn Flux<Payload, Error>;
     /// Request-Channel interaction model of RSocket.
-    fn request_channel(&self, stream_id: u32, reqs: Flux<Result<Payload>>)
-        -> Flux<Result<Payload>>;
+    fn request_channel(
+        &self,
+        stream_id: u32,
+        reqs: impl Flux<Payload, Error>,
+    ) -> Box<dyn Flux<Payload, Error>>;
 }
 
 pub trait FrameWriter: Sync + Send {

@@ -98,7 +98,7 @@ mod wasi;
 
 use futures_core::future::BoxFuture;
 pub use host::modulestate::ModuleState;
-pub use host::traits::{ProviderCallContext, WebAssemblyEngineProvider};
+pub use host::traits::{ProviderCallContext, SharedContext, WebAssemblyEngineProvider};
 pub use host::{WasmRsCallContext, WasmRsHost, WasmRsHostBuilder};
 pub use protocol::*;
 pub use wasi::WasiParams;

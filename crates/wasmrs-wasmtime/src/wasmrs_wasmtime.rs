@@ -2,10 +2,8 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use wasmrs_host::{HostExports, IntoEnumIterator, ModuleState};
-use wasmrs_ringbuffer::{ReadOnlyRingBuffer, RingBuffer, SharedReadOnlyRingBuffer};
-use wasmtime::{
-    AsContext, Caller, FuncType, Linker, Memory, StoreContext, StoreContextMut, Trap, Val, ValType,
-};
+use wasmrs_ringbuffer::SharedReadOnlyRingBuffer;
+use wasmtime::{AsContext, Caller, FuncType, Linker, Memory, StoreContext, Trap, Val, ValType};
 
 use crate::{errors::Error, store::WasmRsStore};
 
@@ -54,7 +52,6 @@ pub(crate) fn write_bytes_to_memory(
     let len = buffer.len();
     let remaining: usize = (ring_len - recv_pos) as _;
     let start_offset = ring_start + recv_pos;
-
 
     #[allow(unsafe_code)]
     unsafe {
@@ -119,7 +116,8 @@ fn linker_send(
             )
             .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
 
-            host.do_host_send(bytes.into());
+            host.do_host_send(bytes)
+                .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
             Ok(())
         },
     )
@@ -133,7 +131,7 @@ fn linker_init(
 ) {
     (
         FuncType::new(vec![ValType::I32, ValType::I32], vec![]),
-        move |mut caller, params: &[Val], results: &mut [Val]| {
+        move |_caller, params: &[Val], _results: &mut [Val]| {
             trace!(
                 import = wasmrs_host::HostExports::Init.as_ref(),
                 ?params,
@@ -146,7 +144,8 @@ fn linker_init(
             host.do_host_init(
                 guest_buff_ptr.try_into().unwrap(),
                 host_buff_ptr.try_into().unwrap(),
-            );
+            )
+            .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
 
             Ok(())
         },
@@ -161,7 +160,7 @@ fn linker_console_log(
 ) {
     (
         FuncType::new(vec![ValType::I32, ValType::I32], vec![]),
-        move |mut caller, params: &[Val], results: &mut [Val]| {
+        move |mut caller, params: &[Val], _results: &mut [Val]| {
             let ptr = params[0].i32();
             let len = params[1].i32();
             let memory = get_caller_memory(&mut caller);

@@ -66,12 +66,12 @@ impl Payload {
     }
 }
 
-impl From<Frame> for Result<Option<Payload>, crate::Error> {
+impl From<Frame> for Result<Option<Payload>, crate::PayloadError> {
     fn from(frame: Frame) -> Self {
         match frame {
             Frame::PayloadFrame(frame) => Ok(Some(Payload::new(frame.metadata, frame.data))),
             Frame::Cancel(frame) => todo!(),
-            Frame::ErrorFrame(frame) => Err(crate::Error::RequestError(frame.code, frame.data)),
+            Frame::ErrorFrame(frame) => Err(crate::PayloadError::new(frame.code, frame.data)),
             Frame::RequestN(frame) => todo!(),
             Frame::RequestResponse(frame) => Ok(Some(Payload::new(frame.0.metadata, frame.0.data))),
             Frame::RequestFnF(frame) => Ok(Some(Payload::new(frame.0.metadata, frame.0.data))),
