@@ -1,6 +1,6 @@
 spec: schema.apexlang
 generates:
-  crates/wasmrs-rsocket/src/generated.rs:
+  crates/wasmrs/src/generated.rs:
     module: "@apexlang/codegen/rust"
     visitorClass: RustBasic
     config:

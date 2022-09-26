@@ -1,7 +1,7 @@
 use std::time::Instant;
 
+use wasmrs::{Metadata, Payload};
 use wasmrs_host::{WasiParams, WasmRsHostBuilder};
-use wasmrs_rsocket::{Metadata, Payload};
 use wasmrs_wasmtime::WasmtimeEngineProviderBuilder;
 
 #[tokio::main]
@@ -19,7 +19,7 @@ async fn main() -> anyhow::Result<()> {
     // let bytes = b"Hello world".to_vec();
     let mut context = host.new_context()?;
     let start = Instant::now();
-    let num = 1000;
+    let num = 100000;
     let metadata = Metadata::new("greeting", "sayHello");
     let mbytes = metadata.encode();
     println!("metadata: {:?}", mbytes);

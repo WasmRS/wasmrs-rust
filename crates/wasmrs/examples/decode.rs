@@ -8,6 +8,6 @@ fn main() {
         .map(|v| v.trim())
         .map(|v| v.parse::<u8>().unwrap())
         .collect();
-    let frame = wasmrs_rsocket::Frame::decode(bytes).unwrap();
+    let frame = wasmrs::Frame::decode(bytes).unwrap();
     println!("{:#?}", frame);
 }

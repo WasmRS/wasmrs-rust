@@ -1,5 +1,5 @@
 [package]
-name = "wasmrs-rsocket"
+name = "wasmrs"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,8 +7,6 @@ edition = "2021"
 
 [dependencies]
 wasmrs-ringbuffer = { path = "../wasmrs-ringbuffer" }
-# async-trait = "0.1.57"
-# futures-lite = "1.12.0"
 futures-core = "0.3"
 bytes = "1.2"
 tokio = { version = "1", features = ["sync"] }
@@ -22,3 +20,4 @@ features = ["rt"]
 anyhow = { version = "1.0" }
 tokio = { version = "1", features = ["rt", "macros"] }
 futures = "0.3"
+tokio-stream = "0.1.10"

@@ -102,7 +102,7 @@ pub use host::traits::{ProviderCallContext, SharedContext, WebAssemblyEngineProv
 pub use host::{WasmRsCallContext, WasmRsHost, WasmRsHostBuilder};
 pub use protocol::*;
 pub use wasi::WasiParams;
-use wasmrs_rsocket::Frame;
+use wasmrs::Frame;
 
 /// The signature of a Host Callback function.
 pub type AsyncHostCallback = dyn Fn(i32, String, String, String, Vec<u8>) -> BoxFuture<'static, HostResult>

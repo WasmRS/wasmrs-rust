@@ -22,24 +22,22 @@ pub enum Error {
     GuestMemory,
 }
 
-impl From<Error> for wasmrs_rsocket::error::Error {
+impl From<Error> for wasmrs::error::Error {
     fn from(e: Error) -> Self {
         match e {
-            Error::InitializationFailed(_) => wasmrs_rsocket::error::Error::RSocket(
-                wasmrs_rsocket::ErrorCode::ConnectionError.into(),
-            ),
-            Error::WasiError(_) => wasmrs_rsocket::error::Error::RSocket(
-                wasmrs_rsocket::ErrorCode::ConnectionError.into(),
-            ),
-            Error::GuestInit => wasmrs_rsocket::error::Error::RSocket(
-                wasmrs_rsocket::ErrorCode::ApplicationError.into(),
-            ),
-            Error::GuestSend => wasmrs_rsocket::error::Error::RSocket(
-                wasmrs_rsocket::ErrorCode::ApplicationError.into(),
-            ),
-            Error::GuestMemory => {
-                wasmrs_rsocket::error::Error::RSocket(wasmrs_rsocket::ErrorCode::Canceled.into())
+            Error::InitializationFailed(_) => {
+                wasmrs::error::Error::RSocket(wasmrs::ErrorCode::ConnectionError.into())
             }
+            Error::WasiError(_) => {
+                wasmrs::error::Error::RSocket(wasmrs::ErrorCode::ConnectionError.into())
+            }
+            Error::GuestInit => {
+                wasmrs::error::Error::RSocket(wasmrs::ErrorCode::ApplicationError.into())
+            }
+            Error::GuestSend => {
+                wasmrs::error::Error::RSocket(wasmrs::ErrorCode::ApplicationError.into())
+            }
+            Error::GuestMemory => wasmrs::error::Error::RSocket(wasmrs::ErrorCode::Canceled.into()),
         }
     }
 }

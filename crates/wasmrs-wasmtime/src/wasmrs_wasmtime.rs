@@ -38,7 +38,7 @@ pub(crate) fn get_vec_from_ringbuffer<'a, T: 'a>(
         ring_len as usize,
         recv_pos as usize,
     );
-    wasmrs_rsocket::read_frame(buff).map_err(|_| Error::GuestMemory)
+    wasmrs::read_frame(buff).map_err(|_| Error::GuestMemory)
 }
 
 pub(crate) fn write_bytes_to_memory(
@@ -104,14 +104,6 @@ fn linker_send(
                 import = wasmrs_host::HostExports::Send.as_ref(),
                 ?params,
                 "guest calling host"
-            );
-            let instant = std::time::SystemTime::now();
-            println!(
-                "<<Host: Getting frame at {:?}",
-                instant
-                    .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                    .unwrap()
-                    .as_nanos()
             );
 
             let recv_pos = params[0].unwrap_i32() as u32;

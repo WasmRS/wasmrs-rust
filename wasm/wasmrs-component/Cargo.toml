@@ -16,7 +16,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wasmrs-ringbuffer = { path = "../../crates/wasmrs-ringbuffer" }
-wasmrs-rsocket = { path = "../../crates/wasmrs-rsocket" }
+wasmrs = { path = "../../crates/wasmrs" }
 bytes = "1.2"
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }

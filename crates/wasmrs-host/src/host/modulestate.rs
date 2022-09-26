@@ -3,13 +3,13 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
 use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
-use wasmrs_rsocket::Payload;
+use wasmrs::Payload;
 
 use bytes::Bytes;
 use parking_lot::Mutex;
 
 use tracing::instrument::WithSubscriber;
-use wasmrs_rsocket::{Counter, Frame};
+use wasmrs::{Counter, Frame};
 
 use crate::errors::Error;
 use crate::{AsyncHostCallback, HostCallback, Invocation};
@@ -17,8 +17,8 @@ use crate::{AsyncHostCallback, HostCallback, Invocation};
 pub struct StreamState(Handler, ());
 // pub type OutgoingStream = LocalSubject<'static, Vec<u8>, ()>;
 
-pub type OptionalResult = Result<Option<Payload>, wasmrs_rsocket::PayloadError>;
-pub type StreamResult = Result<Payload, wasmrs_rsocket::PayloadError>;
+pub type OptionalResult = Result<Option<Payload>, wasmrs::PayloadError>;
+pub type StreamResult = Result<Payload, wasmrs::PayloadError>;
 
 #[allow(missing_debug_implementations)]
 pub enum Handler {

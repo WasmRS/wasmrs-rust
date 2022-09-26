@@ -29,9 +29,9 @@ pub enum Error {
 
     /// Guest send response to a stream that doesn't exist.
     #[error(transparent)]
-    RSocket(#[from] wasmrs_rsocket::error::Error),
+    RSocket(#[from] wasmrs::error::Error),
 
     /// Guest send response to a stream that doesn't exist.
     #[error(transparent)]
-    PayloadError(#[from] wasmrs_rsocket::error::PayloadError),
+    PayloadError(#[from] wasmrs::error::PayloadError),
 }

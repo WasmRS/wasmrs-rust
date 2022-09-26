@@ -1,10 +1,10 @@
 use bytes::{BufMut, BytesMut};
 use std::sync::Arc;
+use wasmrs::Frame;
 use wasmrs_host::{
     GuestExports, ModuleState, ProviderCallContext, SharedContext, WasiParams,
     WebAssemblyEngineProvider,
 };
-use wasmrs_rsocket::Frame;
 use wasmtime::{Engine, Instance, Linker, Memory, Module, Store, TypedFunc};
 
 use super::Result;
@@ -152,9 +152,9 @@ impl WasmtimeCallContext {
     // }
 }
 
-impl wasmrs_rsocket::FrameWriter for WasmtimeCallContext {
+impl wasmrs::FrameWriter for WasmtimeCallContext {
     /// Request-Response interaction model of RSocket.
-    fn write_frame(&mut self, _stream_id: u32, req: Frame) -> wasmrs_rsocket::Result<()> {
+    fn write_frame(&mut self, _stream_id: u32, req: Frame) -> wasmrs::Result<()> {
         let bytes = req.encode();
 
         let read_pos = self.state.get_guest_buffer_pos();
@@ -174,18 +174,7 @@ impl wasmrs_rsocket::FrameWriter for WasmtimeCallContext {
 
         self.state.update_guest_buffer_pos(written);
 
-        let instant = std::time::SystemTime::now();
-        println!(
-            "Guest>>: Sending frame at {:?}",
-            instant
-                .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        );
-        let start = std::time::Instant::now();
         let _call = self.guest_send.call(&mut self.store, read_pos as i32);
-        let end = std::time::Instant::now();
-        println!("Core guest send call {}ns", (end - start).as_nanos());
 
         Ok(())
     }

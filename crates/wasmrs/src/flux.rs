@@ -279,6 +279,7 @@ mod test {
     use super::*;
     use anyhow::Result;
     use futures::StreamExt;
+    use tokio_stream::wrappers::UnboundedReceiverStream;
 
     async fn recv_flux<Item, Err>(mut flux: FluxBox<Item, Err>) -> Option<Result<Item, Err>>
     where

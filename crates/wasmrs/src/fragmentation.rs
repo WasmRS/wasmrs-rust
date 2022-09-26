@@ -112,6 +112,12 @@ impl Into<Payload> for Joiner {
     }
 }
 
+impl Default for Joiner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Joiner {
     pub fn new() -> Joiner {
         Joiner {

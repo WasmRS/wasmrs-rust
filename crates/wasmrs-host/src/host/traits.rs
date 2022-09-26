@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use futures_core::Stream;
 use parking_lot::Mutex;
-use wasmrs_rsocket::Frame;
+use wasmrs::Frame;
 
 use crate::host::modulestate::ModuleState;
 use crate::Invocation;
@@ -40,6 +40,6 @@ pub trait WebAssemblyEngineProvider {
 
 type Result<T> = std::result::Result<T, crate::errors::Error>;
 
-pub trait ProviderCallContext: wasmrs_rsocket::FrameWriter {
+pub trait ProviderCallContext: wasmrs::FrameWriter {
     fn init(&mut self) -> Result<()>;
 }

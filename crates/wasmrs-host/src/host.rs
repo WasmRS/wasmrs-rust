@@ -12,10 +12,10 @@ use futures_core::Stream;
 use parking_lot::Mutex;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::yield_now;
-use wasmrs_rsocket::fragmentation::{Joiner, Splitter};
-use wasmrs_rsocket::frames::RSocketFlags;
-use wasmrs_rsocket::{runtime, ErrorCode, Frame, Metadata, Payload, PayloadError};
-use wasmrs_rsocket::{PayloadFrame, RequestPayload};
+use wasmrs::fragmentation::{Joiner, Splitter};
+use wasmrs::frames::RSocketFlags;
+use wasmrs::{runtime, ErrorCode, Frame, Metadata, Payload, PayloadError};
+use wasmrs::{PayloadFrame, RequestPayload};
 
 use self::modulestate::ModuleState;
 use self::traits::{SharedContext, WebAssemblyEngineProvider};
@@ -162,17 +162,17 @@ impl WasmRsCallContext {
         let handler = Handler::ReqRR(tx);
         let stream_id = self.state.new_stream(handler);
 
-        let start = std::time::Instant::now();
+        // let start = std::time::Instant::now();
         send_request_response_payload(self.context.clone(), self.splitter, stream_id, payload);
-        let end = std::time::Instant::now();
-        println!("write frame duration: {}ns", (end - start).as_nanos());
+        // let end = std::time::Instant::now();
+        // println!("write frame duration: {}ns", (end - start).as_nanos());
         match rx.await {
             Ok(v) => {
-                let end = std::time::Instant::now();
-                println!("total request duration: {}ns", (end - start).as_nanos());
+                // let end = std::time::Instant::now();
+                // println!("total request duration: {}ns", (end - start).as_nanos());
                 Ok(v?)
             }
-            Err(e) => Err(wasmrs_rsocket::Error::RequestResponse(e.to_string()).into()),
+            Err(e) => Err(wasmrs::Error::RequestResponse(e.to_string()).into()),
         }
     }
 }
