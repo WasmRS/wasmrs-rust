@@ -1,14 +1,12 @@
 #![allow(missing_debug_implementations)]
 use crate::runtime::SafeMap;
-use crate::{fragmentation::Joiner, frames::RSocketFlags, Frame};
+use crate::Frame;
 
-use std::collections::HashMap;
-use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
 
 use bytes::Bytes;
-use parking_lot::Mutex;
 
 use crate::{Counter, Error, Payload};
 
@@ -95,7 +93,7 @@ impl SocketManager {
         &self.guest_buffer
     }
 
-    pub fn new_stream(&self, handler: Handler) -> (u32) {
+    pub fn new_stream(&self, handler: Handler) -> u32 {
         let id = self.stream_index.fetch_add(2, Ordering::SeqCst);
         self.streams.insert(id, handler);
         id
@@ -109,7 +107,7 @@ impl SocketManager {
         match self.streams.remove(&stream_id) {
             Some(handler) => match handler {
                 Handler::ReqRR(h) => h.send(result).map_err(|_| Error::StreamSend)?,
-                Handler::ResRRn(h) => todo!(),
+                Handler::ResRRn(_h) => todo!(),
                 Handler::ReqRS(h) => {
                     h.send(result.map(|v| v.unwrap()))
                         .map_err(|_| Error::StreamSend)?;
@@ -132,8 +130,6 @@ impl SocketManager {
         guest_buff_ptr: u32,
         host_buff_ptr: u32,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let id = self.stream_index.fetch_add(1, Ordering::SeqCst);
-
         self.host_buffer().update_start(host_buff_ptr);
         self.guest_buffer().update_start(guest_buff_ptr);
         Ok(())
@@ -141,11 +137,13 @@ impl SocketManager {
 
     /// Invoked when the guest module wishes to send a stream frame to the host.
     pub fn do_host_send(&self, frame_bytes: Bytes) -> Result<(), Box<dyn std::error::Error>> {
-        let id = self.stream_index.fetch_add(1, Ordering::SeqCst);
         match Frame::decode(frame_bytes) {
             Ok(frame) => self.kick_handler(frame.stream_id(), frame.into())?,
             Err((stream_id, err)) => {
-                let stream = self.take_stream(stream_id);
+                self.kick_handler(
+                    stream_id,
+                    Frame::new_error(stream_id, 0, err.to_string()).into(),
+                )?;
                 return Err(Box::new(err));
             }
         }
@@ -156,11 +154,4 @@ impl SocketManager {
     pub fn do_console_log(&self, msg: &str) {
         println!("{}", msg);
     }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use anyhow::Result;
-    use futures_core::future::BoxFuture;
 }

@@ -1,7 +1,8 @@
 mod generated;
 mod guest;
+mod macros;
 
-use futures::StreamExt;
+use futures_util::StreamExt;
 use generated::Hello;
 use guest::*;
 

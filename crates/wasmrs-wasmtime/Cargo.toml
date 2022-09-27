@@ -22,7 +22,7 @@ tokio = { version = "1", features = ["rt", "sync"] }
 bytes = "1.2.1"
 
 [dev-dependencies]
-wasmflow-codec = "0.10.0"
+wasmrs-codec = { path = "../wasmrs-codec" }
 env_logger = "0.9"
 tokio = { version = "1", features = ["macros"] }
 test-log = "0.2.10"

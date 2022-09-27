@@ -1,29 +1,24 @@
 mod signal;
 pub use signal::*;
 mod observer;
+use futures_core::Future;
 pub use observer::*;
-use std::{pin::Pin, sync::Arc, task::Poll};
+use std::{pin::Pin, task::Poll};
 
-// use futures_lite::Stream;
 use futures_core::Stream;
 
-// pub type Flux<Item, Err> = dyn Send + Stream<Item = Result<Item, Err>>;
+type FutureResult<Item, Err> =
+    Pin<Box<dyn Future<Output = Result<Option<Result<Item, Err>>, Error>>>>;
 
-use parking_lot::Mutex;
+use crate::{
+    runtime::{channel, ConditionallySafe, OptionalMut, Receiver, Sender},
+    Error,
+};
 
-// use async_channel::{unbounded as channel, RecvError};
-// pub type Sender<Item, Err> = async_channel::Sender<Signal<Item, Err>>;
-// pub type Receiver<Item, Err> = async_channel::Receiver<Signal<Item, Err>>;
-pub use tokio::sync::mpsc::unbounded_channel as channel;
-
-use crate::Error;
-pub type Sender<Item, Err> = tokio::sync::mpsc::UnboundedSender<Signal<Item, Err>>;
-pub type Receiver<Item, Err> = tokio::sync::mpsc::UnboundedReceiver<Signal<Item, Err>>;
-
-pub trait Flux<Item, Err>: Stream<Item = Result<Item, Err>> + Send
+pub trait Flux<Item, Err>: Stream<Item = Result<Item, Err>> + ConditionallySafe
 where
-    Item: Send + Sync,
-    Err: Send + Sync,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
 }
 
@@ -33,8 +28,8 @@ pub type FluxBox<Item, Err> = Pin<Box<dyn Flux<Item, Err>>>;
 #[allow(missing_debug_implementations)]
 pub struct FluxChannel<Item, Err>
 where
-    Item: Send + Sync,
-    Err: Send + Sync,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
     tx: Sender<Item, Err>,
     rx: FluxStream<Item, Err>,
@@ -42,20 +37,21 @@ where
 
 impl<Item, Err> Flux<Item, Err> for FluxChannel<Item, Err>
 where
-    Item: Send + Sync,
-    Err: Send + Sync,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
 }
 
 impl<Item, Err> FluxChannel<Item, Err>
 where
-    Item: Send + Sync,
-    Err: Send + Sync,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
     pub fn new() -> Self {
         let (tx, rx) = channel();
         Self {
             tx,
+            // rx: FluxStream::new(runtime::SafeReceiver::new(rx)),
             rx: FluxStream::new(rx),
         }
     }
@@ -76,8 +72,23 @@ where
         let _ = self.tx.send(Signal::Complete);
     }
 
-    pub async fn recv(&self) -> Result<Option<Result<Item, Err>>, Error> {
-        self.rx.recv().await
+    // #[cfg(target_family = "wasm")]
+    // #[allow(clippy::type_complexity)]
+    // #[must_use]
+    // pub fn recv(&self) -> FutureResult<Item, Err> {
+    //     let val = self.rx.recv();
+    //     Box::pin(async move { val.await })
+    // }
+
+    // #[cfg(not(target_family = "wasm"))]
+    #[must_use]
+    pub fn recv(&self) -> FutureResult<Item, Err>
+    where
+        Err: 'static,
+        Item: 'static,
+    {
+        let val = self.rx.recv();
+        Box::pin(async move { val.await })
     }
 
     pub fn take_receiver(&self) -> Result<Pin<Box<FluxStream<Item, Err>>>, Error> {
@@ -95,8 +106,8 @@ where
 
 impl<Item, Err> Default for FluxChannel<Item, Err>
 where
-    Item: Send + Sync,
-    Err: Send + Sync,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
     fn default() -> Self {
         Self::new()
@@ -105,8 +116,8 @@ where
 
 impl<Item, Err> Clone for FluxChannel<Item, Err>
 where
-    Item: Send + Sync,
-    Err: Send + Sync,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
     fn clone(&self) -> Self {
         Self {
@@ -118,8 +129,8 @@ where
 
 impl<Item, Err> Stream for FluxChannel<Item, Err>
 where
-    Item: Send + Sync,
-    Err: Send + Sync,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
     type Item = Result<Item, Err>;
 
@@ -135,16 +146,16 @@ where
 #[allow(missing_debug_implementations)]
 pub struct FluxStream<Item, Err>
 where
-    Item: Send + Sync,
-    Err: Send + Sync,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
-    rx: Arc<Mutex<Option<Receiver<Item, Err>>>>,
+    rx: OptionalMut<Receiver<Item, Err>>,
 }
 
 impl<Item, Err> Clone for FluxStream<Item, Err>
 where
-    Item: Send + Sync,
-    Err: Send + Sync,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
     fn clone(&self) -> Self {
         Self {
@@ -155,27 +166,27 @@ where
 
 impl<Item, Err> Flux<Item, Err> for FluxStream<Item, Err>
 where
-    Item: Send + Sync,
-    Err: Send + Sync,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
 }
 
 impl<Item, Err> FluxStream<Item, Err>
 where
-    Item: Send + Sync,
-    Err: Send + Sync,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
     pub fn new(rx: Receiver<Item, Err>) -> Self {
         Self {
-            rx: Arc::new(Mutex::new(Some(rx))),
+            rx: OptionalMut::new(rx),
         }
     }
 }
 
 fn signal_into_result<Item, Err>(signal: Option<Signal<Item, Err>>) -> Option<Result<Item, Err>>
 where
-    Item: Send,
-    Err: Send,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
     match signal {
         Some(Signal::Complete) => None,
@@ -185,44 +196,37 @@ where
     }
 }
 
-#[cfg(feature = "async-channel")]
-fn result_signal_into_result<Item, Err>(
-    signal: Result<Signal<Item, Err>, RecvError>,
-) -> Option<Result<Item, Err>>
-where
-    Item: Send,
-    Err: Send,
-{
-    match signal {
-        Ok(Signal::Complete) => None,
-        Ok(Signal::Ok(v)) => Some(Ok(v)),
-        Ok(Signal::Err(e)) => Some(Err(e)),
-        Err(_) => None,
-    }
-}
 impl<Item, Err> FluxStream<Item, Err>
 where
-    Item: Send + Sync,
-    Err: Send + Sync,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
-    pub async fn recv(&self) -> Result<Option<Result<Item, Err>>, Error> {
-        let opt = self.rx.lock().take();
-        match opt {
-            Some(mut rx) => {
-                let signal = rx.recv().await;
-                let _ = self.rx.lock().insert(rx);
-                Ok(signal_into_result(signal))
+    #[must_use]
+    pub fn recv(&self) -> FutureResult<Item, Err>
+    where
+        Err: 'static,
+        Item: 'static,
+    {
+        let root_rx = self.rx.clone();
+        let opt = root_rx.take();
+        Box::pin(async move {
+            match opt {
+                Some(mut rx) => {
+                    let signal = rx.recv().await;
+                    let _ = root_rx.insert(rx);
+                    Ok(signal_into_result(signal))
+                }
+                None => Err(Error::RecvFailed(0)),
             }
-            None => Err(Error::RecvFailed(0)),
-        }
+        })
     }
 
     // #[cfg(feature = "tokio")]
     pub fn poll_recv(&self, cx: &mut std::task::Context<'_>) -> Poll<Option<Result<Item, Err>>> {
-        let opt = self.rx.lock().take();
+        let opt = self.rx.take();
         opt.map_or(std::task::Poll::Ready(None), |mut rx| {
             let poll = rx.poll_recv(cx);
-            let _ = self.rx.lock().insert(rx);
+            let _ = self.rx.insert(rx);
             match poll {
                 Poll::Ready(Some(Signal::Complete)) => Poll::Ready(None),
                 Poll::Ready(Some(Signal::Ok(v))) => Poll::Ready(Some(Ok(v))),
@@ -253,16 +257,16 @@ where
 
     #[must_use]
     pub fn take(&self) -> Option<Self> {
-        self.rx.lock().take().map(|inner| Self {
-            rx: Arc::new(Mutex::new(Some(inner))),
+        self.rx.take().map(|inner| Self {
+            rx: OptionalMut::new(inner),
         })
     }
 }
 
 impl<Item, Err> Stream for FluxStream<Item, Err>
 where
-    Item: Send + Sync,
-    Err: Send + Sync,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
     type Item = Result<Item, Err>;
 
@@ -274,18 +278,19 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_family = "wasm")))]
 mod test {
+
     use super::*;
     use anyhow::Result;
     use futures::StreamExt;
-    use tokio_stream::wrappers::UnboundedReceiverStream;
 
     async fn recv_flux<Item, Err>(mut flux: FluxBox<Item, Err>) -> Option<Result<Item, Err>>
     where
-        Item: Send + Sync + 'static,
-        Err: Send + Sync + 'static,
+        Item: ConditionallySafe + 'static,
+        Err: ConditionallySafe + 'static,
     {
+        // let fut = flux.next();
         let handle = tokio::spawn(async move { flux.next().await });
         let result = handle.await;
         result.unwrap()

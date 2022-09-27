@@ -1,6 +1,11 @@
 use bytes::{BufMut, Bytes};
-use futures::task::LocalSpawnExt;
+// use futures::task::LocalSpawnExt;
+use futures_executor as runtime;
+use futures_util::task::LocalSpawnExt;
+use futures_util::Future;
 use wasmrs::flux::FluxChannel;
+
+use crate::macros::*;
 
 use std::cell::RefCell;
 use std::{cell::UnsafeCell, collections::HashMap, rc::Rc, sync::atomic::Ordering};
@@ -18,8 +23,6 @@ pub type ProcessFactory = fn(IncomingStream) -> std::result::Result<OutgoingStre
 
 pub type IncomingStream = FluxChannel<GuestPayload, PayloadError>;
 pub type OutgoingStream = FluxChannel<Bytes, PayloadError>;
-
-use futures::{executor as runtime, Future};
 
 #[derive(Clone)]
 pub struct GuestPayload {
@@ -128,7 +131,7 @@ extern "C" fn __wasmrs_init(
     host_buffer_size: u32,
     max_host_frame_len: u32,
 ) {
-    //println!("in guest: __wasmrs_init");
+    println!("in guest: __wasmrs_init");
     let guest_ptr = GUEST_BUFFER.with(|cell| {
         let buffer = unsafe { &mut *cell.get() };
         buffer.resize(guest_buffer_size as usize, || 0);
@@ -164,7 +167,7 @@ fn send_error_frame(stream_id: u32, code: u32, msg: impl AsRef<str>) {
 
 #[no_mangle]
 extern "C" fn __wasmrs_send(read_pos: u32) {
-    //println!("in guest: __wasmrs_send");
+    println!("in guest: __wasmrs_send");
     let read_result = read_frame(read_pos);
     if read_result.is_err() {
         send_error_frame(0, 0, "Could not read local buffer");
@@ -275,7 +278,7 @@ fn handle_frame(frame: Frame) -> Result<()> {
 }
 
 fn send_host_payload(payload: Bytes) {
-    //println!("sending host payload");
+    println!("sending host payload");
     let host_start = HOST_BUFFER.with(|cell| {
         let buff = unsafe { &mut *cell.get() };
         let start = buff.get_write_pos();

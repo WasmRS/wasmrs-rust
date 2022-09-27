@@ -1,8 +1,10 @@
+use crate::runtime::ConditionallySafe;
+
 #[derive(PartialEq, Eq, Clone)]
 pub enum Signal<Item, Err>
 where
-    Item: Send,
-    Err: Send,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
 {
     Ok(Item),
     Err(Err),
@@ -11,8 +13,8 @@ where
 
 impl<Item, Err> std::fmt::Debug for Signal<Item, Err>
 where
-    Item: Send + std::fmt::Debug,
-    Err: Send + std::fmt::Debug,
+    Item: ConditionallySafe + std::fmt::Debug,
+    Err: ConditionallySafe + std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

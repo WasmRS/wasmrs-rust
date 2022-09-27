@@ -166,7 +166,6 @@ mod tests {
         joiner.push(first);
 
         for i in 0..10 {
-            let flag = if i == 9 { 0u16 } else { Frame::FLAG_FOLLOW };
             let next = Frame::new_payload(
                 1,
                 Payload::new(

@@ -78,7 +78,7 @@
 )]
 #![doc = include_str!("../README.md")]
 // TODO REMOVE
-#![allow(unused, clippy::needless_pass_by_value, unreachable_pub)]
+#![allow(clippy::needless_pass_by_value, unreachable_pub)]
 
 pub mod error;
 pub mod flux;
@@ -98,7 +98,6 @@ pub use frames::{FragmentedPayload, FrameCodec};
 pub use generated::*;
 pub use manager::*;
 pub use util::*;
-
 
 pub type Result<T> = std::result::Result<T, Error>;
 

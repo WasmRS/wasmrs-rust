@@ -50,7 +50,7 @@ mod test {
     fn test_decode() -> Result<()> {
         println!("RAW: {:?}", BYTES);
         let p = Cancel::decode_all(BYTES.into())?;
-        println!("{:?}", p);
+        // println!("{:?}", p);
         assert_eq!(p.stream_id, 1234);
         Ok(())
     }

@@ -1,6 +1,8 @@
-use futures::{stream::select_all, StreamExt};
-use wapc_codec::messagepack::{deserialize, serialize};
+use futures_util::stream::select_all;
+use futures_util::StreamExt;
+
 use wasmrs::flux::{FluxBox, FluxChannel};
+use wasmrs_codec::messagepack::{deserialize, serialize};
 
 use crate::guest::*;
 
@@ -44,8 +46,8 @@ impl Process for Hello {
 
         let inner = output_stream.clone();
         spawn(async move {
-            let mut futs = select_all(vec![output_hello_msg_stream]);
-            while let Some(bytes) = futs.next().await {
+            let mut futures = select_all(vec![output_hello_msg_stream]);
+            while let Some(bytes) = futures.next().await {
                 inner.send(bytes.into());
             }
         });

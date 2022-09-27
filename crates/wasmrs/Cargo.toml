@@ -7,14 +7,18 @@ edition = "2021"
 
 [dependencies]
 wasmrs-ringbuffer = { path = "../wasmrs-ringbuffer" }
-futures-core = "0.3"
-bytes = "1.2"
-tokio = { version = "1", features = ["sync"] }
-parking_lot = "0.12"
+futures-core = { version = "0.3", default-features = false }
+bytes = { version = "1.2", default-features = false }
+tokio = { version = "1", features = ["sync"], default-features = false }
+parking_lot = { version = "0.12", default-features = false }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 tokio = { version = "1", features = ["rt"] }
 dashmap = "5.4"
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+crossbeam-channel = { version = "0.5" }
+
 
 [dev-dependencies]
 anyhow = { version = "1.0" }

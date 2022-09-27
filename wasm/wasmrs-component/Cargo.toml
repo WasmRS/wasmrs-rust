@@ -5,6 +5,7 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [profile.release]
+strip = "symbols"
 codegen-units = 1
 debug = false
 lto = true
@@ -15,9 +16,18 @@ panic = "abort"
 crate-type = ["cdylib"]
 
 [dependencies]
+wasmrs-codec = { path = "../../crates/wasmrs-codec" }
 wasmrs-ringbuffer = { path = "../../crates/wasmrs-ringbuffer" }
 wasmrs = { path = "../../crates/wasmrs" }
-bytes = "1.2"
-futures = "0.3"
-serde = { version = "1", features = ["derive"] }
-wapc-codec = "1.0.0"
+bytes = { version = "1.2", default-features = false }
+
+futures-executor = { version = "0.3", default-features = false, features = [
+  "std",
+] }
+futures-util = { version = "0.3", default-features = false, features = [
+  "alloc",
+] }
+serde = { version = "1", features = [
+  "derive",
+  "alloc",
+], default-features = false }

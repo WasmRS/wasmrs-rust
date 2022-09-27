@@ -65,7 +65,8 @@ impl StreamID {
         StreamID { inner }
     }
 
-    pub(crate) fn next(&self) -> u32 {
+    #[allow(clippy::must_use_candidate)]
+    pub fn next(&self) -> u32 {
         let counter = self.inner.clone();
         counter.fetch_add(2, Ordering::SeqCst)
     }
@@ -78,18 +79,24 @@ impl From<u32> for StreamID {
 }
 
 #[derive(Debug, Clone)]
+#[must_use]
 pub struct Counter {
+    #[allow(unused)]
     inner: Arc<AtomicI64>,
 }
 
 impl Counter {
-    pub(crate) fn new(value: i64) -> Counter {
+    #[allow(unused)]
+
+    fn new(value: i64) -> Counter {
         Counter {
             inner: Arc::new(AtomicI64::new(value)),
         }
     }
 
-    pub(crate) fn count_down(&self) -> i64 {
+    #[allow(clippy::must_use_candidate)]
+    #[allow(unused)]
+    fn count_down(&self) -> i64 {
         self.inner.fetch_add(-1, Ordering::SeqCst) - 1
     }
 }
