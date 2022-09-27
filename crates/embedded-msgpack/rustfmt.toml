@@ -1,0 +1,12 @@
+unstable_features = true
+enum_discrim_align_threshold = 10
+# fn_params_layout = "Compressed"
+# fn_call_width = 80
+fn_single_line = true
+# indent_style = "Visual"
+# inline_attribute_width = 50
+max_width = 140
+merge_imports = true
+# overflow_delimited_expr = true
+where_single_line = true
+newline_style = "Native"
