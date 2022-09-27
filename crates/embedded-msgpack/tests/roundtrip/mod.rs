@@ -155,6 +155,7 @@ fn roundtrip_bin() {
     test_roundtrip_borrowed(Binary::new(&[0, 0xff]), &mut buf);
     test_roundtrip_borrowed(Binary::new(&[1u8, 2, 3, 4, 5, 6, 7]), &mut buf);
     test_roundtrip_borrowed(Binary::new(&[10u8; 300]), &mut buf);
+    #[cfg(feature = "bin32")]
     test_roundtrip_borrowed(Binary::new(&[20u8; 70000]), &mut buf);
 }
 

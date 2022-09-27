@@ -176,46 +176,66 @@ pub fn serialize_f64(value: f64, buf: &mut [u8]) -> Result<usize, Error> {
 
 impl SerializeIntoSlice for u8 {
     #[inline(always)]
-    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> { serialize_u8(*self, buf) }
+    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> {
+        serialize_u8(*self, buf)
+    }
 }
 impl SerializeIntoSlice for u16 {
     #[inline(always)]
-    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> { serialize_u16(*self, buf) }
+    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> {
+        serialize_u16(*self, buf)
+    }
 }
 impl SerializeIntoSlice for u32 {
     #[inline(always)]
-    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> { serialize_u32(*self, buf) }
+    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> {
+        serialize_u32(*self, buf)
+    }
 }
 #[cfg(feature = "u64")]
 impl SerializeIntoSlice for u64 {
     #[inline(always)]
-    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> { serialize_u64(*self, buf) }
+    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> {
+        serialize_u64(*self, buf)
+    }
 }
 impl SerializeIntoSlice for i8 {
     #[inline(always)]
-    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> { serialize_i8(*self, buf) }
+    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> {
+        serialize_i8(*self, buf)
+    }
 }
 impl SerializeIntoSlice for i16 {
     #[inline(always)]
-    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> { serialize_i16(*self, buf) }
+    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> {
+        serialize_i16(*self, buf)
+    }
 }
 impl SerializeIntoSlice for i32 {
     #[inline(always)]
-    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> { serialize_i32(*self, buf) }
+    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> {
+        serialize_i32(*self, buf)
+    }
 }
 #[cfg(feature = "i64")]
 impl SerializeIntoSlice for i64 {
     #[inline(always)]
-    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> { serialize_i64(*self, buf) }
+    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> {
+        serialize_i64(*self, buf)
+    }
 }
 
 impl SerializeIntoSlice for f32 {
     #[inline(always)]
-    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> { serialize_f32(*self, buf) }
+    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> {
+        serialize_f32(*self, buf)
+    }
 }
 impl SerializeIntoSlice for f64 {
     #[inline(always)]
-    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> { serialize_f64(*self, buf) }
+    fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> {
+        serialize_f64(*self, buf)
+    }
 }
 
 impl SerializeIntoSlice for bool {
@@ -229,7 +249,8 @@ impl SerializeIntoSlice for bool {
 }
 
 impl<T> SerializeIntoSlice for Option<T>
-where T: SerializeIntoSlice
+where
+    T: SerializeIntoSlice,
 {
     fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> {
         if let Some(value) = self {
@@ -245,29 +266,41 @@ where T: SerializeIntoSlice
 }
 impl SerializeIntoSlice for () {
     #[inline(always)]
-    fn write_into_slice(&self, _buf: &mut [u8]) -> Result<usize, Error> { Ok(0) }
+    fn write_into_slice(&self, _buf: &mut [u8]) -> Result<usize, Error> {
+        Ok(0)
+    }
 }
 
 #[repr(transparent)]
 #[cfg_attr(feature = "std", derive(core::fmt::Debug))]
 pub struct Binary<'a>(&'a [u8]);
 impl<'a> Binary<'a> {
-    pub const fn new(slice: &'a [u8]) -> Self { Binary(slice) }
+    pub const fn new(slice: &'a [u8]) -> Self {
+        Binary(slice)
+    }
 }
 impl<'a> Deref for Binary<'a> {
     type Target = &'a [u8];
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 impl<'a> From<&'a [u8]> for Binary<'a> {
-    fn from(slice: &'a [u8]) -> Self { Binary(slice) }
+    fn from(slice: &'a [u8]) -> Self {
+        Binary(slice)
+    }
 }
 impl<'a> PartialEq for Binary<'a> {
-    fn eq(&self, other: &Binary<'a>) -> bool { self.0 == other.0 }
+    fn eq(&self, other: &Binary<'a>) -> bool {
+        self.0 == other.0
+    }
 }
 
 #[cfg(feature = "serde")]
 impl<'a> ::serde::Serialize for Binary<'a> {
-    fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> { serializer.serialize_bytes(self.0) }
+    fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_bytes(self.0)
+    }
 }
 #[cfg(feature = "serde")]
 struct BinaryVisitor;
@@ -275,8 +308,12 @@ struct BinaryVisitor;
 #[cfg(feature = "serde")]
 impl<'de> ::serde::de::Visitor<'de> for BinaryVisitor {
     type Value = Binary<'de>;
-    fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result { formatter.write_str("a byte array") }
-    fn visit_borrowed_bytes<E: ::serde::de::Error>(self, v: &'de [u8]) -> Result<Self::Value, E> { Ok(Binary::new(v)) }
+    fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+        formatter.write_str("a byte array")
+    }
+    fn visit_borrowed_bytes<E: ::serde::de::Error>(self, v: &'de [u8]) -> Result<Self::Value, E> {
+        Ok(Binary::new(v))
+    }
 }
 #[cfg(feature = "serde")]
 impl<'a> ::serde::Deserialize<'a> for Binary<'a> {
@@ -415,7 +452,8 @@ where
 }
 
 impl<T> SerializeIntoSlice for &[T]
-where T: SerializeIntoSlice
+where
+    T: SerializeIntoSlice,
 {
     fn write_into_slice(&self, buf: &mut [u8]) -> Result<usize, Error> {
         // serialize_sequence(self, SequenceType::Array, buf)
