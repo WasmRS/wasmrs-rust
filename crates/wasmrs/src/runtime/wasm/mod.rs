@@ -1,6 +1,6 @@
 use futures_util::task::LocalSpawnExt;
 use futures_util::Future;
-use std::cell::{RefCell, RefMut, UnsafeCell};
+use std::cell::{RefCell, UnsafeCell};
 use std::sync::Arc;
 pub type TaskHandle = ();
 
@@ -47,32 +47,32 @@ where
 {
     pub fn remove(&self, key: &K) -> Option<V> {
         #[allow(unsafe_code)]
-        unsafe { (&mut *self.0.get()) }.remove(key)
+        unsafe { &mut *self.0.get() }.remove(key)
     }
     pub fn insert(&self, key: K, value: V) {
         #[allow(unsafe_code)]
-        unsafe { (&mut *self.0.get()) }.insert(key, value);
+        unsafe { &mut *self.0.get() }.insert(key, value);
     }
     #[must_use]
     pub fn len(&self) -> usize {
         #[allow(unsafe_code)]
-        unsafe { (&mut *self.0.get()) }.len()
+        unsafe { &mut *self.0.get() }.len()
     }
     #[must_use]
     pub fn is_empty(&self) -> bool {
         #[allow(unsafe_code)]
-        unsafe { (&mut *self.0.get()) }.is_empty()
+        unsafe { &mut *self.0.get() }.is_empty()
     }
 
-    pub fn entry<'a>(&'a self, key: K) -> (Entry<'a, K, V>) {
+    pub fn entry<'a>(&'a self, key: K) -> Entry<'a, K, V> {
         #[allow(unsafe_code)]
-        let map = unsafe { (&mut *self.0.get()) };
+        let map = unsafe { &mut *self.0.get() };
         let entry = map.entry(key);
         let val = match entry {
             std::collections::hash_map::Entry::Occupied(v) => Entry::Occupied(OccupiedEntry(v)),
             std::collections::hash_map::Entry::Vacant(v) => Entry::Vacant(VacantEntry(v)),
         };
-        (val)
+        val
     }
 }
 
@@ -94,7 +94,7 @@ where
     pub fn get(&self) -> &V {
         self.0.get()
     }
-    pub fn remove(mut self) -> V {
+    pub fn remove(self) -> V {
         self.0.remove()
     }
 }
