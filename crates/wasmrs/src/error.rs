@@ -1,5 +1,7 @@
 //! Library-specific error types and utility functions
 
+use crate::{ErrorCode, FrameType};
+
 /// Error type for wasmRS RSocket errors.
 #[derive(Debug, Clone)]
 pub enum Error {
@@ -14,6 +16,14 @@ pub enum Error {
     PortNotFound(String),
     StreamSend,
     StreamNotFound(u32),
+    RuntimeError,
+    Unimplemented,
+    RxMissing,
+    WrongType(FrameType, FrameType),
+    ReadBuffer,
+    StringConversion,
+    MetadataNotFound,
+    StringDecode,
 }
 
 impl std::error::Error for Error {}
@@ -34,13 +44,29 @@ pub struct PayloadError {
 }
 
 impl PayloadError {
-    pub fn new(code: u32, msg: String) -> Self {
-        Self { code, msg }
+    pub fn new(code: u32, msg: impl AsRef<str>) -> Self {
+        Self {
+            code,
+            msg: msg.as_ref().to_owned(),
+        }
+    }
+
+    pub fn application_error(msg: impl AsRef<str>) -> Self {
+        Self {
+            code: ErrorCode::ApplicationError.into(),
+            msg: msg.as_ref().to_owned(),
+        }
     }
 }
 impl std::error::Error for PayloadError {}
 impl std::fmt::Display for PayloadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.msg)
+    }
+}
+
+impl From<wasmrs_codec::error::Error> for PayloadError {
+    fn from(e: wasmrs_codec::error::Error) -> Self {
+        PayloadError::application_error(e.to_string())
     }
 }

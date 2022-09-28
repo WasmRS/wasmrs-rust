@@ -7,7 +7,7 @@ use crate::{
 use super::{Error, RSocketFlags, FRAME_FLAG_COMPLETE, FRAME_FLAG_METADATA};
 use bytes::{BufMut, Bytes, BytesMut};
 
-pub use crate::generated::RequestPayload;
+use crate::generated::RequestPayload;
 
 impl RequestPayload {
     pub fn new(stream_id: u32, frame_type: FrameType, data: Bytes, metadata: Bytes) -> Self {
@@ -110,6 +110,15 @@ impl RequestPayload {
         bytes.put(md);
         bytes.put(data);
         bytes.freeze()
+    }
+}
+
+impl From<RequestPayload> for Payload {
+    fn from(req: RequestPayload) -> Self {
+        Payload {
+            metadata: Some(req.metadata),
+            data: Some(req.data),
+        }
     }
 }
 

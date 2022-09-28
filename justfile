@@ -1,8 +1,8 @@
 wasm:
-    just wasm/wasmrs-component/build
+    just wasm/reqres-component/build
+    just wasm/req-stream-component/build
     ./opt.sh
 debug:
-    just wasm/wasmrs-component/debug
+    just wasm/reqres-component/debug
+    just wasm/req-stream-component/debug
     ./opt.sh
-wit:
-    wit-bindgen guest rust --export wasmrs.wit --import wasmrs.wit --out-dir crates/wasmrs/src/

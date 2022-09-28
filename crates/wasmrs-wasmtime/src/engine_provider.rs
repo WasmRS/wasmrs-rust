@@ -139,7 +139,7 @@ impl wasmrs::FrameWriter for WasmtimeCallContext {
             self.state.guest_buffer().get_size(),
         );
 
-        self.state.guest_buffer().update_post(written);
+        self.state.guest_buffer().update_pos(written);
 
         let _call = self.guest_send.call(&mut self.store, read_pos as i32);
 

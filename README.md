@@ -27,6 +27,26 @@ $ just debug
 
 ## Running example host with guest wasm
 
+Req/Response
+
 ```
 $ cargo run -p wasmrs-wasmtime --example wasmrs --release
+```
+
+Req/Stream
+
+```
+$ cargo run -p wasmrs-wasmtime --example reqstream
+```
+
+## Enable trace logging
+
+```
+RUST_LOG=wasmrs=trace cargo run -p wasmrs-wasmtime --example reqstream
+```
+
+## All together now
+
+```
+$ just debug && RUST_LOG=wasmrs=trace cargo run -p wasmrs-wasmtime --example reqstream
 ```

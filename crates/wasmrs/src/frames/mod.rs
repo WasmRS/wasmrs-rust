@@ -10,7 +10,7 @@ pub(crate) mod request_stream;
 
 use crate::{
     generated::{Cancel, ErrorFrame, PayloadFrame, RequestChannel, RequestResponse, RequestStream},
-    RequestFnF,
+    read_data, read_string, Error, RequestFnF,
 };
 pub use bytes::{BufMut, Bytes, BytesMut};
 pub use payload::FragmentedPayload;
@@ -20,25 +20,6 @@ use crate::{
     util::from_u16_bytes,
     Frame, Metadata,
 };
-
-#[derive(Debug)]
-#[allow(missing_copy_implementations)]
-pub enum Error {
-    WrongType(FrameType, FrameType),
-    ReadBuffer,
-    StringConversion,
-}
-
-impl std::error::Error for Error {}
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Error::WrongType(_, _) => "Tried to decode wrong type.",
-            Error::ReadBuffer => "Could not read frame buffer.",
-            Error::StringConversion => "Could not read string from bytes.",
-        })
-    }
-}
 
 pub const FRAME_FLAG_METADATA: FrameFlags = 1 << 8;
 pub const FRAME_FLAG_FOLLOWS: FrameFlags = 1 << 7;
@@ -63,6 +44,20 @@ impl Payload {
             metadata: None,
             data: None,
         }
+    }
+    pub fn parse_metadata(&self) -> Result<Metadata, Error> {
+        if self.metadata.is_none() {
+            return Err(Error::MetadataNotFound);
+        }
+        let bytes = self.metadata.as_ref().unwrap();
+        let (namespace, nslen) = read_string(0, bytes)?;
+        let (operation, oplen) = read_string(nslen, bytes)?;
+        let (instance, _) = read_data(nslen + oplen, bytes)?;
+        Ok(Metadata {
+            namespace,
+            operation,
+            instance: instance.into(),
+        })
     }
 }
 
@@ -145,14 +140,14 @@ impl Frame {
     #[must_use]
     pub fn get_flag(&self) -> FrameFlags {
         match self {
-            Frame::PayloadFrame(frame) => frame.get_flags(),
-            Frame::Cancel(frame) => frame.get_flags(),
-            Frame::ErrorFrame(frame) => frame.get_flags(),
-            Frame::RequestN(frame) => frame.get_flags(),
-            Frame::RequestResponse(frame) => frame.get_flags(),
-            Frame::RequestFnF(frame) => frame.get_flags(),
-            Frame::RequestStream(frame) => frame.get_flags(),
-            Frame::RequestChannel(frame) => frame.get_flags(),
+            Frame::PayloadFrame(frame) => frame.get_flag(),
+            Frame::Cancel(frame) => frame.get_flag(),
+            Frame::ErrorFrame(frame) => frame.get_flag(),
+            Frame::RequestN(frame) => frame.get_flag(),
+            Frame::RequestResponse(frame) => frame.get_flag(),
+            Frame::RequestFnF(frame) => frame.get_flag(),
+            Frame::RequestStream(frame) => frame.get_flag(),
+            Frame::RequestChannel(frame) => frame.get_flag(),
         }
     }
 
@@ -193,15 +188,15 @@ impl Frame {
                 frames::RequestChannel::decode_frame(&header, buffer)?,
             ),
             FrameType::RequestN => todo!(),
-            FrameType::Cancel => frames::Frame::Cancel(Box::new(Cancel {
+            FrameType::Cancel => frames::Frame::Cancel(Cancel {
                 stream_id: header.stream_id(),
-            })),
-            FrameType::Payload => frames::Frame::PayloadFrame(Box::new(
-                frames::PayloadFrame::decode_frame(&header, buffer)?,
-            )),
-            FrameType::Err => frames::Frame::ErrorFrame(Box::new(
-                frames::ErrorFrame::decode_frame(&header, buffer)?,
-            )),
+            }),
+            FrameType::Payload => {
+                frames::Frame::PayloadFrame(frames::PayloadFrame::decode_frame(&header, buffer)?)
+            }
+            FrameType::Err => {
+                frames::Frame::ErrorFrame(frames::ErrorFrame::decode_frame(&header, buffer)?)
+            }
             FrameType::Ext => todo!(),
             _ => unreachable!(), // Maybe not todo?,
         };
@@ -223,11 +218,15 @@ impl Frame {
     }
 
     pub fn new_error(stream_id: u32, code: u32, data: impl AsRef<str>) -> Frame {
-        Frame::ErrorFrame(Box::new(ErrorFrame {
+        Frame::ErrorFrame(ErrorFrame {
             stream_id,
             code,
             data: data.as_ref().to_owned(),
-        }))
+        })
+    }
+
+    pub fn new_cancel(stream_id: u32) -> Frame {
+        Frame::Cancel(Cancel { stream_id })
     }
 
     pub fn new_request_response(
@@ -275,9 +274,7 @@ impl Frame {
     }
 
     pub fn new_payload(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
-        Frame::PayloadFrame(Box::new(PayloadFrame::from_payload(
-            stream_id, payload, flags,
-        )))
+        Frame::PayloadFrame(PayloadFrame::from_payload(stream_id, payload, flags))
     }
 }
 
@@ -298,7 +295,7 @@ pub trait FrameCodec<T> {
     fn decode_frame(header: &FrameHeader, buffer: Bytes) -> Result<T, Error>;
     fn encode(self) -> Bytes;
     fn gen_header(&self) -> FrameHeader;
-    fn get_flags(&self) -> FrameFlags {
+    fn get_flag(&self) -> FrameFlags {
         0
     }
 }

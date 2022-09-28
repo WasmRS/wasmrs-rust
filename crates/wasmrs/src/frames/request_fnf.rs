@@ -7,7 +7,12 @@ use super::{Error, FrameCodec};
 use bytes::Bytes;
 
 impl RequestFnF {
-  pub fn from_payload(stream_id: u32, payload: Payload, flags: FrameFlags, initial_n: u32) -> Self {
+    pub fn from_payload(
+        stream_id: u32,
+        payload: Payload,
+        flags: FrameFlags,
+        initial_n: u32,
+    ) -> Self {
         Self(RequestPayload::from_payload(
             stream_id,
             payload,
@@ -45,8 +50,14 @@ impl FrameCodec<RequestFnF> for RequestFnF {
         self.0.gen_header()
     }
 
-    fn get_flags(&self) -> FrameFlags {
+    fn get_flag(&self) -> FrameFlags {
         self.0.get_flags()
+    }
+}
+
+impl From<RequestFnF> for Payload {
+    fn from(req: RequestFnF) -> Self {
+        req.0.into()
     }
 }
 

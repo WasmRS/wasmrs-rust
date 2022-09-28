@@ -7,7 +7,7 @@ use crate::{
 use super::{Error, FrameCodec};
 use bytes::Bytes;
 
-pub use crate::generated::RequestN;
+use crate::generated::RequestN;
 
 impl RequestN {}
 

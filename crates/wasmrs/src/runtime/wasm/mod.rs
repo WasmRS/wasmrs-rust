@@ -1,18 +1,41 @@
-use std::cell::RefCell;
-use std::future::Future;
+use futures_util::task::LocalSpawnExt;
+use futures_util::Future;
+use std::cell::{RefCell, RefMut, UnsafeCell};
 use std::sync::Arc;
+pub type TaskHandle = ();
 
-pub fn spawn<F>(_task: F)
+pub type BoxFuture<Output> = std::pin::Pin<Box<dyn Future<Output = Output> + 'static>>;
+
+thread_local! {
+  static SPAWNER: UnsafeCell<futures_executor::LocalPool> = UnsafeCell::new(futures_executor::LocalPool::new());
+}
+
+pub fn spawn<Fut>(future: Fut)
 where
-    F: Send + Future<Output = ()> + 'static,
+    Fut: Future<Output = ()> + ConditionallySafe + 'static,
 {
-    todo!();
+    SPAWNER.with(|cell| {
+        #[allow(unsafe_code)]
+        let pool = unsafe { &mut *cell.get() };
+        let spawner = pool.spawner();
+        spawner
+            .spawn_local(future)
+            .expect("Could not spawn process in WASM runtime.");
+    });
+}
+
+pub fn exhaust_pool() {
+    SPAWNER.with(|cell| {
+        #[allow(unsafe_code)]
+        let pool = unsafe { &mut *cell.get() };
+        pool.run_until_stalled();
+    });
 }
 
 use std::collections::HashMap;
 
 #[allow(missing_debug_implementations)]
-pub struct SafeMap<K, V>(RefCell<HashMap<K, V>>)
+pub struct SafeMap<K, V>(UnsafeCell<HashMap<K, V>>)
 where
     K: std::hash::Hash,
     K: Eq;
@@ -23,20 +46,61 @@ where
     K: Eq,
 {
     pub fn remove(&self, key: &K) -> Option<V> {
-        self.0.borrow_mut().remove(key)
+        #[allow(unsafe_code)]
+        unsafe { (&mut *self.0.get()) }.remove(key)
     }
     pub fn insert(&self, key: K, value: V) {
-        self.0.borrow_mut().insert(key, value);
+        #[allow(unsafe_code)]
+        unsafe { (&mut *self.0.get()) }.insert(key, value);
     }
     #[must_use]
     pub fn len(&self) -> usize {
-        self.0.borrow().len()
+        #[allow(unsafe_code)]
+        unsafe { (&mut *self.0.get()) }.len()
     }
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.0.borrow().is_empty()
+        #[allow(unsafe_code)]
+        unsafe { (&mut *self.0.get()) }.is_empty()
+    }
+
+    pub fn entry<'a>(&'a self, key: K) -> (Entry<'a, K, V>) {
+        #[allow(unsafe_code)]
+        let map = unsafe { (&mut *self.0.get()) };
+        let entry = map.entry(key);
+        let val = match entry {
+            std::collections::hash_map::Entry::Occupied(v) => Entry::Occupied(OccupiedEntry(v)),
+            std::collections::hash_map::Entry::Vacant(v) => Entry::Vacant(VacantEntry(v)),
+        };
+        (val)
     }
 }
+
+#[must_use]
+#[allow(missing_debug_implementations)]
+pub enum Entry<'a, K, V> {
+    Occupied(OccupiedEntry<'a, K, V>),
+    Vacant(VacantEntry<'a, K, V>),
+}
+
+#[allow(missing_debug_implementations)]
+pub struct OccupiedEntry<'a, K, V>(std::collections::hash_map::OccupiedEntry<'a, K, V>);
+
+impl<'a, K, V> OccupiedEntry<'a, K, V>
+where
+    K: Eq,
+    K: std::hash::Hash,
+{
+    pub fn get(&self) -> &V {
+        self.0.get()
+    }
+    pub fn remove(mut self) -> V {
+        self.0.remove()
+    }
+}
+
+#[allow(missing_debug_implementations)]
+pub struct VacantEntry<'a, K, V>(std::collections::hash_map::VacantEntry<'a, K, V>);
 
 impl<K, V> Default for SafeMap<K, V>
 where

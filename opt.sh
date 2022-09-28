@@ -1,5 +1,7 @@
 #!/bin/bash
 
 mkdir -p build
-wasm-opt --strip-debug -Oz build/wasmrs_component.wasm -o build/wasmrs_component.opt.wasm
+for wasm in build/req*.wasm; do
+  wasm-opt --strip-debug -Oz $wasm -o build/opt.$(basename $wasm)
+done
 ls -lh build/*.wasm

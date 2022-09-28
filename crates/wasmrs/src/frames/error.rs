@@ -8,7 +8,7 @@ use crate::{
 
 use super::{Error, FrameCodec};
 
-pub use crate::generated::ErrorFrame;
+use crate::generated::ErrorFrame;
 
 impl ErrorFrame {}
 

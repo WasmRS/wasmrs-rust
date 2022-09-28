@@ -1,18 +1,15 @@
-use futures_util::stream::select_all;
-use futures_util::StreamExt;
-
-use wasmrs::flux::{FluxBox, FluxChannel};
-use wasmrs_codec::messagepack::{deserialize, serialize};
+use wasmrs_guest::select_all;
+use wasmrs_guest::StreamExt;
 
 use crate::guest::*;
 
 #[derive()]
 pub(crate) struct HelloInputs {
-    pub(crate) msg: FluxBox<String, ()>,
+    pub(crate) msg: FluxStream<String, PayloadError>,
 }
 
 pub(crate) struct HelloOutputs {
-    pub(crate) msg: FluxChannel<String, ()>,
+    pub(crate) msg: FluxChannel<String, PayloadError>,
 }
 
 pub(crate) struct Hello {
@@ -23,32 +20,35 @@ pub(crate) struct Hello {
 impl Process for Hello {
     fn start(input_stream: IncomingStream) -> ProcessReturnValue {
         // generated
-        let hello_msg_channel = FluxChannel::<String, ()>::new();
-        let hello_msg_stream = hello_msg_channel.take_receiver().unwrap();
+        let hello_msg_channel = FluxChannel::<String, PayloadError>::new();
+        let hello_msg_stream = hello_msg_channel.observer().unwrap();
 
         spawn(async move {
             while let Ok(Some(Ok(payload))) = input_stream.recv().await {
-                let result = match payload.metadata.namespace.as_str() {
-                    "greeting" => match deserialize(&payload.data) {
-                        Ok(v) => hello_msg_channel.send(v),
-                        Err(_) => hello_msg_channel.error(()),
-                    },
-                    x => Err(wasmrs::Error::PortNotFound(x.to_owned())),
-                };
+                #[allow(clippy::single_match)]
+                match payload.metadata.namespace.as_str() {
+                    "greeting" => {
+                        hello_msg_channel
+                            .send_result(deserialize(&payload.data).map_err(|e| e.into()));
+                    }
+                    _ => {
+                        // how to handle errors?
+                    }
+                }
             }
         });
         let output_stream = OutgoingStream::new();
-        let output_hello_msg_channel = FluxChannel::<String, ()>::new();
+        let output_hello_msg_channel = FluxChannel::<String, PayloadError>::new();
         let output_hello_msg_stream = output_hello_msg_channel
-            .take_receiver()
+            .observer()
             .unwrap()
-            .map(|v| serialize(&v.unwrap()).unwrap());
+            .map(|v| v.and_then(|v| Ok(serialize(&v)?)));
 
         let inner = output_stream.clone();
         spawn(async move {
             let mut futures = select_all(vec![output_hello_msg_stream]);
             while let Some(bytes) = futures.next().await {
-                inner.send(bytes.into());
+                inner.send_result(bytes.map(|b| Payload::new_optional(None, Some(Bytes::from(b)))));
             }
         });
 

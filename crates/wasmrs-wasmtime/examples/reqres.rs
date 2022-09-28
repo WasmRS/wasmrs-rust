@@ -8,9 +8,7 @@ use wasmrs_wasmtime::WasmtimeEngineProviderBuilder;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
-    let module_bytes = include_bytes!("../../../build/wasmrs_component.wasm");
-    // let module_bytes = include_bytes!("../../../target/wasm32-wasi/release/wasmrs_component.wasm");
-    // let module_bytes = include_bytes!("../../../build/wasmrs_component.wasm");
+    let module_bytes = include_bytes!("../../../build/reqres_component.wasm");
     let engine = WasmtimeEngineProviderBuilder::new(module_bytes)
         .wasi_params(WasiParams::default())
         .build()?;

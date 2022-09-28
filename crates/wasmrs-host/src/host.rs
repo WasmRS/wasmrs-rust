@@ -1,8 +1,10 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
+use wasmrs::flux::{FluxChannel, FluxStream};
 use wasmrs::fragmentation::Splitter;
-use wasmrs::{Frame, Handler, Payload, PayloadError, SocketManager};
+use wasmrs::runtime::{spawn, Receiver};
+use wasmrs::{Frame, Handler, Payload, PayloadError, RSocket, SocketManager};
 
 use crate::context::{EngineProvider, SharedContext};
 
@@ -28,11 +30,45 @@ impl Host {
     }
 
     pub fn new_context(&self) -> Result<CallContext> {
-        let state = Arc::new(SocketManager::new());
+        let mut manager = SocketManager::new(HostServer {});
+        let rx = manager.take_rx().unwrap();
+        let state = Arc::new(manager);
 
         let context = self.engine.borrow().new_context(state.clone())?;
+        spawn_writer(rx, context.clone());
 
         CallContext::new(self.mtu, context, state)
+    }
+}
+
+fn spawn_writer(mut rx: Receiver<Frame>, context: SharedContext) {
+    spawn(async move {
+        while let Some(frame) = rx.recv().await {
+            let _ = context.write_frame(frame.stream_id(), frame);
+        }
+    });
+}
+
+struct HostServer {}
+
+impl RSocket for HostServer {
+    fn fire_and_forget(&self, _req: Payload) -> FluxStream<(), PayloadError> {
+        todo!()
+    }
+
+    fn request_response(&self, _payload: Payload) -> FluxStream<Payload, PayloadError> {
+        todo!();
+    }
+
+    fn request_stream(&self, _req: Payload) -> FluxStream<Payload, PayloadError> {
+        todo!()
+    }
+
+    fn request_channel(
+        &self,
+        _reqs: FluxChannel<Payload, PayloadError>,
+    ) -> FluxStream<Payload, PayloadError> {
+        todo!()
     }
 }
 
@@ -40,7 +76,7 @@ impl Host {
 pub struct CallContext {
     context: SharedContext,
     state: Arc<SocketManager>,
-    splitter: Option<Splitter>,
+    _splitter: Option<Splitter>,
 }
 
 impl std::fmt::Debug for CallContext {
@@ -63,64 +99,47 @@ impl CallContext {
         Ok(Self {
             context,
             state,
-            splitter,
+            _splitter: splitter,
         })
     }
 
     pub async fn request_response(&mut self, payload: Payload) -> Result<Option<Payload>> {
         let (tx, rx) =
             tokio::sync::oneshot::channel::<std::result::Result<Option<Payload>, PayloadError>>();
+
         let handler = Handler::ReqRR(tx);
         let stream_id = self.state.new_stream(handler);
 
-        send_request_response_payload(self.context.clone(), self.splitter, stream_id, payload);
+        let sending = Frame::new_request_response(stream_id, payload, Frame::FLAG_FOLLOW, 0);
+        let _ = self.context.write_frame(stream_id, sending);
 
         match rx.await {
             Ok(v) => Ok(v?),
             Err(e) => Err(wasmrs::Error::RequestResponse(e.to_string()).into()),
         }
     }
-}
 
-fn send_request_response_payload(
-    context: SharedContext,
-    splitter: Option<Splitter>,
-    stream_id: u32,
-    payload: Payload,
-) {
-    match splitter {
-        None => {
-            let sending = Frame::new_request_response(stream_id, payload, Frame::FLAG_FOLLOW, 0);
-            let _ = context.write_frame(stream_id, sending);
-        }
-        Some(sp) => {
-            let mut cuts: usize = 0;
-            let mut prev: Option<Payload> = None;
-            for next in sp.cut(payload, 0) {
-                if let Some(cur) = prev.take() {
-                    let sending = if cuts == 1 {
-                        // make first frame as request_response.
-                        Frame::new_request_response(stream_id, cur, Frame::FLAG_FOLLOW, 0)
-                    } else {
-                        // make other frames as payload.
-                        Frame::new_payload(stream_id, cur, Frame::FLAG_FOLLOW)
-                    };
-                    if context.write_frame(stream_id, sending).is_err() {
-                        return;
-                    }
-                }
-                prev = Some(next);
-                cuts += 1;
-            }
+    #[allow(clippy::unused_async)]
+    pub async fn request_stream(
+        &mut self,
+        input: Payload,
+    ) -> Result<FluxStream<Payload, PayloadError>> {
+        let flux = FluxChannel::new();
+        let output = flux.observer().unwrap();
 
-            let sending = if cuts == 0 {
-                Frame::new_request_response(stream_id, Payload::empty(), 0, 0)
-            } else if cuts == 1 {
-                Frame::new_request_response(stream_id, prev.unwrap_or_default(), 0, 0)
-            } else {
-                Frame::new_payload(stream_id, prev.unwrap_or_default(), 0)
-            };
-            let _ = context.write_frame(stream_id, sending);
-        }
+        let handler = Handler::ReqRC(flux);
+        let stream_id = self.state.new_stream(handler);
+
+        let sending = Frame::new_request_stream(stream_id, input, 0, 0);
+        let _ = self.context.write_frame(stream_id, sending);
+        Ok(output)
+    }
+
+    #[allow(clippy::unused_async)]
+    pub async fn request_channel(
+        &mut self,
+        _payload: FluxChannel<Payload, Box<dyn std::error::Error + Send + Sync>>,
+    ) -> Result<Option<Payload>> {
+        todo!()
     }
 }

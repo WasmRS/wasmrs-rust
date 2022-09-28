@@ -77,6 +77,7 @@ impl Iterator for SplitterIter {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<Payload> for Joiner {
     fn into(self) -> Payload {
         let mut data_buff = BytesMut::new();

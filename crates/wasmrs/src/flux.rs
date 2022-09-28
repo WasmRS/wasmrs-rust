@@ -1,17 +1,15 @@
-mod signal;
+pub(crate) mod signal;
 pub use signal::*;
 mod observer;
-use futures_core::Future;
 pub use observer::*;
 use std::{pin::Pin, task::Poll};
 
-use futures_core::Stream;
+use futures::Stream;
 
-type FutureResult<Item, Err> =
-    Pin<Box<dyn Future<Output = Result<Option<Result<Item, Err>>, Error>>>>;
+type FutureResult<Item, Err> = runtime::BoxFuture<Result<Option<Result<Item, Err>>, Error>>;
 
 use crate::{
-    runtime::{channel, ConditionallySafe, OptionalMut, Receiver, Sender},
+    runtime::{self, channel, ConditionallySafe, OptionalMut, Receiver, Sender},
     Error,
 };
 
@@ -31,7 +29,7 @@ where
     Item: ConditionallySafe,
     Err: ConditionallySafe,
 {
-    tx: Sender<Item, Err>,
+    tx: Sender<Signal<Item, Err>>,
     rx: FluxStream<Item, Err>,
 }
 
@@ -56,6 +54,20 @@ where
         }
     }
 
+    #[must_use]
+    pub fn is_closed(&self) -> bool {
+        self.tx.is_closed()
+    }
+
+    pub fn send_result(&self, result: Result<Item, Err>) -> Result<(), Error> {
+        self.tx
+            .send(match result {
+                Ok(ok) => Signal::Ok(ok),
+                Err(err) => Signal::Err(err),
+            })
+            .map_err(|_| Error::SendFailed(0))
+    }
+
     pub fn send(&self, item: Item) -> Result<(), Error> {
         self.tx
             .send(Signal::Ok(item))
@@ -72,15 +84,6 @@ where
         let _ = self.tx.send(Signal::Complete);
     }
 
-    // #[cfg(target_family = "wasm")]
-    // #[allow(clippy::type_complexity)]
-    // #[must_use]
-    // pub fn recv(&self) -> FutureResult<Item, Err> {
-    //     let val = self.rx.recv();
-    //     Box::pin(async move { val.await })
-    // }
-
-    // #[cfg(not(target_family = "wasm"))]
     #[must_use]
     pub fn recv(&self) -> FutureResult<Item, Err>
     where
@@ -91,11 +94,8 @@ where
         Box::pin(async move { val.await })
     }
 
-    pub fn take_receiver(&self) -> Result<Pin<Box<FluxStream<Item, Err>>>, Error> {
-        self.rx
-            .take()
-            .map(Box::pin)
-            .ok_or(Error::ReceiverAlreadyGone)
+    pub fn observer(&self) -> Result<FluxStream<Item, Err>, Error> {
+        self.rx.eject().ok_or(Error::ReceiverAlreadyGone)
     }
 
     #[must_use]
@@ -149,7 +149,7 @@ where
     Item: ConditionallySafe,
     Err: ConditionallySafe,
 {
-    rx: OptionalMut<Receiver<Item, Err>>,
+    rx: OptionalMut<Receiver<Signal<Item, Err>>>,
 }
 
 impl<Item, Err> Clone for FluxStream<Item, Err>
@@ -176,7 +176,7 @@ where
     Item: ConditionallySafe,
     Err: ConditionallySafe,
 {
-    pub fn new(rx: Receiver<Item, Err>) -> Self {
+    pub fn new(rx: Receiver<Signal<Item, Err>>) -> Self {
         Self {
             rx: OptionalMut::new(rx),
         }
@@ -204,8 +204,8 @@ where
     #[must_use]
     pub fn recv(&self) -> FutureResult<Item, Err>
     where
-        Err: 'static,
-        Item: 'static,
+        Err: ConditionallySafe,
+        Item: ConditionallySafe,
     {
         let root_rx = self.rx.clone();
         let opt = root_rx.take();
@@ -213,7 +213,7 @@ where
             match opt {
                 Some(mut rx) => {
                     let signal = rx.recv().await;
-                    let _ = root_rx.insert(rx);
+                    root_rx.insert(rx);
                     Ok(signal_into_result(signal))
                 }
                 None => Err(Error::RecvFailed(0)),
@@ -226,7 +226,7 @@ where
         let opt = self.rx.take();
         opt.map_or(std::task::Poll::Ready(None), |mut rx| {
             let poll = rx.poll_recv(cx);
-            let _ = self.rx.insert(rx);
+            self.rx.insert(rx);
             match poll {
                 Poll::Ready(Some(Signal::Complete)) => Poll::Ready(None),
                 Poll::Ready(Some(Signal::Ok(v))) => Poll::Ready(Some(Ok(v))),
@@ -237,26 +237,8 @@ where
         })
     }
 
-    #[cfg(feature = "async-channel")]
-    pub fn poll_recv(&self, cx: &mut std::task::Context<'_>) -> Poll<Option<Result<Item, Err>>> {
-        let opt = self.rx.lock().take();
-        opt.map_or(std::task::Poll::Ready(None), |mut rx| {
-            let result = rx.try_recv();
-            self.rx.lock().insert(rx);
-
-            match result {
-                Ok(s) => match s {
-                    Signal::Ok(v) => Poll::Ready(Some(Ok(v))),
-                    Signal::Err(v) => Poll::Ready(Some(Err(v))),
-                    Signal::Complete => Poll::Ready(None),
-                },
-                Err(e) => Poll::Ready(None),
-            }
-        })
-    }
-
     #[must_use]
-    pub fn take(&self) -> Option<Self> {
+    pub fn eject(&self) -> Option<Self> {
         self.rx.take().map(|inner| Self {
             rx: OptionalMut::new(inner),
         })
@@ -275,6 +257,16 @@ where
         cx: &mut std::task::Context<'_>,
     ) -> Poll<Option<Self::Item>> {
         self.poll_recv(cx)
+    }
+}
+
+impl<Item, Err> From<FluxStream<Item, Err>> for FluxBox<Item, Err>
+where
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
+{
+    fn from(f: FluxStream<Item, Err>) -> Self {
+        Box::pin(f)
     }
 }
 
@@ -302,11 +294,11 @@ mod test {
         flux.send(1)?;
         let value = recv_flux(flux.clone_box()).await;
         assert_eq!(value, Some(Ok(1)));
-        let stream = flux.take_receiver().unwrap();
+        let stream = flux.observer().unwrap();
         flux.send(2)?;
-        let value = recv_flux(stream).await;
+        let value = recv_flux(stream.into()).await;
         assert_eq!(value, Some(Ok(2)));
-        let stream = flux.take_receiver();
+        let stream = flux.observer();
         assert!(stream.is_err());
         Ok(())
     }

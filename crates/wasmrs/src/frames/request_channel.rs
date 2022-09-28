@@ -50,8 +50,14 @@ impl FrameCodec<RequestChannel> for RequestChannel {
         self.0.gen_header()
     }
 
-    fn get_flags(&self) -> FrameFlags {
+    fn get_flag(&self) -> FrameFlags {
         self.0.get_flags()
+    }
+}
+
+impl From<RequestChannel> for Payload {
+    fn from(req: RequestChannel) -> Self {
+        req.0.into()
     }
 }
 

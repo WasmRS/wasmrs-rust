@@ -7,7 +7,7 @@ use crate::{
 
 use super::{Error, FrameCodec};
 
-pub use crate::generated::Cancel;
+use crate::generated::Cancel;
 
 impl FrameCodec<Cancel> for Cancel {
     const FRAME_TYPE: FrameType = FrameType::Cancel;

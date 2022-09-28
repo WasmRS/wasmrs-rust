@@ -123,10 +123,10 @@ pub struct Metadata {
 #[cfg_attr(not(target_family = "wasm"), derive(Debug))]
 #[must_use]
 pub enum Frame {
-    PayloadFrame(Box<PayloadFrame>),
-    Cancel(Box<Cancel>),
-    ErrorFrame(Box<ErrorFrame>),
-    RequestN(Box<RequestN>),
+    PayloadFrame(PayloadFrame),
+    Cancel(Cancel),
+    ErrorFrame(ErrorFrame),
+    RequestN(RequestN),
     RequestResponse(RequestResponse),
     RequestFnF(RequestFnF),
     RequestStream(RequestStream),

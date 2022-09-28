@@ -5,6 +5,8 @@ use std::sync::{
 
 use bytes::{BufMut, Bytes, BytesMut};
 
+use crate::Error;
+
 #[must_use]
 pub fn from_u32_bytes(bytes: &[u8]) -> u32 {
     assert!(bytes.len() == 4, "Need 4 bytes to convert to u32");
@@ -42,6 +44,25 @@ pub fn to_u24_bytes(num: u32) -> Bytes {
     num_parts.put(&num.to_be_bytes()[1..4]);
 
     num_parts.freeze()
+}
+
+// Read a string chunk whose length is denoted by a u16 prefix.
+pub fn read_string(start: usize, buffer: &[u8]) -> Result<(String, usize), Error> {
+    let (bytes, len) = read_data(start, buffer)?;
+    Ok((
+        String::from_utf8(bytes).map_err(|_| Error::StringDecode)?,
+        len,
+    ))
+}
+
+// Read a data chunk whose length is denoted by a u16 prefix.
+pub fn read_data(start: usize, buffer: &[u8]) -> Result<(Vec<u8>, usize), Error> {
+    let len_bytes: &mut [u8] = &mut [0_u8; 2];
+    len_bytes.copy_from_slice(&buffer[start..start + 2]);
+    let len = from_u16_bytes(len_bytes) as usize;
+    let mut data_bytes = vec![0_u8; len];
+    data_bytes.copy_from_slice(&buffer[start + 2..start + 2 + len]);
+    Ok((data_bytes, 2 + len))
 }
 
 pub fn read_frame(mut buf: impl std::io::Read) -> std::io::Result<Bytes> {
@@ -88,15 +109,14 @@ pub struct Counter {
 impl Counter {
     #[allow(unused)]
 
-    fn new(value: i64) -> Counter {
+    pub fn new(value: i64) -> Counter {
         Counter {
             inner: Arc::new(AtomicI64::new(value)),
         }
     }
 
-    #[allow(clippy::must_use_candidate)]
-    #[allow(unused)]
-    fn count_down(&self) -> i64 {
+    #[must_use]
+    pub fn count_down(&self) -> i64 {
         self.inner.fetch_add(-1, Ordering::SeqCst) - 1
     }
 }

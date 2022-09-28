@@ -10,59 +10,56 @@ pub mod native;
 #[cfg(not(target_family = "wasm"))]
 pub use native::*;
 
-use crate::{flux::Signal, Error};
+use crate::Error;
 
 #[allow(missing_debug_implementations)]
-pub struct Sender<Item, Err>(tokio::sync::mpsc::UnboundedSender<Signal<Item, Err>>)
+pub struct Sender<Item>(tokio::sync::mpsc::UnboundedSender<Item>)
 where
-    Item: ConditionallySafe,
-    Err: ConditionallySafe;
+    Item: ConditionallySafe;
 
-impl<Item, Err> Clone for Sender<Item, Err>
+impl<Item> Clone for Sender<Item>
 where
     Item: ConditionallySafe,
-    Err: ConditionallySafe,
 {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-#[allow(missing_debug_implementations)]
-pub struct Receiver<Item, Err>(tokio::sync::mpsc::UnboundedReceiver<Signal<Item, Err>>)
+impl<Item> Sender<Item>
 where
     Item: ConditionallySafe,
-    Err: ConditionallySafe;
+{
+    pub(crate) fn send(&self, message: Item) -> Result<(), Error> {
+        self.0.send(message).map_err(|_| Error::SendFailed(0))
+    }
+    pub(crate) fn is_closed(&self) -> bool {
+        self.0.is_closed()
+    }
+}
 
-pub(crate) fn channel<Item, Err>() -> (Sender<Item, Err>, Receiver<Item, Err>)
+#[allow(missing_debug_implementations)]
+pub struct Receiver<Item>(tokio::sync::mpsc::UnboundedReceiver<Item>)
+where
+    Item: ConditionallySafe;
+
+pub(crate) fn channel<Item>() -> (Sender<Item>, Receiver<Item>)
 where
     Item: ConditionallySafe,
-    Err: ConditionallySafe,
 {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
     (Sender(tx), Receiver(rx))
 }
 
-impl<Item, Err> Sender<Item, Err>
+impl<Item> Receiver<Item>
 where
     Item: ConditionallySafe,
-    Err: ConditionallySafe,
 {
-    pub(crate) fn send(&self, message: Signal<Item, Err>) -> Result<(), Error> {
-        self.0.send(message).map_err(|_| Error::SendFailed(0))
-    }
-}
-
-impl<Item, Err> Receiver<Item, Err>
-where
-    Item: ConditionallySafe,
-    Err: ConditionallySafe,
-{
-    pub(crate) async fn recv(&mut self) -> Option<Signal<Item, Err>> {
+    pub async fn recv(&mut self) -> Option<Item> {
         self.0.recv().await
     }
-    pub(crate) fn poll_recv(&mut self, cx: &mut Context) -> Poll<Option<Signal<Item, Err>>> {
+    pub fn poll_recv(&mut self, cx: &mut Context) -> Poll<Option<Item>> {
         self.0.poll_recv(cx)
     }
 }

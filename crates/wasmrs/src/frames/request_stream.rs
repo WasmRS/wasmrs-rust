@@ -49,8 +49,14 @@ impl FrameCodec<RequestStream> for RequestStream {
         self.0.gen_header()
     }
 
-    fn get_flags(&self) -> FrameFlags {
+    fn get_flag(&self) -> FrameFlags {
         self.0.get_flags()
+    }
+}
+
+impl From<RequestStream> for Payload {
+    fn from(req: RequestStream) -> Self {
+        req.0.into()
     }
 }
 

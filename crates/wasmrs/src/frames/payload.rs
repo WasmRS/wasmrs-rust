@@ -1,6 +1,6 @@
 use super::{Error, FrameCodec, RSocketFlags};
 
-pub use crate::generated::PayloadFrame;
+use crate::generated::PayloadFrame;
 use bytes::{BufMut, Bytes, BytesMut};
 
 use crate::{
@@ -98,10 +98,10 @@ impl FrameCodec<PayloadFrame> for PayloadFrame {
     }
 
     fn gen_header(&self) -> FrameHeader {
-        FrameHeader::new(self.stream_id, FrameType::Payload, self.get_flags())
+        FrameHeader::new(self.stream_id, FrameType::Payload, self.get_flag())
     }
 
-    fn get_flags(&self) -> FrameFlags {
+    fn get_flag(&self) -> FrameFlags {
         let mut flags = 0;
         if !self.metadata.is_empty() {
             flags |= Frame::FLAG_METADATA;
@@ -116,6 +116,15 @@ impl FrameCodec<PayloadFrame> for PayloadFrame {
             flags |= Frame::FLAG_FOLLOW;
         }
         flags
+    }
+}
+
+impl From<PayloadFrame> for Payload {
+    fn from(req: PayloadFrame) -> Self {
+        Payload {
+            metadata: Some(req.metadata),
+            data: Some(req.data),
+        }
     }
 }
 
