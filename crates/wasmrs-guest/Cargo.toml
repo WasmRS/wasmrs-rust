@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 wasmrs-codec = { path = "../../crates/wasmrs-codec" }
-wasmrs-ringbuffer = { path = "../../crates/wasmrs-ringbuffer" }
 wasmrs = { path = "../../crates/wasmrs" }
 bytes = { version = "1.2", default-features = false }
 

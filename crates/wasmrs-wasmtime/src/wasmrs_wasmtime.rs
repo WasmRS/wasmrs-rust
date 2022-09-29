@@ -5,7 +5,7 @@ use wasmrs_host::{HostExports, IntoEnumIterator};
 use wasmtime::{AsContext, Caller, FuncType, Linker, Trap, Val, ValType};
 
 use crate::{
-    memory::{get_caller_memory, get_vec_from_memory, get_vec_from_ringbuffer},
+    memory::{get_caller_memory, get_vec_from_memory, read_frame},
     store::ProviderStore,
 };
 
@@ -48,14 +48,13 @@ fn linker_send(
                 "guest calling host"
             );
 
-            let recv_pos = params[0].unwrap_i32() as u32;
+            let read_until = params[0].unwrap_i32() as usize;
             let memory = get_caller_memory(&mut caller);
-            let bytes = get_vec_from_ringbuffer(
+            let bytes = read_frame(
                 caller.as_context(),
                 memory,
-                recv_pos,
-                host.host_buffer().get_start(),
-                host.host_buffer().get_size(),
+                host.host_buffer().get_start() as _,
+                read_until,
             )
             .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
 

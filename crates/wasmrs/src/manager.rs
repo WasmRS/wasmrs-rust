@@ -102,7 +102,6 @@ impl SocketManager {
     }
 
     pub fn process_once(&self, frame: Frame) -> Result<(), Error> {
-        // self.tx.send(frame).map_err(|_| Error::StreamSend)?;
         let stream_id = frame.stream_id();
         let flag = frame.get_flag();
         match frame {

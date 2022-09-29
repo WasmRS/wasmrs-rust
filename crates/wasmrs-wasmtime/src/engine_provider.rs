@@ -124,7 +124,7 @@ impl wasmrs::FrameWriter for WasmtimeCallContext {
     fn write_frame(&mut self, _stream_id: u32, req: Frame) -> wasmrs::Result<()> {
         let bytes = req.encode();
 
-        let read_pos = self.state.guest_buffer().get_pos();
+        let start_pos = 0;
         let buffer_len_bytes = (bytes.len() as u32).to_be_bytes();
         let mut buffer = BytesMut::with_capacity(buffer_len_bytes.len() + bytes.len());
         buffer.put(buffer_len_bytes.as_slice());
@@ -134,14 +134,12 @@ impl wasmrs::FrameWriter for WasmtimeCallContext {
             &mut self.store,
             self.memory,
             &buffer,
-            read_pos,
+            start_pos,
             self.state.guest_buffer().get_start(),
             self.state.guest_buffer().get_size(),
         );
 
-        self.state.guest_buffer().update_pos(written);
-
-        let _call = self.guest_send.call(&mut self.store, read_pos as i32);
+        let _call = self.guest_send.call(&mut self.store, written as i32);
 
         Ok(())
     }

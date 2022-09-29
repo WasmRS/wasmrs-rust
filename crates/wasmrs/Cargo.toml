@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 wasmrs-codec = { path = "../wasmrs-codec" }
-wasmrs-ringbuffer = { path = "../wasmrs-ringbuffer" }
 futures = { version = "0.3", default-features = false }
 bytes = { version = "1.2", default-features = false }
 tokio = { version = "1", features = ["sync"], default-features = false }

@@ -1,6 +1,9 @@
-use std::sync::{
-    atomic::{AtomicI64, AtomicU32, Ordering},
-    Arc,
+use std::{
+    io::Read,
+    sync::{
+        atomic::{AtomicI64, AtomicU32, Ordering},
+        Arc,
+    },
 };
 
 use bytes::{BufMut, Bytes, BytesMut};
@@ -65,7 +68,7 @@ pub fn read_data(start: usize, buffer: &[u8]) -> Result<(Vec<u8>, usize), Error>
     Ok((data_bytes, 2 + len))
 }
 
-pub fn read_frame(mut buf: impl std::io::Read) -> std::io::Result<Bytes> {
+pub fn read_frame(mut buf: impl Read) -> std::io::Result<Bytes> {
     let mut len_bytes = [0u8; 4];
     buf.read_exact(&mut len_bytes)?;
     let len = from_u32_bytes(&len_bytes);
@@ -124,7 +127,6 @@ impl Counter {
 #[cfg(test)]
 mod test {
     use anyhow::Result;
-    use wasmrs_ringbuffer::{RingBuffer, VecRingBuffer};
 
     use crate::read_frame;
 
@@ -132,12 +134,6 @@ mod test {
     fn test_read_frame() -> Result<()> {
         let mut buf: &[u8] = &[0, 0, 0, 4, 1, 2, 3, 4];
         let frame = read_frame(&mut buf)?;
-        assert_eq!(frame, vec![1, 2, 3, 4]);
-
-        let mut rb: VecRingBuffer<u8> = VecRingBuffer::new();
-        rb.write_at(0, [0, 0, 0, 4, 1, 2, 3, 4].to_vec());
-        println!("{:?}", rb.buffer());
-        let frame = read_frame(&mut rb)?;
         assert_eq!(frame, vec![1, 2, 3, 4]);
 
         Ok(())

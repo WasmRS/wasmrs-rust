@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 wasmrs-host = { path = "../wasmrs-host" }
-wasmrs-ringbuffer = { path = "../wasmrs-ringbuffer" }
 wasmrs = { path = "../wasmrs" }
 
 wasmtime = "1.0"

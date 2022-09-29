@@ -2,8 +2,8 @@ pub use wasmrs::runtime::spawn;
 use wasmrs::runtime::{exhaust_pool, Receiver};
 
 use std::cell::RefCell;
+use std::io::{Cursor, Write};
 use std::{cell::UnsafeCell, collections::HashMap, rc::Rc, sync::atomic::Ordering};
-use wasmrs_ringbuffer::{ReadOnlyRingBuffer, RingBuffer, VecRingBuffer};
 
 use std::sync::atomic::AtomicU32;
 pub use wasmrs::{
@@ -29,8 +29,8 @@ pub use wasmrs_codec::messagepack::{deserialize, serialize};
 type Result<T> = std::result::Result<T, Error>;
 
 thread_local! {
-  static GUEST_BUFFER: UnsafeCell<VecRingBuffer<u8>> = UnsafeCell::new(VecRingBuffer::new());
-  static HOST_BUFFER: UnsafeCell<VecRingBuffer<u8>> = UnsafeCell::new(VecRingBuffer::new());
+  static GUEST_BUFFER: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
+  static HOST_BUFFER: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
   static MAX_HOST_FRAME_SIZE: AtomicU32 = AtomicU32::new(128);
   static STREAMS: RefCell<StreamMap> = RefCell::new(StreamMap::new());
   static STREAM_ID: AtomicU32 = AtomicU32::new(2);
@@ -82,7 +82,7 @@ pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u
     let guest_ptr = GUEST_BUFFER.with(|cell| {
         #[allow(unsafe_code)]
         let buffer = unsafe { &mut *cell.get() };
-        buffer.resize(guest_buffer_size as usize, || 0);
+        buffer.resize(guest_buffer_size as usize, 0);
         buffer.as_ptr()
     });
     let rx = MANAGER.with(|cell| {
@@ -97,67 +97,69 @@ pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u
     let host_ptr = HOST_BUFFER.with(|cell| {
         #[allow(unsafe_code)]
         let buffer = unsafe { &mut *cell.get() };
-        buffer.resize(host_buffer_size as usize, || 0);
+        buffer.resize(host_buffer_size as usize, 0);
         buffer.as_ptr()
     });
     MAX_HOST_FRAME_SIZE.with(|cell| cell.store(max_host_frame_len, Ordering::Relaxed));
     #[allow(unsafe_code)]
     unsafe {
-        _host_wasmrs_init(guest_ptr, host_ptr);
+        _host_wasmrs_init(guest_ptr as _, host_ptr as _);
     }
 }
 
 fn spawn_writer(mut rx: Receiver<Frame>) {
     spawn(async move {
         while let Some(frame) = rx.recv().await {
-            send_host_payload(frame.encode());
+            send_host_payload(vec![frame.encode()]);
         }
     });
 }
 
-fn read_frame(read_pos: u32) -> Result<Bytes> {
-    GUEST_BUFFER
-        .with(|cell| {
-            #[allow(unsafe_code)]
-            let mut buff = unsafe { &mut *cell.get() };
-            buff.update_read_pos(read_pos as usize);
-            wasmrs::read_frame(&mut buff)
-        })
-        .map_err(|_| Error::BufferRead)
+fn read_frames(read_until: u32) -> Result<Vec<Bytes>> {
+    GUEST_BUFFER.with(|cell| {
+        #[allow(unsafe_code)]
+        let buff = unsafe { &mut *cell.get() };
+        let mut buff = Cursor::new(buff);
+        let mut frames = Vec::new();
+        while buff.position() < read_until as _ {
+            match wasmrs::read_frame(&mut buff) {
+                Ok(bytes) => frames.push(bytes),
+                Err(_e) => return Err(Error::BufferRead),
+            }
+        }
+        Ok(frames)
+    })
 }
 
 fn send_error_frame(stream_id: u32, code: u32, msg: impl AsRef<str>) {
     let err = Frame::new_error(stream_id, code, msg.as_ref());
     print(msg.as_ref());
-    send_host_payload(err.encode());
+    send_host_payload(vec![err.encode()]);
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
-extern "C" fn __wasmrs_send(read_pos: u32) {
-    println!("in guest: __wasmrs_send");
-    let read_result = read_frame(read_pos);
+extern "C" fn __wasmrs_send(read_until: u32) {
+    println!("in guest: __wasmrs_send({})", read_until);
+    let read_result = read_frames(read_until);
     if read_result.is_err() {
         send_error_frame(0, 0, "Could not read local buffer");
         return;
     }
-    let bytes = read_result.unwrap();
-    println!("got frame: {:?}", bytes);
-    let frame = Frame::decode(bytes);
-
-    if let Err((stream_id, _err)) = frame {
-        send_error_frame(stream_id, 0, "Could not decode frame data");
-        return;
-    }
+    let bytes_list = read_result.unwrap();
 
     MANAGER.with(|cell| {
         let manager = unsafe { &mut *cell.get() };
-        match frame {
-            Ok(frame) => {
-                let _ = manager.process_once(frame);
-            }
-            Err(_e) => {
-                println!("error at handler");
+        for bytes in bytes_list {
+            let frame = Frame::decode(bytes);
+            match frame {
+                Ok(frame) => {
+                    let _ = manager.process_once(frame);
+                }
+                Err(_e) => {
+                    send_error_frame(0, 0, "Could not decode frame data");
+                    continue;
+                }
             }
         }
     });
@@ -165,22 +167,31 @@ extern "C" fn __wasmrs_send(read_pos: u32) {
     exhaust_pool();
 }
 
-fn send_host_payload(payload: Bytes) {
+fn send_host_payload(mut payloads: Vec<Bytes>) -> Vec<Bytes> {
     println!("sending host payload");
     let host_start = HOST_BUFFER.with(|cell| {
         #[allow(unsafe_code)]
         let buff = unsafe { &mut *cell.get() };
-        let start = buff.get_write_pos();
-        let len = payload.len() as u32;
-        buff.write(len.to_be_bytes());
-        buff.write(payload);
-        buff.update_write_pos(4 + len as usize);
-        start
+        let max = buff.capacity();
+        let mut total = 0;
+        let mut buff = Cursor::new(buff);
+        while let Some(payload) = payloads.pop() {
+            let len = payload.len() as u32;
+            if (total + len as usize) > max {
+                payloads.push(payload);
+                break;
+            }
+            buff.write_all(&len.to_be_bytes()).unwrap();
+            buff.write_all(&payload).unwrap();
+            total += 4 + len as usize;
+        }
+        total
     });
     #[allow(unsafe_code)]
     unsafe {
         _host_wasmrs_send(host_start);
     }
+    payloads
 }
 
 pub trait Process {
