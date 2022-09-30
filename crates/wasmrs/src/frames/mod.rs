@@ -10,7 +10,7 @@ pub(crate) mod request_stream;
 
 use crate::{
     generated::{Cancel, ErrorFrame, PayloadFrame, RequestChannel, RequestResponse, RequestStream},
-    read_data, read_string, Error, RequestFnF,
+    read_data, read_string, Error, RequestFnF, RequestN,
 };
 pub use bytes::{BufMut, Bytes, BytesMut};
 pub use payload::FragmentedPayload;
@@ -227,6 +227,10 @@ impl Frame {
 
     pub fn new_cancel(stream_id: u32) -> Frame {
         Frame::Cancel(Cancel { stream_id })
+    }
+
+    pub fn new_request_n(stream_id: u32, n: u32, flags: FrameFlags) -> Frame {
+        Frame::RequestN(RequestN { stream_id, n })
     }
 
     pub fn new_request_response(

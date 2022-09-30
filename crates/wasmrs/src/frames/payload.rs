@@ -64,11 +64,7 @@ impl FrameCodec<PayloadFrame> for PayloadFrame {
     fn decode_frame(header: &FrameHeader, mut buffer: Bytes) -> Result<Self, Error> {
         Self::check_type(header)?;
 
-        let metadata_len = if header.has_metadata() {
-            from_u24_bytes(&buffer.split_to(3)) as usize
-        } else {
-            0
-        };
+        let metadata_len = from_u24_bytes(&buffer.split_to(3)) as usize;
 
         let metadata: Bytes = buffer.split_to(metadata_len);
         let payload: Bytes = buffer;

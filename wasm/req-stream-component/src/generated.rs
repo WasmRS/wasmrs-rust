@@ -5,11 +5,11 @@ use crate::guest::*;
 
 #[derive()]
 pub(crate) struct HelloInputs {
-    pub(crate) msg: FluxStream<String, PayloadError>,
+    pub(crate) msg: FluxReceiver<String, PayloadError>,
 }
 
 pub(crate) struct HelloOutputs {
-    pub(crate) msg: FluxChannel<String, PayloadError>,
+    pub(crate) msg: Flux<String, PayloadError>,
 }
 
 pub(crate) struct Hello {
@@ -20,8 +20,8 @@ pub(crate) struct Hello {
 impl Process for Hello {
     fn start(input_stream: IncomingStream) -> ProcessReturnValue {
         // generated
-        let hello_msg_channel = FluxChannel::<String, PayloadError>::new();
-        let hello_msg_stream = hello_msg_channel.observer().unwrap();
+        let hello_msg_channel = Flux::<String, PayloadError>::new();
+        let hello_msg_stream = hello_msg_channel.split_receiver().unwrap();
 
         spawn(async move {
             while let Ok(Some(Ok(payload))) = input_stream.recv().await {
@@ -38,9 +38,9 @@ impl Process for Hello {
             }
         });
         let output_stream = OutgoingStream::new();
-        let output_hello_msg_channel = FluxChannel::<String, PayloadError>::new();
+        let output_hello_msg_channel = Flux::<String, PayloadError>::new();
         let output_hello_msg_stream = output_hello_msg_channel
-            .observer()
+            .split_receiver()
             .unwrap()
             .map(|v| v.and_then(|v| Ok(serialize(&v)?)));
 
@@ -48,8 +48,10 @@ impl Process for Hello {
         spawn(async move {
             let mut futures = select_all(vec![output_hello_msg_stream]);
             while let Some(bytes) = futures.next().await {
+              println!("Got bytes: {:?}",bytes);
                 inner.send_result(bytes.map(|b| Payload::new_optional(None, Some(Bytes::from(b)))));
             }
+            inner.complete();
         });
 
         spawn(async move {

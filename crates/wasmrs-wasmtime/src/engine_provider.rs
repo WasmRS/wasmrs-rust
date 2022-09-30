@@ -1,6 +1,6 @@
 use bytes::{BufMut, BytesMut};
 use std::sync::Arc;
-use wasmrs::{Frame, SocketManager};
+use wasmrs::{Frame, WasmSocket};
 use wasmrs_host::{EngineProvider, GuestExports, ProviderCallContext, SharedContext, WasiParams};
 use wasmtime::{Engine, Instance, Linker, Memory, Module, Store, TypedFunc};
 
@@ -72,7 +72,7 @@ impl WasmtimeEngineProvider {
 impl EngineProvider for WasmtimeEngineProvider {
     fn new_context(
         &self,
-        state: Arc<SocketManager>,
+        state: Arc<WasmSocket>,
     ) -> std::result::Result<SharedContext, wasmrs_host::errors::Error> {
         let store = new_store(&self.wasi_params, &self.engine)
             .map_err(|e| wasmrs_host::errors::Error::NewContext(e.to_string()))?;
@@ -91,12 +91,12 @@ struct WasmtimeCallContext {
     memory: Memory,
     store: Store<ProviderStore>,
     instance: Instance,
-    state: Arc<SocketManager>,
+    state: Arc<WasmSocket>,
 }
 
 impl WasmtimeCallContext {
     pub(crate) fn new(
-        state: Arc<SocketManager>,
+        state: Arc<WasmSocket>,
         mut linker: Linker<ProviderStore>,
         module: &Module,
         mut store: Store<ProviderStore>,

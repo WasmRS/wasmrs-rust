@@ -78,27 +78,30 @@
 )]
 #![doc = include_str!("../README.md")]
 // TODO REMOVE
-#![allow(clippy::needless_pass_by_value)]
+#![allow(unused, clippy::needless_pass_by_value)]
 
 pub mod error;
 pub mod flux;
 pub mod fragmentation;
 pub mod frames;
 mod generated;
-pub mod manager;
 pub mod runtime;
+pub mod socket;
 mod util;
 
 pub use error::{Error, PayloadError};
-pub use flux::Flux;
+pub use flux::Observable;
 pub use frames::{FragmentedPayload, FrameCodec};
 pub use generated::*;
-pub use manager::*;
+pub use socket::*;
 pub use util::*;
 #[macro_use]
 pub mod macros;
 
-use self::flux::{FluxChannel, FluxStream};
+use self::{
+    flux::{Flux, FluxReceiver},
+    runtime::ConditionallySafe,
+};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -107,16 +110,16 @@ pub trait FrameWriter: Sync + Send {
     fn write_frame(&mut self, stream_id: u32, req: Frame) -> Result<()>;
 }
 
-pub trait RSocket: Sync + Send {
+pub trait RSocket: ConditionallySafe {
     /// Fire and Forget interaction model of RSocket.
-    fn fire_and_forget(&self, payload: Payload) -> FluxStream<(), PayloadError>;
+    fn fire_and_forget(&self, payload: Payload) -> FluxReceiver<(), PayloadError>;
     /// Request-Response interaction model of RSocket.
-    fn request_response(&self, payload: Payload) -> FluxStream<Payload, PayloadError>;
+    fn request_response(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError>;
     /// Request-Stream interaction model of RSocket.
-    fn request_stream(&self, payload: Payload) -> FluxStream<Payload, PayloadError>;
+    fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError>;
     /// Request-Channel interaction model of RSocket.
     fn request_channel(
         &self,
-        stream: FluxChannel<Payload, PayloadError>,
-    ) -> FluxStream<Payload, PayloadError>;
+        stream: FluxReceiver<Payload, PayloadError>,
+    ) -> FluxReceiver<Payload, PayloadError>;
 }

@@ -1,14 +1,12 @@
 pub use wasmrs::runtime::spawn;
-use wasmrs::runtime::{exhaust_pool, Receiver};
+use wasmrs::runtime::{exhaust_pool, UnboundedReceiver};
 
 use std::cell::RefCell;
 use std::io::{Cursor, Write};
 use std::{cell::UnsafeCell, collections::HashMap, rc::Rc, sync::atomic::Ordering};
 
 use std::sync::atomic::AtomicU32;
-pub use wasmrs::{
-    flux::FluxChannel, flux::FluxStream, Flux, Frame, Metadata, Payload, PayloadError,
-};
+pub use wasmrs::{flux::*, Frame, Metadata, Observable, Payload, PayloadError};
 
 pub type GenericError = Box<dyn std::error::Error + Send + 'static>;
 pub type NamespaceMap = HashMap<String, OperationMap>;
@@ -16,8 +14,8 @@ pub type OperationMap = HashMap<String, Rc<ProcessFactory>>;
 pub type StreamMap = HashMap<u32, IncomingStream>;
 pub type ProcessFactory = fn(IncomingStream) -> std::result::Result<OutgoingStream, GenericError>;
 
-pub type IncomingStream = FluxChannel<ParsedPayload, PayloadError>;
-pub type OutgoingStream = FluxChannel<Payload, PayloadError>;
+pub type IncomingStream = Flux<ParsedPayload, PayloadError>;
+pub type OutgoingStream = Flux<Payload, PayloadError>;
 
 use crate::error::Error;
 use crate::server::WasmServer;
@@ -35,7 +33,7 @@ thread_local! {
   static STREAMS: RefCell<StreamMap> = RefCell::new(StreamMap::new());
   static STREAM_ID: AtomicU32 = AtomicU32::new(2);
   pub(crate) static REQUEST_RESPONSE_HANDLERS: UnsafeCell<NamespaceMap> = UnsafeCell::new(NamespaceMap::new());
-  static MANAGER: UnsafeCell<wasmrs::manager::SocketManager> = UnsafeCell::new(wasmrs::manager::SocketManager::new(WasmServer{}));
+  static MANAGER: UnsafeCell<wasmrs::socket::WasmSocket> = UnsafeCell::new(wasmrs::socket::WasmSocket::new(WasmServer{},0));
 }
 
 #[allow(missing_debug_implementations)]
@@ -107,9 +105,13 @@ pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u
     }
 }
 
-fn spawn_writer(mut rx: Receiver<Frame>) {
+fn spawn_writer(mut rx: UnboundedReceiver<Frame>) {
     spawn(async move {
         while let Some(frame) = rx.recv().await {
+            println!(
+                "guest(wasm-server):got frame in processing loop: {:?}",
+                frame.frame_type()
+            );
             send_host_payload(vec![frame.encode()]);
         }
     });

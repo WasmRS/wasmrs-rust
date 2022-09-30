@@ -4,7 +4,7 @@ generates:
     module: "@apexlang/codegen/rust"
     visitorClass: RustBasic
     config:
-      bytes: true
+      bytes: bytes::Bytes
       header:
         - "#![allow(unused_qualifications, missing_copy_implementations,clippy::from_over_into,missing_debug_implementations)]"
       newtype:

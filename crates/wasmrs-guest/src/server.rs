@@ -1,9 +1,6 @@
 use std::{cell::UnsafeCell, rc::Rc};
 
-use wasmrs::{
-    flux::{FluxChannel, FluxStream},
-    flux_try, Payload, PayloadError, RSocket,
-};
+use wasmrs::{flux::*, flux_try, Payload, PayloadError, RSocket};
 
 use crate::{error::Error, NamespaceMap, ProcessFactory};
 
@@ -11,12 +8,13 @@ use crate::{error::Error, NamespaceMap, ProcessFactory};
 pub struct WasmServer {}
 
 impl RSocket for WasmServer {
-    fn fire_and_forget(&self, _req: Payload) -> FluxStream<(), PayloadError> {
+    fn fire_and_forget(&self, _req: Payload) -> FluxReceiver<(), PayloadError> {
         todo!()
     }
 
-    fn request_response(&self, payload: Payload) -> FluxStream<Payload, PayloadError> {
-        let flux = FluxChannel::new();
+    fn request_response(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
+        println!("guest(wasm-server):rsocket:request_response");
+        let flux = Flux::new();
 
         let metadata = flux_try!(payload.parse_metadata());
 
@@ -31,11 +29,12 @@ impl RSocket for WasmServer {
         let _ = flux.send(flux_try!(payload.try_into()));
         flux.complete();
 
-        outgoing.observer().unwrap()
+        outgoing.split_receiver().unwrap()
     }
 
-    fn request_stream(&self, payload: Payload) -> FluxStream<Payload, PayloadError> {
-        let flux = FluxChannel::new();
+    fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
+        println!("guest(wasm-server):rsocket:request_stream");
+        let flux = Flux::new();
 
         let metadata = flux_try!(payload.parse_metadata());
 
@@ -50,13 +49,14 @@ impl RSocket for WasmServer {
         let _ = flux.send(flux_try!(payload.try_into()));
         flux.complete();
 
-        outgoing.observer().unwrap()
+        outgoing.split_receiver().unwrap()
     }
 
     fn request_channel(
         &self,
-        _reqs: FluxChannel<Payload, PayloadError>,
-    ) -> FluxStream<Payload, PayloadError> {
+        _reqs: FluxReceiver<Payload, PayloadError>,
+    ) -> FluxReceiver<Payload, PayloadError> {
+        println!("guest(wasm-server):rsocket:request_channel");
         todo!()
     }
 }

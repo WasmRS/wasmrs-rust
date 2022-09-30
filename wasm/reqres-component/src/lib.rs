@@ -24,6 +24,7 @@ impl Hello {
     async fn task(mut self) -> Result<(), GenericError> {
         // Real user task
         while let Some(Ok(msg)) = self.inputs.msg.next().await {
+            println!("got message in wasm {}", msg);
             self.outputs
                 .msg
                 .send("This is my return message".to_owned())

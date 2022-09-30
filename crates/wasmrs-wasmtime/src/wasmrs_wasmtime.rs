@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use wasmrs::SocketManager;
+use wasmrs::WasmSocket;
 use wasmrs_host::{HostExports, IntoEnumIterator};
 use wasmtime::{AsContext, Caller, FuncType, Linker, Trap, Val, ValType};
 
@@ -11,7 +11,7 @@ use crate::{
 
 pub(crate) fn add_to_linker(
     linker: &mut Linker<ProviderStore>,
-    host: &Arc<SocketManager>,
+    host: &Arc<WasmSocket>,
 ) -> super::Result<()> {
     let module_name = wasmrs_host::HOST_NAMESPACE;
     for export in HostExports::iter() {
@@ -34,7 +34,7 @@ pub(crate) fn add_to_linker(
 }
 
 fn linker_send(
-    host: Arc<SocketManager>,
+    host: Arc<WasmSocket>,
 ) -> (
     FuncType,
     impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
@@ -66,7 +66,7 @@ fn linker_send(
 }
 
 fn linker_init(
-    host: Arc<SocketManager>,
+    host: Arc<WasmSocket>,
 ) -> (
     FuncType,
     impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
@@ -95,7 +95,7 @@ fn linker_init(
 }
 
 fn linker_console_log(
-    host: Arc<SocketManager>,
+    host: Arc<WasmSocket>,
 ) -> (
     FuncType,
     impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,

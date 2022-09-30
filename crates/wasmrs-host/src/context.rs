@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-use wasmrs::{Frame, SocketManager};
+use wasmrs::{Frame, WasmSocket};
 
 type Result<T> = std::result::Result<T, crate::errors::Error>;
 
@@ -31,7 +31,7 @@ pub trait EngineProvider {
         Ok(())
     }
 
-    fn new_context(&self, state: Arc<SocketManager>) -> Result<SharedContext>;
+    fn new_context(&self, state: Arc<WasmSocket>) -> Result<SharedContext>;
 }
 
 pub trait ProviderCallContext: wasmrs::FrameWriter {

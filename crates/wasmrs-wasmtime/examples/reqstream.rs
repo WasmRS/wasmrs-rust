@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use wasmrs::RSocket;
 use wasmrs::{Metadata, Payload};
 use wasmrs_codec::messagepack::*;
 use wasmrs_host::WasiParams;
@@ -26,7 +27,7 @@ async fn main() -> anyhow::Result<()> {
     let payload = Payload::new(mbytes, bytes.into());
     for _ in 0..num {
         println!("Making request stream");
-        let mut stream = context.request_stream(payload.clone()).await?;
+        let mut stream = context.request_stream(payload.clone());
         println!("Request returned");
 
         while let Some(payload) = stream.next().await {
@@ -34,9 +35,9 @@ async fn main() -> anyhow::Result<()> {
             match payload {
                 Ok(p) => {
                     if let Some(data) = p.data {
-                        println!("data=: {:?}", data.to_vec());
-                        // let str: String = deserialize(&data)?;
-                        // println!("Got value: {}", str);
+                        // println!("data=: {:?}", data.to_vec());
+                        let str: String = deserialize(&data)?;
+                        println!("Got value: {}", str);
                     }
                 }
                 Err(e) => {
@@ -44,6 +45,7 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
         }
+        println!("done with stream");
     }
     let end = Instant::now();
     let duration = end - start;
