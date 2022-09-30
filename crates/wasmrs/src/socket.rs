@@ -85,7 +85,6 @@ impl WasmSocket {
     }
 
     pub fn process_once(&self, frame: Frame) -> Result<(), Error> {
-        println!("socket:process_once:{:?}", frame.frame_type());
         let stream_id = frame.stream_id();
         let flag = frame.get_flag();
         match frame {
@@ -124,10 +123,6 @@ impl WasmSocket {
     }
 
     fn on_request_response(&self, stream_id: u32, input: Payload) {
-        println!(
-            "socket:on_request_response:{:?}:{:?}",
-            stream_id, input.data
-        );
         let responder = self.responder.clone();
         let mut tx = self.tx.clone();
         let counter = Counter::new(2);
@@ -161,7 +156,6 @@ impl WasmSocket {
     }
 
     fn on_request_stream(&self, stream_id: u32, _flag: FrameFlags, input: Payload) {
-        println!("socket:on_request_stream:{:?}:{:?}", stream_id, input.data);
         let responder = self.responder.clone();
         let mut tx = self.tx.clone();
         let abort_handles = self.abort_handles.clone();
@@ -170,7 +164,6 @@ impl WasmSocket {
             abort_handles.insert(stream_id, abort_handle);
             let mut payloads = Abortable::new(responder.request_stream(input), abort_registration);
             while let Some(next) = payloads.next().await {
-                println!("socket:got payload from request_stream");
                 match next {
                     Ok(it) => send_payload(&mut tx, stream_id, it, Frame::FLAG_NEXT),
                     Err(e) => send_error(
@@ -189,7 +182,6 @@ impl WasmSocket {
     }
 
     fn on_request_channel(&self, stream_id: u32, _flag: FrameFlags, first: Payload) {
-        println!("socket:on_request_channel:{:?}:{:?}", stream_id, first.data);
         let responder = self.responder.clone();
 
         let tx = self.tx.clone();
@@ -236,14 +228,12 @@ impl WasmSocket {
     fn on_request_fnf(&self, _stream_id: u32, _input: Payload) {}
 
     fn on_payload(&self, stream_id: u32, flag: FrameFlags, input: Payload) {
-        println!("socket:on_payload:{:?}:{:?}", stream_id, input.data);
         let mut tx = self.tx.clone();
         match self.streams.entry(stream_id) {
             Entry::Occupied(o) => {
                 match o.get() {
                     Handler::ReqRR(_) => match o.remove() {
                         Handler::ReqRR(sender) => {
-                            println!("got request_response handler");
                             if flag & Frame::FLAG_NEXT != 0 && sender.send(input).is_err() {
                                 println!("response successful payload for REQUEST_RESPONSE failed: sid={}",stream_id);
                             }
@@ -253,7 +243,6 @@ impl WasmSocket {
                     },
                     Handler::ResRRn(_c) => unreachable!(),
                     Handler::ReqRS(sender) => {
-                        println!("got request stream handler");
                         if flag & Frame::FLAG_NEXT != 0 {
                             if sender.is_closed() {
                                 send_cancel(&mut tx, stream_id);
@@ -270,7 +259,6 @@ impl WasmSocket {
                         }
                     }
                     Handler::ReqRC(sender) => {
-                        println!("got request channel handler");
                         // TODO: support channel
                         if flag & Frame::FLAG_NEXT != 0 {
                             if sender.is_closed() {

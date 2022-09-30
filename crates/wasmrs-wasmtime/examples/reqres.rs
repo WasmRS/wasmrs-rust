@@ -1,5 +1,7 @@
 use std::time::Instant;
 
+use futures::stream::select_all;
+use futures::StreamExt;
 use wasmrs::RSocket;
 use wasmrs::{Metadata, Payload};
 use wasmrs_codec::messagepack::*;
@@ -15,32 +17,28 @@ async fn main() -> anyhow::Result<()> {
         .build()?;
     let host = wasmrs_host::Host::new(engine)?;
     let bytes = serialize("Hello world").unwrap();
-    // let bytes = b"Hello world".to_vec();
-    let mut context = host.new_context()?;
+    let context = host.new_context()?;
     let start = Instant::now();
-    let num = 1;
+    let num = 100000;
     let metadata = Metadata::new("greeting", "sayHello");
     let mbytes = metadata.encode();
     println!("metadata: {:?}", mbytes);
     let payload = Payload::new(mbytes, bytes.into());
+    let mut streams = Vec::new();
     for _ in 0..num {
         let stream = context.request_response(payload.clone());
-
-        if let Some(Ok(payload)) = stream.recv().await? {
-            let data = payload.data.unwrap().to_vec();
-            let str: String = deserialize(&data)?;
-            println!("Got: {}", str);
-        }
+        streams.push(stream);
     }
+    let _results: Vec<_> = select_all(streams).collect().await;
     let end = Instant::now();
     let duration = end - start;
-    // println!(
-    //     "{} took {} ns ({} ops/ms, {} ns/op)",
-    //     num,
-    //     duration.as_nanos(),
-    //     num / duration.as_millis(),
-    //     duration.as_nanos() / (num as u128)
-    // );
+    println!(
+        "{} took {} ns ({} ops/ms, {} ns/op)",
+        num,
+        duration.as_nanos(),
+        num / duration.as_millis(),
+        duration.as_nanos() / (num as u128)
+    );
 
     Ok(())
 }

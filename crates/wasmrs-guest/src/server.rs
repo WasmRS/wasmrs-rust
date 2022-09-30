@@ -13,7 +13,6 @@ impl RSocket for WasmServer {
     }
 
     fn request_response(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
-        println!("guest(wasm-server):rsocket:request_response");
         let flux = Flux::new();
 
         let metadata = flux_try!(payload.parse_metadata());
@@ -33,7 +32,6 @@ impl RSocket for WasmServer {
     }
 
     fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
-        println!("guest(wasm-server):rsocket:request_stream");
         let flux = Flux::new();
 
         let metadata = flux_try!(payload.parse_metadata());
@@ -56,7 +54,6 @@ impl RSocket for WasmServer {
         &self,
         _reqs: FluxReceiver<Payload, PayloadError>,
     ) -> FluxReceiver<Payload, PayloadError> {
-        println!("guest(wasm-server):rsocket:request_channel");
         todo!()
     }
 }

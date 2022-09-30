@@ -23,20 +23,16 @@ fn hello_wrapper(input_stream: IncomingStream) -> Result<OutgoingStream, Generic
 impl Hello {
     async fn task(mut self) -> Result<(), GenericError> {
         // Real user task
-        println!("Starting!");
         let all =
         while let Some(Ok(msg)) = self.inputs.msg.next().await {
-          println!("Sending first");
           let _ = self.outputs
           .msg
           .send("This is my return message".to_owned());
-          println!("Sending second");
           let _ = self.outputs
           .msg
           .send("This is my second return message".to_owned());
 
         }
-        println!("I'm done here");
         Ok(())
     }
 }

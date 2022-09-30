@@ -48,7 +48,6 @@ impl Process for Hello {
         spawn(async move {
             let mut futures = select_all(vec![output_hello_msg_stream]);
             while let Some(bytes) = futures.next().await {
-              println!("Got bytes: {:?}",bytes);
                 inner.send_result(bytes.map(|b| Payload::new_optional(None, Some(Bytes::from(b)))));
             }
             inner.complete();

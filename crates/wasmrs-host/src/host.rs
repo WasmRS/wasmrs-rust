@@ -44,10 +44,6 @@ impl Host {
 fn spawn_writer(mut rx: UnboundedReceiver<Frame>, context: SharedContext) {
     spawn(async move {
         while let Some(frame) = rx.recv().await {
-            println!(
-                "host(client):got frame in processing loop: {:?}",
-                frame.frame_type()
-            );
             let _ = context.write_frame(frame.stream_id(), frame);
         }
     });
@@ -100,12 +96,10 @@ impl RSocket for CallContext {
     }
 
     fn request_response(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
-        println!("host(client):rsocket:request_response");
         self.socket.request_response(payload)
     }
 
     fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
-        println!("host(client):rsocket:request_stream");
         self.socket.request_stream(payload)
     }
 
@@ -113,7 +107,6 @@ impl RSocket for CallContext {
         &self,
         stream: FluxReceiver<Payload, PayloadError>,
     ) -> FluxReceiver<Payload, PayloadError> {
-        println!("host(client):rsocket:request_channel");
         self.socket.request_channel(stream)
     }
 }

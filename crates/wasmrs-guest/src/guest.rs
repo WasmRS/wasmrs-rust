@@ -69,7 +69,6 @@ fn print(msg: impl AsRef<str>) {
 }
 
 pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u32) {
-    println!("in guest: __wasmrs_init");
     let guest_ptr = GUEST_BUFFER.with(|cell| {
         #[allow(unsafe_code)]
         let buffer = unsafe { &mut *cell.get() };
@@ -102,10 +101,6 @@ pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u
 fn spawn_writer(mut rx: UnboundedReceiver<Frame>) {
     spawn(async move {
         while let Some(frame) = rx.recv().await {
-            println!(
-                "guest(wasm-server):got frame in processing loop: {:?}",
-                frame.frame_type()
-            );
             send_host_payload(vec![frame.encode()]);
         }
     });
@@ -136,7 +131,6 @@ fn send_error_frame(stream_id: u32, code: u32, msg: impl AsRef<str>) {
 #[allow(unsafe_code)]
 #[no_mangle]
 extern "C" fn __wasmrs_send(read_until: u32) {
-    println!("in guest: __wasmrs_send({})", read_until);
     let read_result = read_frames(read_until);
     if read_result.is_err() {
         send_error_frame(0, 0, "Could not read local buffer");
@@ -164,7 +158,6 @@ extern "C" fn __wasmrs_send(read_until: u32) {
 }
 
 fn send_host_payload(mut payloads: Vec<Bytes>) -> Vec<Bytes> {
-    println!("sending host payload");
     let host_start = HOST_BUFFER.with(|cell| {
         #[allow(unsafe_code)]
         let buff = unsafe { &mut *cell.get() };
