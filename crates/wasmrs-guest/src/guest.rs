@@ -12,7 +12,7 @@ pub type NamespaceMap = HashMap<String, OperationMap>;
 pub type OperationMap = HashMap<String, Rc<ProcessFactory>>;
 pub type ProcessFactory = fn(IncomingStream) -> std::result::Result<OutgoingStream, GenericError>;
 
-pub type IncomingStream = Flux<ParsedPayload, PayloadError>;
+pub type IncomingStream = FluxReceiver<ParsedPayload, PayloadError>;
 pub type OutgoingStream = Flux<Payload, PayloadError>;
 
 use crate::error::Error;

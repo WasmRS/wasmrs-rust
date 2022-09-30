@@ -1,4 +1,8 @@
 [workspace]
 members = ["crates/*"]
 
-exclude = ["wasm/reqres-component", "wasm/req-stream-component"]
+exclude = [
+  "wasm/reqres-component",
+  "wasm/req-stream-component",
+  "wasm/req-channel-component",
+]

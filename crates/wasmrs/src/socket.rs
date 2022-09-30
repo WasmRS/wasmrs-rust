@@ -114,8 +114,8 @@ impl WasmSocket {
             Frame::ErrorFrame(f) => {
                 self.on_error(stream_id, flag, f.code, f.data);
             }
-            Frame::RequestN(_) => {
-                todo!();
+            Frame::RequestN(f) => {
+                self.on_request_n(stream_id, f.n);
             }
         }
 
@@ -226,6 +226,10 @@ impl WasmSocket {
     }
 
     fn on_request_fnf(&self, _stream_id: u32, _input: Payload) {}
+
+    fn on_request_n(&self, _stream_id: u32, _n: u32) {
+        todo!();
+    }
 
     fn on_payload(&self, stream_id: u32, flag: FrameFlags, input: Payload) {
         let mut tx = self.tx.clone();
@@ -343,20 +347,42 @@ impl RSocket for WasmSocket {
 
     fn request_channel(
         &self,
-        _stream: FluxReceiver<Payload, PayloadError>,
+        mut stream: FluxReceiver<Payload, PayloadError>,
     ) -> FluxReceiver<Payload, PayloadError> {
-        todo!()
-        // let flux = Flux::new();
-        // let output = flux.split_receiver().unwrap();
+        let flux = Flux::new();
+        let output = flux.split_receiver().unwrap();
 
-        // let handler = Handler::ReqRC(flux);
-        // let stream_id = self.next_stream_id();
-        // self.register_handler(stream_id, handler);
+        let handler = Handler::ReqRC(flux);
+        let stream_id = self.next_stream_id();
+        self.register_handler(stream_id, handler);
+        let mut tx = self.tx.clone();
 
-        // let sending = Frame::new_request_channel(stream_id, stream, 0, 0);
-        // self.incoming_tx.send(sending);
+        runtime::spawn(async move {
+            let mut first = true;
+            while let Some(next) = stream.next().await {
+                match next {
+                    Ok(payload) => {
+                        if first {
+                            first = false;
+                            send_channel(&mut tx, stream_id, payload, Frame::FLAG_NEXT);
+                        } else {
+                            send_payload(&mut tx, stream_id, payload, Frame::FLAG_NEXT);
+                        }
+                    }
+                    Err(_e) => send_error(
+                        &mut tx,
+                        Frame::new_error(
+                            stream_id,
+                            ErrorCode::ApplicationError.into(),
+                            "REQUEST_CHANNEL failed",
+                        ),
+                    ),
+                }
+            }
+            send_complete(&mut tx, stream_id, Frame::FLAG_COMPLETE);
+        });
 
-        // output
+        output
     }
 }
 
@@ -367,6 +393,16 @@ fn send_payload(
     flag: FrameFlags,
 ) {
     let sending = Frame::new_payload(stream_id, payload, flag);
+    let _ = tx.send(sending);
+}
+
+fn send_channel(
+    tx: &mut UnboundedSender<Frame>,
+    stream_id: u32,
+    payload: Payload,
+    flag: FrameFlags,
+) {
+    let sending = Frame::new_request_channel(stream_id, payload, flag, Frame::REQUEST_MAX);
     let _ = tx.send(sending);
 }
 

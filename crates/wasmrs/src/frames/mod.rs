@@ -77,6 +77,7 @@ impl Frame {
     pub(crate) const FLAG_COMPLETE: FrameFlags = 1 << 6;
     pub(crate) const FLAG_FOLLOW: FrameFlags = 1 << 7;
     pub(crate) const FLAG_METADATA: FrameFlags = 1 << 8;
+    pub const REQUEST_MAX: u32 = 0x7FFF_FFFF; // 2147483647
 
     pub fn is_followable_or_payload(&self) -> (bool, bool) {
         match &self {
@@ -153,7 +154,9 @@ impl Frame {
             FrameType::RequestChannel => frames::Frame::RequestChannel(
                 frames::RequestChannel::decode_frame(&header, buffer)?,
             ),
-            FrameType::RequestN => todo!(),
+            FrameType::RequestN => {
+                frames::Frame::RequestN(RequestN::decode_frame(&header, buffer)?)
+            }
             FrameType::Cancel => frames::Frame::Cancel(Cancel {
                 stream_id: header.stream_id(),
             }),

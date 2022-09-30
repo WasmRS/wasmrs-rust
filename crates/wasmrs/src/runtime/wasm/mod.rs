@@ -7,25 +7,37 @@ pub type TaskHandle = ();
 pub type BoxFuture<Output> = std::pin::Pin<Box<dyn Future<Output = Output> + 'static>>;
 
 thread_local! {
-  static SPAWNER: UnsafeCell<futures_executor::LocalPool> = UnsafeCell::new(futures_executor::LocalPool::new());
+  static LOCAL_POOL: UnsafeCell<futures_executor::LocalPool> = UnsafeCell::new(futures_executor::LocalPool::new());
+  static SPAWNER: UnsafeCell<Option<futures_executor::LocalSpawner>> = UnsafeCell::new(None);
 }
 
 pub fn spawn<Fut>(future: Fut)
 where
     Fut: Future<Output = ()> + ConditionallySafe + 'static,
 {
-    SPAWNER.with(|cell| {
+    SPAWNER.with(|spawner| {
         #[allow(unsafe_code)]
-        let pool = unsafe { &mut *cell.get() };
-        let spawner = pool.spawner();
-        spawner
-            .spawn_local(future)
-            .expect("Could not spawn process in WASM runtime.");
+        let spawner = unsafe { &mut *spawner.get() };
+        match spawner {
+            Some(spawner) => spawner
+                .spawn_local(future)
+                .expect("Could not spawn process in WASM runtime."),
+            None => {
+                LOCAL_POOL.with(|pool| {
+                    #[allow(unsafe_code)]
+                    let pool = unsafe { &mut *pool.get() };
+                    let s = pool.spawner();
+                    s.spawn_local(future)
+                        .expect("Could not spawn process in WASM runtime.");
+                    spawner.replace(s)
+                });
+            }
+        }
     });
 }
 
 pub fn exhaust_pool() {
-    SPAWNER.with(|cell| {
+    LOCAL_POOL.with(|cell| {
         #[allow(unsafe_code)]
         let pool = unsafe { &mut *cell.get() };
         pool.run_until_stalled();
