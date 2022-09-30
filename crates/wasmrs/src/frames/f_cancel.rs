@@ -5,11 +5,11 @@ use crate::{
     Frame,
 };
 
-use super::{Error, FrameCodec};
+use super::{Error, RSocketFrame};
 
 use crate::generated::Cancel;
 
-impl FrameCodec<Cancel> for Cancel {
+impl RSocketFrame<Cancel> for Cancel {
     const FRAME_TYPE: FrameType = FrameType::Cancel;
 
     fn stream_id(&self) -> u32 {
@@ -39,7 +39,7 @@ impl FrameCodec<Cancel> for Cancel {
 
 #[cfg(test)]
 mod test {
-    use crate::frames::FrameCodec;
+    use crate::frames::RSocketFrame;
 
     use super::*;
     use anyhow::Result;

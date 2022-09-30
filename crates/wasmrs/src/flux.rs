@@ -1,5 +1,4 @@
-use futures::{pin_mut, Stream, StreamExt, TryStreamExt};
-use pin_project_lite::pin_project;
+use futures::Stream;
 use std::sync::atomic::AtomicBool;
 use std::{pin::Pin, task::Poll};
 
@@ -68,16 +67,6 @@ where
     }
 }
 
-impl<Item, Err> From<Box<dyn Stream<Item = Result<Item, Err>>>> for Flux<Item, Err>
-where
-    Item: ConditionallySafe,
-    Err: ConditionallySafe,
-{
-    fn from(stream: Box<dyn Stream<Item = Result<Item, Err>>>) -> Self {
-        todo!()
-    }
-}
-
 impl<Item, Err> Observable<Item, Err> for Flux<Item, Err>
 where
     Item: ConditionallySafe,
@@ -101,7 +90,7 @@ where
     fn complete(&self) {
         self.complete
             .store(false, std::sync::atomic::Ordering::SeqCst);
-        self.send_signal(Signal::Complete);
+        let _ = self.send_signal(Signal::Complete);
     }
 }
 

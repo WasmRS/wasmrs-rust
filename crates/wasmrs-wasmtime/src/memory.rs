@@ -28,7 +28,7 @@ pub(crate) fn read_frame<'a, T: 'a>(
 ) -> super::Result<Bytes> {
     let data = mem.data(store);
     let buff = &data[ptr..(ptr + len)];
-    wasmrs::read_frame(buff).map_err(|_| Error::GuestMemory)
+    wasmrs::util::read_frame(buff).map_err(|_| Error::GuestMemory)
 }
 
 pub(crate) fn write_bytes_to_memory(

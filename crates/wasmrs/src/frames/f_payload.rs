@@ -1,4 +1,4 @@
-use super::{Error, FrameCodec, RSocketFlags};
+use super::{Error, RSocketFlags, RSocketFrame};
 
 use crate::generated::PayloadFrame;
 use bytes::{BufMut, Bytes, BytesMut};
@@ -9,35 +9,8 @@ use crate::{
     Frame, Payload,
 };
 
-#[derive()]
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
-#[allow(missing_debug_implementations)]
-#[must_use]
-pub struct FragmentedPayload {
-    pub frame_type: FrameType,
-    pub initial_n: u32,
-    pub metadata: BytesMut,
-    pub data: BytesMut,
-}
-
-impl FragmentedPayload {
-    pub fn new(frame_type: FrameType, payload: Payload) -> Self {
-        let mut metadata = BytesMut::new();
-        metadata.put(payload.metadata.unwrap_or_default());
-        let mut data = BytesMut::new();
-        data.put(payload.data.unwrap_or_default());
-
-        Self {
-            frame_type,
-            initial_n: 0,
-            metadata,
-            data,
-        }
-    }
-}
-
 impl PayloadFrame {
-    pub fn from_payload(stream_id: u32, payload: Payload, flags: FrameFlags) -> Self {
+    pub(crate) fn from_payload(stream_id: u32, payload: Payload, flags: FrameFlags) -> Self {
         Self {
             stream_id,
             metadata: payload.metadata.unwrap_or_default(),
@@ -49,7 +22,7 @@ impl PayloadFrame {
     }
 }
 
-impl FrameCodec<PayloadFrame> for PayloadFrame {
+impl RSocketFrame<PayloadFrame> for PayloadFrame {
     const FRAME_TYPE: FrameType = FrameType::Payload;
 
     fn stream_id(&self) -> u32 {
@@ -65,7 +38,6 @@ impl FrameCodec<PayloadFrame> for PayloadFrame {
         Self::check_type(header)?;
 
         let metadata_len = from_u24_bytes(&buffer.split_to(3)) as usize;
-
         let metadata: Bytes = buffer.split_to(metadata_len);
         let payload: Bytes = buffer;
 
@@ -126,7 +98,7 @@ impl From<PayloadFrame> for Payload {
 
 #[cfg(test)]
 mod test {
-    use crate::frames::FrameCodec;
+    use crate::frames::RSocketFrame;
 
     use super::*;
     use anyhow::Result;

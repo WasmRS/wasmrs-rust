@@ -3,11 +3,11 @@ use crate::{
     Frame, FrameFlags, Payload, RequestPayload,
 };
 
-use super::{Error, FrameCodec, RequestChannel};
+use super::{Error, RSocketFrame, RequestResponse};
 use bytes::Bytes;
 
-impl RequestChannel {
-    pub fn from_payload(
+impl RequestResponse {
+    pub(crate) fn from_payload(
         stream_id: u32,
         payload: Payload,
         flags: FrameFlags,
@@ -23,8 +23,8 @@ impl RequestChannel {
     }
 }
 
-impl FrameCodec<RequestChannel> for RequestChannel {
-    const FRAME_TYPE: FrameType = FrameType::RequestChannel;
+impl RSocketFrame<RequestResponse> for RequestResponse {
+    const FRAME_TYPE: FrameType = FrameType::RequestResponse;
 
     fn stream_id(&self) -> u32 {
         self.0.stream_id
@@ -47,7 +47,11 @@ impl FrameCodec<RequestChannel> for RequestChannel {
     }
 
     fn gen_header(&self) -> FrameHeader {
-        self.0.gen_header()
+        FrameHeader::new(
+            self.0.stream_id,
+            FrameType::RequestResponse,
+            Frame::FLAG_METADATA,
+        )
     }
 
     fn get_flag(&self) -> FrameFlags {
@@ -55,41 +59,42 @@ impl FrameCodec<RequestChannel> for RequestChannel {
     }
 }
 
-impl From<RequestChannel> for Payload {
-    fn from(req: RequestChannel) -> Self {
+impl From<RequestResponse> for Payload {
+    fn from(req: RequestResponse) -> Self {
         req.0.into()
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{frames::FrameCodec, generated::RequestPayload};
+    use crate::{frames::RSocketFrame, generated::RequestPayload};
 
     use super::*;
     use anyhow::Result;
 
-    static BYTES: &[u8] = include_bytes!("../../testdata/frame.request_channel.bin");
+    static BYTES: &[u8] = include_bytes!("../../testdata/frame.request_response.bin");
 
     #[test]
     fn test_decode() -> Result<()> {
         println!("RAW: {:?}", BYTES);
-        let p = RequestChannel::decode_all(BYTES.into())?;
+        let p = RequestResponse::decode_all(BYTES.into())?;
         assert_eq!(p.0.stream_id, 1234);
+        assert_eq!(p.0.data, Bytes::from(b"hello".as_slice()));
         Ok(())
     }
 
     #[test]
     fn test_encode() -> Result<()> {
         let payload = RequestPayload {
-            frame_type: FrameType::RequestChannel,
+            frame_type: FrameType::RequestResponse,
             stream_id: 1234,
             metadata: Bytes::from("hello"),
             data: Bytes::from("hello"),
             follows: true,
             complete: true,
-            initial_n: 0,
+            initial_n: 1,
         };
-        let this = RequestChannel(payload);
+        let this = RequestResponse(payload);
         let encoded = this.encode();
         assert_eq!(encoded, Bytes::from(BYTES));
         Ok(())

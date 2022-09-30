@@ -1,4 +1,4 @@
-use super::{Error, FrameCodec, RequestStream};
+use super::{Error, RSocketFrame, RequestStream};
 use crate::{
     generated::{FrameHeader, FrameType},
     Frame, FrameFlags, Payload, RequestPayload,
@@ -6,7 +6,7 @@ use crate::{
 use bytes::Bytes;
 
 impl RequestStream {
-    pub fn from_payload(
+    pub(crate) fn from_payload(
         stream_id: u32,
         payload: Payload,
         flags: FrameFlags,
@@ -22,7 +22,7 @@ impl RequestStream {
     }
 }
 
-impl FrameCodec<RequestStream> for RequestStream {
+impl RSocketFrame<RequestStream> for RequestStream {
     const FRAME_TYPE: FrameType = FrameType::RequestStream;
 
     fn stream_id(&self) -> u32 {
@@ -62,7 +62,7 @@ impl From<RequestStream> for Payload {
 
 #[cfg(test)]
 mod test {
-    use crate::{frames::FrameCodec, generated::RequestPayload};
+    use crate::{frames::RSocketFrame, generated::RequestPayload};
 
     use super::*;
     use anyhow::Result;

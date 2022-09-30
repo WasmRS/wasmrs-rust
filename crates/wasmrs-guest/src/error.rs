@@ -2,11 +2,8 @@
 pub enum Error {
     NoHandler,
     HandlerFail(String),
-    StringDecode,
     BufferRead,
     Internal(wasmrs::Error),
-    PortNotFound(String),
-    MetadataNotFound,
     Codec(String),
 }
 

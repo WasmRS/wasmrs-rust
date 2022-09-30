@@ -6,13 +6,13 @@ use crate::{
     Frame,
 };
 
-use super::{Error, FrameCodec};
+use super::{Error, RSocketFrame};
 
 use crate::generated::ErrorFrame;
 
 impl ErrorFrame {}
 
-impl FrameCodec<ErrorFrame> for ErrorFrame {
+impl RSocketFrame<ErrorFrame> for ErrorFrame {
     const FRAME_TYPE: FrameType = FrameType::Err;
 
     fn stream_id(&self) -> u32 {
@@ -52,7 +52,7 @@ impl FrameCodec<ErrorFrame> for ErrorFrame {
 
 #[cfg(test)]
 mod test {
-    use crate::frames::FrameCodec;
+    use crate::frames::RSocketFrame;
 
     use super::*;
     use anyhow::Result;

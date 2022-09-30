@@ -1,17 +1,15 @@
 pub use wasmrs::runtime::spawn;
 use wasmrs::runtime::{exhaust_pool, UnboundedReceiver};
 
-use std::cell::RefCell;
 use std::io::{Cursor, Write};
 use std::{cell::UnsafeCell, collections::HashMap, rc::Rc, sync::atomic::Ordering};
 
 use std::sync::atomic::AtomicU32;
-pub use wasmrs::{flux::*, Frame, Metadata, Observable, Payload, PayloadError};
+pub use wasmrs::{flux::*, Frame, Metadata, Payload, PayloadError};
 
 pub type GenericError = Box<dyn std::error::Error + Send + 'static>;
 pub type NamespaceMap = HashMap<String, OperationMap>;
 pub type OperationMap = HashMap<String, Rc<ProcessFactory>>;
-pub type StreamMap = HashMap<u32, IncomingStream>;
 pub type ProcessFactory = fn(IncomingStream) -> std::result::Result<OutgoingStream, GenericError>;
 
 pub type IncomingStream = Flux<ParsedPayload, PayloadError>;
@@ -30,10 +28,8 @@ thread_local! {
   static GUEST_BUFFER: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
   static HOST_BUFFER: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
   static MAX_HOST_FRAME_SIZE: AtomicU32 = AtomicU32::new(128);
-  static STREAMS: RefCell<StreamMap> = RefCell::new(StreamMap::new());
-  static STREAM_ID: AtomicU32 = AtomicU32::new(2);
   pub(crate) static REQUEST_RESPONSE_HANDLERS: UnsafeCell<NamespaceMap> = UnsafeCell::new(NamespaceMap::new());
-  static MANAGER: UnsafeCell<wasmrs::socket::WasmSocket> = UnsafeCell::new(wasmrs::socket::WasmSocket::new(WasmServer{},0));
+  static MANAGER: UnsafeCell<wasmrs::WasmSocket> = UnsafeCell::new(wasmrs::WasmSocket::new(WasmServer{},0));
 }
 
 #[allow(missing_debug_implementations)]
@@ -55,12 +51,9 @@ impl TryFrom<Payload> for ParsedPayload {
 
 #[link(wasm_import_module = "wasmrs")]
 extern "C" {
-    /// The host's exported __console_log function.
     pub(crate) fn __console_log(ptr: *const u8, len: usize);
-    /// The host's exported __host_call function.
     #[link_name = "__init_buffers"]
     pub(crate) fn _host_wasmrs_init(guest_buffer_ptr: usize, host_buffer_ptr: usize);
-    /// The host's exported __host_response function.
     #[link_name = "__send"]
     pub(crate) fn _host_wasmrs_send(recv_ptr: usize);
 }
@@ -90,8 +83,6 @@ pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u
         manager.guest_buffer().update_size(guest_buffer_size);
         manager.take_rx().unwrap()
     });
-    spawn_writer(rx);
-
     let host_ptr = HOST_BUFFER.with(|cell| {
         #[allow(unsafe_code)]
         let buffer = unsafe { &mut *cell.get() };
@@ -99,6 +90,9 @@ pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u
         buffer.as_ptr()
     });
     MAX_HOST_FRAME_SIZE.with(|cell| cell.store(max_host_frame_len, Ordering::Relaxed));
+
+    spawn_writer(rx);
+
     #[allow(unsafe_code)]
     unsafe {
         _host_wasmrs_init(guest_ptr as _, host_ptr as _);
@@ -124,7 +118,7 @@ fn read_frames(read_until: u32) -> Result<Vec<Bytes>> {
         let mut buff = Cursor::new(buff);
         let mut frames = Vec::new();
         while buff.position() < read_until as _ {
-            match wasmrs::read_frame(&mut buff) {
+            match wasmrs::util::read_frame(&mut buff) {
                 Ok(bytes) => frames.push(bytes),
                 Err(_e) => return Err(Error::BufferRead),
             }

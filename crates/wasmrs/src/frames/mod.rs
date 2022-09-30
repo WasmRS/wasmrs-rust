@@ -1,31 +1,25 @@
-pub(crate) mod cancel;
-pub(crate) mod error;
-pub(crate) mod payload;
-pub(crate) mod request_channel;
-pub(crate) mod request_fnf;
-pub(crate) mod request_n;
+pub(crate) mod f_cancel;
+pub(crate) mod f_error;
+pub(crate) mod f_payload;
+pub(crate) mod f_request_channel;
+pub(crate) mod f_request_fnf;
+pub(crate) mod f_request_n;
+pub(crate) mod f_request_response;
+pub(crate) mod f_request_stream;
+pub(crate) mod header;
+pub(crate) mod metadata;
 pub(crate) mod request_payload;
-pub(crate) mod request_response;
-pub(crate) mod request_stream;
 
 use crate::{
     generated::{Cancel, ErrorFrame, PayloadFrame, RequestChannel, RequestResponse, RequestStream},
     read_data, read_string, Error, RequestFnF, RequestN,
 };
-pub use bytes::{BufMut, Bytes, BytesMut};
-pub use payload::FragmentedPayload;
+use bytes::Bytes;
 
 use crate::{
     generated::{self as frames, FrameFlags, FrameHeader, FrameType, Payload},
-    util::from_u16_bytes,
     Frame, Metadata,
 };
-
-pub const FRAME_FLAG_METADATA: FrameFlags = 1 << 8;
-pub const FRAME_FLAG_FOLLOWS: FrameFlags = 1 << 7;
-pub const FRAME_FLAG_COMPLETE: FrameFlags = 1 << 6;
-pub const FRAME_FLAG_NEXT: FrameFlags = 1 << 5;
-pub const FRAME_FLAG_IGNORE: FrameFlags = 1 << 4;
 
 impl crate::generated::FrameFlag {}
 
@@ -76,41 +70,13 @@ impl From<Frame> for Result<Option<Payload>, crate::PayloadError> {
     }
 }
 
-impl Metadata {
-    pub fn new(namespace: impl AsRef<str>, operation: impl AsRef<str>) -> Metadata {
-        Metadata {
-            namespace: namespace.as_ref().to_owned(),
-            operation: operation.as_ref().to_owned(),
-            instance: Bytes::new(),
-        }
-    }
-    #[must_use]
-    pub fn encode(self) -> Bytes {
-        let len = self.namespace.len() + self.operation.len() + self.instance.len() + 2 + 2 + 2;
-        let mut bytes = BytesMut::with_capacity(len);
-        bytes.put((self.namespace.len() as u16).to_be_bytes().as_slice());
-        bytes.put(self.namespace.into_bytes().as_slice());
-        bytes.put((self.operation.len() as u16).to_be_bytes().as_slice());
-        bytes.put(self.operation.into_bytes().as_slice());
-        bytes.put((self.instance.len() as u16).to_be_bytes().as_slice());
-        bytes.put(self.instance);
-
-        debug_assert_eq!(
-            bytes.len(),
-            len,
-            "encoded metadata is not the correct length."
-        );
-        bytes.freeze()
-    }
-}
-
 impl Frame {
-    pub const LEN_HEADER: usize = 6;
-    pub const FLAG_FOLLOW: FrameFlags = FRAME_FLAG_FOLLOWS;
-    pub const FLAG_NEXT: FrameFlags = FRAME_FLAG_NEXT;
-    pub const FLAG_COMPLETE: FrameFlags = FRAME_FLAG_COMPLETE;
-    pub const FLAG_IGNORE: FrameFlags = FRAME_FLAG_IGNORE;
-    pub const FLAG_METADATA: FrameFlags = FRAME_FLAG_METADATA;
+    pub(crate) const LEN_HEADER: usize = 6;
+    pub(crate) const FLAG_IGNORE: FrameFlags = 1 << 4;
+    pub(crate) const FLAG_NEXT: FrameFlags = 1 << 5;
+    pub(crate) const FLAG_COMPLETE: FrameFlags = 1 << 6;
+    pub(crate) const FLAG_FOLLOW: FrameFlags = 1 << 7;
+    pub(crate) const FLAG_METADATA: FrameFlags = 1 << 8;
 
     pub fn is_followable_or_payload(&self) -> (bool, bool) {
         match &self {
@@ -171,7 +137,7 @@ impl Frame {
         Self::_decode(header, bytes).map_err(|e| (stream_id, e))
     }
 
-    pub fn _decode(header: FrameHeader, buffer: Bytes) -> Result<Frame, Error> {
+    pub(crate) fn _decode(header: FrameHeader, buffer: Bytes) -> Result<Frame, Error> {
         let frame = match header.frame_type() {
             FrameType::Reserved => todo!(),
             FrameType::Setup => todo!(),
@@ -229,7 +195,7 @@ impl Frame {
         Frame::Cancel(Cancel { stream_id })
     }
 
-    pub fn new_request_n(stream_id: u32, n: u32, flags: FrameFlags) -> Frame {
+    pub fn new_request_n(stream_id: u32, n: u32, _flags: FrameFlags) -> Frame {
         Frame::RequestN(RequestN { stream_id, n })
     }
 
@@ -282,7 +248,7 @@ impl Frame {
     }
 }
 
-pub trait FrameCodec<T> {
+pub trait RSocketFrame<T> {
     const FRAME_TYPE: FrameType;
     fn check_type(header: &FrameHeader) -> Result<(), Error> {
         if header.frame_type() == Self::FRAME_TYPE {
@@ -304,7 +270,7 @@ pub trait FrameCodec<T> {
     }
 }
 
-pub trait RSocketFlags {
+pub(crate) trait RSocketFlags {
     fn flag_next(&self) -> bool;
     fn flag_metadata(&self) -> bool;
     fn flag_complete(&self) -> bool;
@@ -332,261 +298,4 @@ impl RSocketFlags for FrameFlags {
     fn flag_ignore(&self) -> bool {
         self & Frame::FLAG_IGNORE == Frame::FLAG_IGNORE
     }
-}
-
-impl FrameHeader {
-    pub(crate) fn new(stream_id: u32, frame_type: FrameType, frame_flags: u16) -> Self {
-        let mut header = BytesMut::with_capacity(Frame::LEN_HEADER);
-        let frame_type: u32 = frame_type.into();
-        let frame_type: u16 = frame_type.try_into().unwrap();
-        let frame_type = (frame_type << 10) | frame_flags;
-
-        header.put(stream_id.to_be_bytes().as_slice());
-        header.put(frame_type.to_be_bytes().as_slice());
-
-        Self {
-            header: header.freeze(),
-        }
-    }
-
-    pub(crate) fn from_bytes(header: Bytes) -> Self {
-        Self { header }
-    }
-
-    #[cfg(test)]
-    fn as_bytes(&self) -> &[u8] {
-        &self.header
-    }
-
-    fn encode(self) -> Bytes {
-        self.header
-    }
-
-    pub(crate) fn stream_id(&self) -> u32 {
-        let bytes: [u8; 4] = [
-            self.header[0] & 0x7f,
-            self.header[1],
-            self.header[2],
-            self.header[3],
-        ];
-        u32::from_be_bytes(bytes)
-    }
-
-    fn n(&self) -> u16 {
-        // let bytes: [u8; 2] = [self.header[4], self.header[5]];
-        from_u16_bytes(&self.header.slice(4..Frame::LEN_HEADER))
-    }
-
-    pub(crate) fn frame_type(&self) -> FrameType {
-        let id: u8 = self.header[4] >> 2;
-        id.try_into().unwrap()
-    }
-
-    pub fn check(&self, flag: FrameFlags) -> bool {
-        self.n() & flag == flag
-    }
-
-    pub(crate) fn has_metadata(&self) -> bool {
-        self.check(FRAME_FLAG_METADATA)
-    }
-
-    pub(crate) fn has_follows(&self) -> bool {
-        self.check(FRAME_FLAG_FOLLOWS)
-    }
-
-    pub(crate) fn has_next(&self) -> bool {
-        self.check(FRAME_FLAG_NEXT)
-    }
-
-    pub(crate) fn has_complete(&self) -> bool {
-        self.check(FRAME_FLAG_COMPLETE)
-    }
-
-    pub(crate) fn has_ignore(&self) -> bool {
-        self.check(FRAME_FLAG_IGNORE)
-    }
-}
-
-impl std::fmt::Display for FrameHeader {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut flags = Vec::new();
-        if self.has_next() {
-            flags.push("N");
-        }
-        if self.has_complete() {
-            flags.push("CL");
-        }
-        if self.has_follows() {
-            flags.push("FRS");
-        }
-        if self.has_metadata() {
-            flags.push("M");
-        }
-        if self.has_ignore() {
-            flags.push("I");
-        }
-
-        let t = self.frame_type();
-
-        write!(
-            f,
-            "FrameHeader{{id={},type={},flag={}}}",
-            self.stream_id(),
-            t,
-            flags.join("|")
-        )
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use anyhow::Result;
-
-    fn print_binary(v: &[u8]) {
-        let mut bytes = Vec::new();
-        for byte in v {
-            bytes.push(format!("{:08b}", byte));
-        }
-        println!("[{}]", bytes.join(" "));
-    }
-    use crate::{
-        frames::{FRAME_FLAG_FOLLOWS, FRAME_FLAG_IGNORE, FRAME_FLAG_METADATA, FRAME_FLAG_NEXT},
-        generated::{FrameHeader, FrameType},
-        Frame,
-    };
-
-    use super::FRAME_FLAG_COMPLETE;
-
-    #[test]
-    fn test_new_header() -> Result<()> {
-        let header = FrameHeader::new(2147483647, FrameType::Payload, FRAME_FLAG_COMPLETE);
-        println!("Bytes: {:?}", header.as_bytes());
-        println!("Frame type: {}", header.frame_type());
-        print_binary(header.as_bytes());
-        println!("Header: {}", header);
-        assert_eq!(header.stream_id(), 2147483647);
-        assert_eq!(header.frame_type() as u32, FrameType::Payload.into());
-        assert!(header.has_complete());
-        assert!(!header.has_next());
-        assert!(!header.has_metadata());
-        assert!(!header.has_follows());
-        assert!(!header.has_ignore());
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_payload_header() -> Result<()> {
-        let frame = include_bytes!("../../testdata/frame.payload.bin");
-        let header = FrameHeader::from_bytes(frame[0..Frame::LEN_HEADER].into());
-        print_binary(header.as_bytes());
-        assert!(header.has_metadata());
-        Ok(())
-    }
-
-    #[test]
-    fn test_header() -> Result<()> {
-        let header = FrameHeader::from_bytes(vec![0u8, 0, 4, 210, 25, 0].into());
-        print_binary(header.as_bytes());
-        println!("{}", header);
-        println!("{:?}", header.as_bytes());
-        assert!(header.has_metadata());
-        Ok(())
-    }
-
-    #[test]
-    fn test_header_no_flags() -> Result<()> {
-        let header = FrameHeader::new(0, FrameType::RequestStream, 0);
-        print_binary(header.as_bytes());
-        println!("{}", header);
-        println!("{:?}", header.as_bytes());
-        assert!(!header.has_metadata());
-        assert!(!header.has_next());
-        assert!(!header.has_complete());
-        assert!(!header.has_metadata());
-        assert!(!header.has_ignore());
-        Ok(())
-    }
-
-    #[test]
-    fn test_header_metadata() -> Result<()> {
-        let header = FrameHeader::new(0, FrameType::RequestStream, FRAME_FLAG_METADATA);
-        print_binary(header.as_bytes());
-        println!("{}", header);
-        println!("{:?}", header.as_bytes());
-        assert!(header.has_metadata());
-        assert!(!header.has_next());
-        assert!(!header.has_complete());
-        assert!(!header.has_follows());
-        assert!(!header.has_ignore());
-        Ok(())
-    }
-
-    #[test]
-    fn test_header_next() -> Result<()> {
-        let header = FrameHeader::new(0, FrameType::RequestStream, FRAME_FLAG_NEXT);
-        print_binary(header.as_bytes());
-        println!("{}", header);
-        println!("{:?}", header.as_bytes());
-        assert!(!header.has_metadata());
-        assert!(header.has_next());
-        assert!(!header.has_complete());
-        assert!(!header.has_follows());
-        assert!(!header.has_ignore());
-        Ok(())
-    }
-
-    #[test]
-    fn test_header_complete() -> Result<()> {
-        let header = FrameHeader::new(0, FrameType::RequestStream, FRAME_FLAG_COMPLETE);
-        print_binary(header.as_bytes());
-        println!("{}", header);
-        println!("{:?}", header.as_bytes());
-        assert!(!header.has_metadata());
-        assert!(!header.has_next());
-        assert!(header.has_complete());
-        assert!(!header.has_follows());
-        assert!(!header.has_ignore());
-        Ok(())
-    }
-
-    #[test]
-    fn test_header_ignore() -> Result<()> {
-        let header = FrameHeader::new(0, FrameType::RequestStream, FRAME_FLAG_IGNORE);
-        print_binary(header.as_bytes());
-        println!("{}", header);
-        println!("{:?}", header.as_bytes());
-        assert!(!header.has_metadata());
-        assert!(!header.has_next());
-        assert!(!header.has_complete());
-        assert!(!header.has_follows());
-        assert!(header.has_ignore());
-        Ok(())
-    }
-
-    #[test]
-    fn test_header_follows() -> Result<()> {
-        let header = FrameHeader::new(0, FrameType::RequestStream, FRAME_FLAG_FOLLOWS);
-        print_binary(header.as_bytes());
-        println!("{}", header);
-        println!("{:?}", header.as_bytes());
-        assert!(!header.has_metadata());
-        assert!(!header.has_next());
-        assert!(!header.has_complete());
-        assert!(header.has_follows());
-        assert!(!header.has_ignore());
-        Ok(())
-    }
-
-    // #[test]
-    // fn test_flags() -> Result<()> {
-    //     let header = FrameHeader::new(0, FrameType::RequestStream, FRAME_FLAG_IGNORE);
-    //     print_binary(&FRAME_FLAG_IGNORE.to_be_bytes());
-    //     print_binary(&FRAME_FLAG_NEXT.to_be_bytes());
-    //     print_binary(&FRAME_FLAG_COMPLETE.to_be_bytes());
-    //     print_binary(&FRAME_FLAG_FOLLOWS.to_be_bytes());
-    //     print_binary(&FRAME_FLAG_METADATA.to_be_bytes());
-    //     panic!();
-    //     Ok(())
-    // }
 }

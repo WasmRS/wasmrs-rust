@@ -4,24 +4,12 @@ use crate::{
     Frame, Payload,
 };
 
-use super::{Error, RSocketFlags, FRAME_FLAG_COMPLETE, FRAME_FLAG_METADATA};
+use super::{Error, RSocketFlags};
 use bytes::{BufMut, Bytes, BytesMut};
 
 use crate::generated::RequestPayload;
 
 impl RequestPayload {
-    pub fn new(stream_id: u32, frame_type: FrameType, data: Bytes, metadata: Bytes) -> Self {
-        Self {
-            frame_type,
-            stream_id,
-            metadata,
-            data,
-            follows: false,
-            complete: false,
-            initial_n: 0,
-        }
-    }
-
     pub(super) fn from_payload(
         stream_id: u32,
         payload: Payload,
@@ -43,15 +31,15 @@ impl RequestPayload {
     pub(super) fn get_flags(&self) -> FrameFlags {
         let mut flags = 0;
         if !self.metadata.is_empty() {
-            flags |= FRAME_FLAG_METADATA;
+            flags |= Frame::FLAG_METADATA;
         }
         if self.complete && self.frame_type == FrameType::RequestChannel {
-            flags |= FRAME_FLAG_COMPLETE;
+            flags |= Frame::FLAG_COMPLETE;
         }
         flags
     }
 
-    pub fn decode(header: &FrameHeader, mut buffer: Bytes) -> Result<RequestPayload, Error> {
+    pub(crate) fn decode(header: &FrameHeader, mut buffer: Bytes) -> Result<RequestPayload, Error> {
         let frame_type = header.frame_type();
 
         let initial_n = if Self::is_multi(frame_type) {
@@ -92,7 +80,7 @@ impl RequestPayload {
     }
 
     #[must_use]
-    pub fn encode(self) -> Bytes {
+    pub(crate) fn encode(self) -> Bytes {
         let header = self.gen_header().encode();
         let n_bytes = if Self::is_multi(self.frame_type) {
             self.initial_n.to_be_bytes().to_vec()

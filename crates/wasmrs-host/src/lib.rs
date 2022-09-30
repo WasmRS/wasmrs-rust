@@ -96,10 +96,6 @@ pub mod protocol;
 mod host;
 mod wasi;
 
-use futures_core::future::BoxFuture;
 pub use host::{CallContext, Host};
 pub use protocol::*;
 pub use wasi::WasiParams;
-
-/// The signature of a Host response ready callback.
-pub type HostResponseReady = dyn Fn(i32, i32) -> BoxFuture<'static, ()> + Sync + Send + 'static;

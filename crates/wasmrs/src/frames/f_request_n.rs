@@ -4,14 +4,14 @@ use crate::{
     Frame,
 };
 
-use super::{Error, FrameCodec};
+use super::{Error, RSocketFrame};
 use bytes::Bytes;
 
 use crate::generated::RequestN;
 
 impl RequestN {}
 
-impl FrameCodec<RequestN> for RequestN {
+impl RSocketFrame<RequestN> for RequestN {
     const FRAME_TYPE: FrameType = FrameType::RequestN;
 
     fn stream_id(&self) -> u32 {
@@ -47,7 +47,7 @@ impl FrameCodec<RequestN> for RequestN {
 
 #[cfg(test)]
 mod test {
-    use crate::frames::FrameCodec;
+    use crate::frames::RSocketFrame;
 
     use super::*;
     use anyhow::Result;

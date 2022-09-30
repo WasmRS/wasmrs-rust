@@ -1,16 +1,13 @@
 #![allow(missing_debug_implementations)]
 use crate::flux::*;
-use crate::runtime::{
-    self, bounded_channel, unbounded_channel, Entry, SafeMap, UnboundedReceiver, UnboundedSender,
-};
-use crate::{ErrorCode, Frame, FrameFlags, Observable, PayloadError, RSocket};
+use crate::runtime::{self, unbounded_channel, Entry, SafeMap, UnboundedReceiver, UnboundedSender};
+use crate::{ErrorCode, Frame, FrameFlags, PayloadError, RSocket};
 mod buffer;
 
 use futures::stream::{AbortHandle, Abortable};
-use futures::{StreamExt, TryStreamExt};
+use futures::StreamExt;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
-use tokio::sync::oneshot;
 mod responder;
 use bytes::Bytes;
 
@@ -18,11 +15,6 @@ use crate::{Counter, Error, Payload};
 
 use self::buffer::BufferState;
 use self::responder::Responder;
-
-pub struct StreamState(Handler, ());
-
-pub type OptionalResult = Result<Option<Payload>, PayloadError>;
-pub type StreamResult = Result<Payload, PayloadError>;
 
 pub enum Handler {
     ReqRR(Flux<Payload, PayloadError>),
@@ -40,9 +32,8 @@ pub struct WasmSocket {
     host_buffer: BufferState,
     guest_buffer: BufferState,
     pub(super) stream_index: AtomicU32,
-    incoming_tx: UnboundedSender<Frame>,
-    incoming_rx: Option<UnboundedReceiver<Frame>>,
-    // _handler: TaskHandle,
+    tx: UnboundedSender<Frame>,
+    rx: Option<UnboundedReceiver<Frame>>,
     responder: Responder,
 }
 
@@ -61,15 +52,12 @@ impl WasmSocket {
         let streams: Arc<SafeMap<u32, Handler>> = Arc::new(Default::default());
         let abort_handles: Arc<SafeMap<u32, AbortHandle>> = Arc::new(Default::default());
 
-        // let handle = incoming_handler(snd_rx, Box::new(rsocket));
-
         WasmSocket {
             stream_index: AtomicU32::new(first_stream_id),
-            incoming_tx: snd_tx,
-            incoming_rx: Some(snd_rx),
+            tx: snd_tx,
+            rx: Some(snd_rx),
             streams,
             abort_handles,
-            // _handler: handle,
             host_buffer: Default::default(),
             guest_buffer: Default::default(),
             responder: Responder::new(Box::new(rsocket)),
@@ -77,7 +65,7 @@ impl WasmSocket {
     }
 
     pub fn take_rx(&mut self) -> Result<UnboundedReceiver<Frame>, Error> {
-        self.incoming_rx.take().ok_or(Error::RxMissing)
+        self.rx.take().ok_or(Error::RxMissing)
     }
 
     pub fn host_buffer(&self) -> &BufferState {
@@ -88,22 +76,12 @@ impl WasmSocket {
         &self.guest_buffer
     }
 
-    pub fn next_stream_id(&self) -> u32 {
+    pub(crate) fn next_stream_id(&self) -> u32 {
         self.stream_index.fetch_add(2, Ordering::SeqCst)
-    }
-
-    pub fn new_stream(&self, handler: Handler) -> u32 {
-        let id = self.stream_index.fetch_add(2, Ordering::SeqCst);
-        self.streams.insert(id, handler);
-        id
     }
 
     pub fn register_handler(&self, stream_id: u32, handler: Handler) {
         self.streams.insert(stream_id, handler);
-    }
-
-    pub fn take_stream(&self, stream_id: u32) -> Option<Handler> {
-        self.streams.remove(&stream_id)
     }
 
     pub fn process_once(&self, frame: Frame) -> Result<(), Error> {
@@ -151,7 +129,7 @@ impl WasmSocket {
             stream_id, input.data
         );
         let responder = self.responder.clone();
-        let mut tx = self.incoming_tx.clone();
+        let mut tx = self.tx.clone();
         let counter = Counter::new(2);
         self.register_handler(stream_id, Handler::ResRRn(counter.clone()));
         let result = responder.request_response(input);
@@ -185,7 +163,7 @@ impl WasmSocket {
     fn on_request_stream(&self, stream_id: u32, _flag: FrameFlags, input: Payload) {
         println!("socket:on_request_stream:{:?}:{:?}", stream_id, input.data);
         let responder = self.responder.clone();
-        let mut tx = self.incoming_tx.clone();
+        let mut tx = self.tx.clone();
         let abort_handles = self.abort_handles.clone();
         runtime::spawn(async move {
             let (abort_handle, abort_registration) = AbortHandle::new_pair();
@@ -210,15 +188,15 @@ impl WasmSocket {
         });
     }
 
-    fn on_request_channel(&self, stream_id: u32, flag: FrameFlags, first: Payload) {
+    fn on_request_channel(&self, stream_id: u32, _flag: FrameFlags, first: Payload) {
         println!("socket:on_request_channel:{:?}:{:?}", stream_id, first.data);
         let responder = self.responder.clone();
 
-        let tx = self.incoming_tx.clone();
+        let tx = self.tx.clone();
         let incoming_sender = Flux::<Payload, PayloadError>::new();
         let receiver = incoming_sender.split_receiver().unwrap();
 
-        incoming_sender.send(first);
+        let _ = incoming_sender.send(first);
         self.register_handler(stream_id, Handler::ReqRC(incoming_sender));
         let abort_handles = self.abort_handles.clone();
         runtime::spawn(async move {
@@ -259,7 +237,7 @@ impl WasmSocket {
 
     fn on_payload(&self, stream_id: u32, flag: FrameFlags, input: Payload) {
         println!("socket:on_payload:{:?}:{:?}", stream_id, input.data);
-        let mut tx = self.incoming_tx.clone();
+        let mut tx = self.tx.clone();
         match self.streams.entry(stream_id) {
             Entry::Occupied(o) => {
                 match o.get() {
@@ -329,10 +307,9 @@ impl WasmSocket {
     pub fn do_host_send(&self, frame_bytes: Bytes) -> Result<(), Box<dyn std::error::Error>> {
         let _result = match Frame::decode(frame_bytes) {
             Ok(frame) => self.process_once(frame),
-            Err((stream_id, err)) => {
-                self.incoming_tx
-                    .send(Frame::new_error(stream_id, 0, err.to_string()))
-            }
+            Err((stream_id, err)) => self
+                .tx
+                .send(Frame::new_error(stream_id, 0, err.to_string())),
         };
         Ok(())
     }
@@ -344,7 +321,7 @@ impl WasmSocket {
 }
 
 impl RSocket for WasmSocket {
-    fn fire_and_forget(&self, payload: Payload) -> FluxReceiver<(), PayloadError> {
+    fn fire_and_forget(&self, _payload: Payload) -> FluxReceiver<(), PayloadError> {
         todo!()
     }
 
@@ -357,7 +334,7 @@ impl RSocket for WasmSocket {
         self.register_handler(stream_id, handler);
 
         let sending = Frame::new_request_response(stream_id, payload, 0, 0);
-        self.incoming_tx.send(sending);
+        let _ = self.tx.send(sending);
 
         output
     }
@@ -371,14 +348,14 @@ impl RSocket for WasmSocket {
         self.register_handler(stream_id, handler);
 
         let sending = Frame::new_request_stream(stream_id, payload, 0, 0);
-        self.incoming_tx.send(sending);
+        let _ = self.tx.send(sending);
 
         output
     }
 
     fn request_channel(
         &self,
-        stream: FluxReceiver<Payload, PayloadError>,
+        _stream: FluxReceiver<Payload, PayloadError>,
     ) -> FluxReceiver<Payload, PayloadError> {
         todo!()
         // let flux = Flux::new();

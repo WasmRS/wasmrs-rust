@@ -78,32 +78,29 @@
 )]
 #![doc = include_str!("../README.md")]
 // TODO REMOVE
-#![allow(unused, clippy::needless_pass_by_value)]
+#![allow(clippy::needless_pass_by_value)]
 
-pub mod error;
+mod error;
 pub mod flux;
-pub mod fragmentation;
 pub mod frames;
 mod generated;
 pub mod runtime;
-pub mod socket;
-mod util;
+mod socket;
+pub mod util;
+
+use flux::*;
+use util::*;
+
+#[macro_use]
+mod macros;
 
 pub use error::{Error, PayloadError};
-pub use flux::Observable;
-pub use frames::{FragmentedPayload, FrameCodec};
 pub use generated::*;
-pub use socket::*;
-pub use util::*;
-#[macro_use]
-pub mod macros;
+pub use socket::WasmSocket;
 
-use self::{
-    flux::{Flux, FluxReceiver},
-    runtime::ConditionallySafe,
-};
+use self::runtime::ConditionallySafe;
 
-pub type Result<T> = std::result::Result<T, Error>;
+type Result<T> = std::result::Result<T, Error>;
 
 pub trait FrameWriter: Sync + Send {
     /// Fire and Forget interaction model of RSocket.

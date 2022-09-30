@@ -5,7 +5,7 @@ use wasmrs::{flux::*, flux_try, Payload, PayloadError, RSocket};
 use crate::{error::Error, NamespaceMap, ProcessFactory};
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
-pub struct WasmServer {}
+pub(crate) struct WasmServer {}
 
 impl RSocket for WasmServer {
     fn fire_and_forget(&self, _req: Payload) -> FluxReceiver<(), PayloadError> {

@@ -3,24 +3,15 @@
 use crate::{ErrorCode, FrameType};
 
 /// Error type for wasmRS RSocket errors.
+#[allow(missing_copy_implementations)]
 #[derive(Debug, Clone)]
 pub enum Error {
     RSocket(u32),
-    RequestResponse(String),
-    RequestChannel(String),
-    RequestStream(String),
-    RequestFnF(String),
     SendFailed(u8),
     RecvFailed(u8),
     ReceiverAlreadyGone,
-    PortNotFound(String),
-    StreamSend,
-    StreamNotFound(u32),
-    RuntimeError,
-    Unimplemented,
     RxMissing,
     WrongType(FrameType, FrameType),
-    ReadBuffer,
     StringConversion,
     MetadataNotFound,
     StringDecode,

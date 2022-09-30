@@ -22,22 +22,18 @@ pub enum Error {
     GuestMemory,
 }
 
-impl From<Error> for wasmrs::error::Error {
+impl From<Error> for wasmrs::Error {
     fn from(e: Error) -> Self {
         match e {
             Error::InitializationFailed(_) => {
-                wasmrs::error::Error::RSocket(wasmrs::ErrorCode::ConnectionError.into())
+                wasmrs::Error::RSocket(wasmrs::ErrorCode::ConnectionError.into())
             }
             Error::WasiError(_) => {
-                wasmrs::error::Error::RSocket(wasmrs::ErrorCode::ConnectionError.into())
+                wasmrs::Error::RSocket(wasmrs::ErrorCode::ConnectionError.into())
             }
-            Error::GuestInit => {
-                wasmrs::error::Error::RSocket(wasmrs::ErrorCode::ApplicationError.into())
-            }
-            Error::GuestSend => {
-                wasmrs::error::Error::RSocket(wasmrs::ErrorCode::ApplicationError.into())
-            }
-            Error::GuestMemory => wasmrs::error::Error::RSocket(wasmrs::ErrorCode::Canceled.into()),
+            Error::GuestInit => wasmrs::Error::RSocket(wasmrs::ErrorCode::ApplicationError.into()),
+            Error::GuestSend => wasmrs::Error::RSocket(wasmrs::ErrorCode::ApplicationError.into()),
+            Error::GuestMemory => wasmrs::Error::RSocket(wasmrs::ErrorCode::Canceled.into()),
         }
     }
 }

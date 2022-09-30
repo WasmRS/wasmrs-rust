@@ -5,7 +5,6 @@ use pin_project_lite::pin_project;
 
 use crate::{flux::Flux, runtime::ConditionallySafe};
 
-#[allow(missing_debug_implementations)]
 pin_project! {
 pub struct FluxPipe<Item, Err, From>
 where
@@ -68,7 +67,7 @@ mod test {
 
         flux.send("First".to_owned())?;
 
-        let mut second_flux = Flux::<String, String>::new();
+        let second_flux = Flux::<String, String>::new();
 
         let mut pipe = observer.pipe(second_flux);
 

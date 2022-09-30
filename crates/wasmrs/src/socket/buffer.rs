@@ -8,7 +8,7 @@ pub struct BufferState {
 impl Default for BufferState {
     fn default() -> Self {
         Self {
-            size: AtomicU32::new(1024),
+            size: AtomicU32::new(4092),
             start: Default::default(),
         }
     }

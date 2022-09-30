@@ -121,7 +121,11 @@ impl WasmtimeCallContext {
 
 impl wasmrs::FrameWriter for WasmtimeCallContext {
     /// Request-Response interaction model of RSocket.
-    fn write_frame(&mut self, _stream_id: u32, req: Frame) -> wasmrs::Result<()> {
+    fn write_frame(
+        &mut self,
+        _stream_id: u32,
+        req: Frame,
+    ) -> std::result::Result<(), wasmrs::Error> {
         let bytes = req.encode();
 
         let start_pos = 0;

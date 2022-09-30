@@ -1,7 +1,7 @@
 use std::{
     io::Read,
     sync::{
-        atomic::{AtomicI64, AtomicU32, Ordering},
+        atomic::{AtomicI64, Ordering},
         Arc,
     },
 };
@@ -11,7 +11,7 @@ use bytes::{BufMut, Bytes, BytesMut};
 use crate::Error;
 
 #[must_use]
-pub fn from_u32_bytes(bytes: &[u8]) -> u32 {
+pub(crate) fn from_u32_bytes(bytes: &[u8]) -> u32 {
     assert!(bytes.len() == 4, "Need 4 bytes to convert to u32");
     let mut num_parts: [u8; 4] = Default::default();
 
@@ -21,7 +21,7 @@ pub fn from_u32_bytes(bytes: &[u8]) -> u32 {
 }
 
 #[must_use]
-pub fn from_u16_bytes(bytes: &[u8]) -> u16 {
+pub(crate) fn from_u16_bytes(bytes: &[u8]) -> u16 {
     assert!(bytes.len() == 2, "Need two bytes to convert to u16");
     let mut num_parts: [u8; 2] = Default::default();
 
@@ -31,7 +31,7 @@ pub fn from_u16_bytes(bytes: &[u8]) -> u16 {
 }
 
 #[must_use]
-pub fn from_u24_bytes(bytes: &[u8]) -> u32 {
+pub(crate) fn from_u24_bytes(bytes: &[u8]) -> u32 {
     assert!(bytes.len() == 3, "Need three bytes to convert to u24");
     let mut num_parts: [u8; 4] = Default::default();
 
@@ -41,7 +41,7 @@ pub fn from_u24_bytes(bytes: &[u8]) -> u32 {
 }
 
 #[must_use]
-pub fn to_u24_bytes(num: u32) -> Bytes {
+pub(crate) fn to_u24_bytes(num: u32) -> Bytes {
     let mut num_parts = BytesMut::with_capacity(3);
 
     num_parts.put(&num.to_be_bytes()[1..4]);
@@ -50,7 +50,7 @@ pub fn to_u24_bytes(num: u32) -> Bytes {
 }
 
 // Read a string chunk whose length is denoted by a u16 prefix.
-pub fn read_string(start: usize, buffer: &[u8]) -> Result<(String, usize), Error> {
+pub(crate) fn read_string(start: usize, buffer: &[u8]) -> Result<(String, usize), Error> {
     let (bytes, len) = read_data(start, buffer)?;
     Ok((
         String::from_utf8(bytes).map_err(|_| Error::StringDecode)?,
@@ -59,7 +59,7 @@ pub fn read_string(start: usize, buffer: &[u8]) -> Result<(String, usize), Error
 }
 
 // Read a data chunk whose length is denoted by a u16 prefix.
-pub fn read_data(start: usize, buffer: &[u8]) -> Result<(Vec<u8>, usize), Error> {
+pub(crate) fn read_data(start: usize, buffer: &[u8]) -> Result<(Vec<u8>, usize), Error> {
     let len_bytes: &mut [u8] = &mut [0_u8; 2];
     len_bytes.copy_from_slice(&buffer[start..start + 2]);
     let len = from_u16_bytes(len_bytes) as usize;
@@ -76,30 +76,6 @@ pub fn read_frame(mut buf: impl Read) -> std::io::Result<Bytes> {
     let mut frame = vec![0; len as usize];
     buf.read_exact(&mut frame)?;
     Ok(frame.into())
-}
-
-#[derive(Debug, Clone)]
-pub struct StreamID {
-    inner: Arc<AtomicU32>,
-}
-
-impl StreamID {
-    pub(crate) fn new(value: u32) -> StreamID {
-        let inner = Arc::new(AtomicU32::new(value));
-        StreamID { inner }
-    }
-
-    #[allow(clippy::must_use_candidate)]
-    pub fn next(&self) -> u32 {
-        let counter = self.inner.clone();
-        counter.fetch_add(2, Ordering::SeqCst)
-    }
-}
-
-impl From<u32> for StreamID {
-    fn from(v: u32) -> StreamID {
-        StreamID::new(v)
-    }
 }
 
 #[derive(Debug, Clone)]
