@@ -39,6 +39,12 @@ Req/Stream
 $ cargo run -p wasmrs-wasmtime --example reqstream
 ```
 
+Req/Channel
+
+```
+$ cargo run -p wasmrs-wasmtime --example reqchannel
+```
+
 ## Enable trace logging
 
 ```
