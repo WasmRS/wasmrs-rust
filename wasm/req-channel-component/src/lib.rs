@@ -23,7 +23,9 @@ fn hello_wrapper(input_stream: IncomingStream) -> Result<OutgoingStream, Generic
 impl Hello {
     async fn task(mut self) -> Result<(), GenericError> {
         // Real user task
+        println!("guest:waiting for incoming messages");
         let all: Vec<_> = self.inputs.msg.collect().await;
+        println!("guest:got {} messages", all.len());
         self.outputs
             .msg
             .send(format!("Got {} messages", all.len()))

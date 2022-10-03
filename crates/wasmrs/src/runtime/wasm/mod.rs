@@ -76,6 +76,14 @@ where
         unsafe { &mut *self.0.get() }.is_empty()
     }
 
+    pub fn cloned(&self, key: &K) -> Option<V>
+    where
+        V: Clone,
+    {
+        #[allow(unsafe_code)]
+        unsafe { &mut *self.0.get() }.get(key).map(|v| v.clone())
+    }
+
     pub fn entry<'a>(&'a self, key: K) -> Entry<'a, K, V> {
         #[allow(unsafe_code)]
         let map = unsafe { &mut *self.0.get() };
@@ -133,6 +141,10 @@ where
 {
     pub(crate) fn new(item: T) -> Self {
         Self(Arc::new(RefCell::new(Some(item))))
+    }
+
+    pub(crate) fn none() -> Self {
+        Self(Arc::new(RefCell::new(None)))
     }
 
     pub(crate) fn take(&self) -> Option<T> {

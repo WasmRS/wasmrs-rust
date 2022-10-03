@@ -15,6 +15,7 @@ pub enum Error {
     StringConversion,
     MetadataNotFound,
     StringDecode,
+    RequestCancelled(String),
 }
 
 impl std::error::Error for Error {}

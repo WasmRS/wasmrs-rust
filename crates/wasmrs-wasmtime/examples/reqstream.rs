@@ -18,7 +18,7 @@ async fn main() -> anyhow::Result<()> {
     let host = wasmrs_host::Host::new(engine)?;
     let bytes = serialize("Hello world").unwrap();
     // let bytes = b"Hello world".to_vec();
-    let mut context = host.new_context()?;
+    let context = host.new_context()?;
     let start = Instant::now();
     let num = 1;
     let metadata = Metadata::new("greeting", "sayHello");
@@ -28,14 +28,12 @@ async fn main() -> anyhow::Result<()> {
     for _ in 0..num {
         println!("Making request stream");
         let mut stream = context.request_stream(payload.clone());
-        println!("Request returned");
 
         while let Some(payload) = stream.next().await {
-            println!("Got payload: {:?}", payload);
+            // println!("Got payload: {:?}", payload);
             match payload {
                 Ok(p) => {
                     if let Some(data) = p.data {
-                        // println!("data=: {:?}", data.to_vec());
                         let str: String = deserialize(&data)?;
                         println!("Got value: {}", str);
                     }
@@ -45,10 +43,10 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
         }
-        println!("done with stream");
+        println!("done");
     }
     let end = Instant::now();
-    let duration = end - start;
+    let _duration = end - start;
     // println!(
     //     "{} took {} ns ({} ops/ms, {} ms/op)",
     //     num,

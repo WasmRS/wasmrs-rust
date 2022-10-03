@@ -7,4 +7,4 @@ debug:
     just wasm/reqres-component/debug
     just wasm/req-stream-component/debug
     just wasm/req-channel-component/debug
-    ./opt.sh
+    # ./opt.sh

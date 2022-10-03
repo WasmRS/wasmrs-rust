@@ -49,6 +49,13 @@ where
         self.0.is_empty()
     }
 
+    pub fn cloned(&self, key: &K) -> Option<V>
+    where
+        V: Clone,
+    {
+        self.0.get(key).map(|v| v.clone())
+    }
+
     pub fn entry(&self, key: K) -> Entry<'_, K, V> {
         match self.0.entry(key) {
             dashmap::mapref::entry::Entry::Occupied(v) => Entry::Occupied::<K, V>(OccupiedEntry(v)),
@@ -102,6 +109,10 @@ where
 {
     pub(crate) fn new(item: T) -> Self {
         Self(Arc::new(Mutex::new(Some(item))))
+    }
+
+    pub(crate) fn none() -> Self {
+        Self(Arc::new(Mutex::new(None)))
     }
 
     pub(crate) fn take(&self) -> Option<T> {

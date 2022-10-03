@@ -18,8 +18,7 @@ async fn main() -> anyhow::Result<()> {
         .build()?;
     let host = wasmrs_host::Host::new(engine)?;
     let bytes = serialize("Hello world").unwrap();
-    // let bytes = b"Hello world".to_vec();
-    let mut context = host.new_context()?;
+    let context = host.new_context()?;
     let start = Instant::now();
     let num = 1;
     let metadata = Metadata::new("greeting", "sayHello");
@@ -35,6 +34,7 @@ async fn main() -> anyhow::Result<()> {
         flux.send(payload.clone());
         flux.send(payload.clone());
         flux.send(payload.clone());
+        flux.complete();
         println!("Request returned");
 
         while let Some(payload) = stream.next().await {

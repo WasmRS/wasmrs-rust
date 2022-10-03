@@ -30,7 +30,7 @@ generates:
           - Default
       attributes:
         _all:
-          - '#[cfg_attr(not(target_family = "wasm"), derive(Debug))]'
+          - '#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]'
           - "#[must_use]"
         _except:
           - FrameType

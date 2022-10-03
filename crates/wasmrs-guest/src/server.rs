@@ -9,12 +9,12 @@ use crate::{error::Error, NamespaceMap, ProcessFactory};
 pub(crate) struct WasmServer {}
 
 impl RSocket for WasmServer {
-    fn fire_and_forget(&self, _req: Payload) -> FluxReceiver<(), PayloadError> {
+    fn fire_and_forget(&self, _req: Payload) -> Mono<(), PayloadError> {
         todo!()
     }
 
     fn request_response(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
-        let flux = Flux::new();
+        let (tx, rx) = Flux::new_parts();
 
         let metadata = flux_try!(payload.parse_metadata());
 
@@ -24,17 +24,15 @@ impl RSocket for WasmServer {
             &metadata.operation,
         ));
 
-        let outgoing =
-            flux_try!(handler(flux.split_receiver().unwrap())
-                .map_err(|e| Error::HandlerFail(e.to_string())));
-        let _ = flux.send(flux_try!(payload.try_into()));
-        flux.complete();
+        let outgoing = flux_try!(handler(rx).map_err(|e| Error::HandlerFail(e.to_string())));
+        let _ = tx.send(flux_try!(payload.try_into()));
+        tx.complete();
 
         outgoing.split_receiver().unwrap()
     }
 
     fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
-        let flux = Flux::new();
+        let (tx, rx) = Flux::new_parts();
 
         let metadata = flux_try!(payload.parse_metadata());
 
@@ -44,11 +42,9 @@ impl RSocket for WasmServer {
             &metadata.operation,
         ));
 
-        let outgoing =
-            flux_try!(handler(flux.split_receiver().unwrap())
-                .map_err(|e| Error::HandlerFail(e.to_string())));
-        let _ = flux.send(flux_try!(payload.try_into()));
-        flux.complete();
+        let outgoing = flux_try!(handler(rx).map_err(|e| Error::HandlerFail(e.to_string())));
+        flux_try!(tx.send(flux_try!(payload.try_into())));
+        tx.complete();
 
         outgoing.split_receiver().unwrap()
     }
@@ -57,82 +53,49 @@ impl RSocket for WasmServer {
         &self,
         mut stream: FluxReceiver<Payload, PayloadError>,
     ) -> FluxReceiver<Payload, PayloadError> {
-        let flux = Flux::new();
-        let outgoing = flux.split_receiver().unwrap();
+        let (tx, rx) = Flux::new_parts();
 
         runtime::spawn(async move {
-            let handler_input = Flux::new();
-            let mut handler_out = if let Some(payload) = stream.next().await {
-                match payload {
-                    Ok(payload) => {
-                        let metadata = match payload.parse_metadata() {
-                            Ok(m) => m,
-                            Err(_e) => {
-                                return flux
-                                    .error(PayloadError::application_error(
-                                        "Could not parse metadata",
-                                    ))
-                                    .unwrap();
-                            }
-                        };
-                        let handler_stream = handler_input.split_receiver().unwrap();
-                        let handler = get_process_handler(
-                            &crate::guest::REQUEST_RESPONSE_HANDLERS,
-                            &metadata.namespace,
-                            &metadata.operation,
-                        );
-                        let handler = match handler {
-                            Ok(h) => h,
-                            Err(_e) => {
-                                return flux
-                                    .error(PayloadError::application_error(
-                                        "Could not find handler",
-                                    ))
-                                    .unwrap();
-                            }
-                        };
-                        let result =
-                            handler(handler_stream).map_err(|e| Error::HandlerFail(e.to_string()));
-                        if result.is_err() {
-                            return flux
-                                .error(PayloadError::application_error("Handler failed"))
-                                .unwrap();
-                        }
-                        handler_input.send(payload.try_into().unwrap()).unwrap();
-                        result.unwrap()
-                    }
-                    Err(_e) => {
-                        return flux
-                            .error(PayloadError::application_error(
-                                "Can not initiate a channel with an error",
-                            ))
-                            .unwrap()
-                    }
-                }
+            let (handler_input, handler_stream) = Flux::new_parts();
+            let mut handler_out = if let Some(result) = stream.next().await {
+                let payload = flux_try!(tx, result);
+
+                let metadata = flux_try!(tx, payload.parse_metadata());
+                let handler = flux_try!(
+                    tx,
+                    get_process_handler(
+                        &crate::guest::REQUEST_RESPONSE_HANDLERS,
+                        &metadata.namespace,
+                        &metadata.operation,
+                    )
+                );
+
+                handler_input.send(payload.try_into().unwrap()).unwrap();
+                flux_try!(
+                    tx,
+                    handler(handler_stream).map_err(|e| Error::HandlerFail(e.to_string()))
+                )
             } else {
-                return flux
-                    .error(PayloadError::application_error(
-                        "Can not initiate a channel with no payload",
-                    ))
-                    .unwrap();
+                let _ = tx.error(PayloadError::application_error(
+                    "Can not initiate a channel with no payload",
+                ));
+                return;
             };
             runtime::spawn(async move {
                 while let Some(payload) = handler_out.next().await {
-                    let _ = flux.send_result(payload);
+                    let _ = tx.send_result(payload);
                 }
-                flux.complete();
+                tx.complete();
             });
             while let Some(next) = stream.next().await {
-                handler_input
-                    .send_result(next.and_then(|v| {
-                        v.try_into()
-                            .map_err(|e: Error| PayloadError::application_error(e.to_string()))
-                    }))
-                    .unwrap();
+                let _ = handler_input.send_result(next.and_then(|v| {
+                    v.try_into()
+                        .map_err(|e: Error| PayloadError::application_error(e.to_string()))
+                }));
             }
         });
 
-        outgoing
+        rx
     }
 }
 

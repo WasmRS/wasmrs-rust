@@ -61,9 +61,7 @@ mod test {
 
     #[tokio::test]
     async fn test_pipes() -> Result<()> {
-        let flux = Flux::<String, String>::new();
-
-        let observer = flux.split_receiver()?;
+        let (flux, observer) = Flux::new_parts();
 
         flux.send("First".to_owned())?;
 

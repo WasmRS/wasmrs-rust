@@ -202,26 +202,12 @@ impl Frame {
         Frame::RequestN(RequestN { stream_id, n })
     }
 
-    pub fn new_request_response(
-        stream_id: u32,
-        payload: Payload,
-        flags: FrameFlags,
-        initial_n: u32,
-    ) -> Frame {
-        Frame::RequestResponse(RequestResponse::from_payload(
-            stream_id, payload, flags, initial_n,
-        ))
+    pub fn new_request_response(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
+        Frame::RequestResponse(RequestResponse::from_payload(stream_id, payload, flags, 0))
     }
 
-    pub fn new_request_stream(
-        stream_id: u32,
-        payload: Payload,
-        flags: FrameFlags,
-        initial_n: u32,
-    ) -> Frame {
-        Frame::RequestStream(RequestStream::from_payload(
-            stream_id, payload, flags, initial_n,
-        ))
+    pub fn new_request_stream(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
+        Frame::RequestStream(RequestStream::from_payload(stream_id, payload, flags, 0))
     }
 
     pub fn new_request_channel(
@@ -235,15 +221,8 @@ impl Frame {
         ))
     }
 
-    pub fn new_request_fnf(
-        stream_id: u32,
-        payload: Payload,
-        flags: FrameFlags,
-        initial_n: u32,
-    ) -> Frame {
-        Frame::RequestFnF(RequestFnF::from_payload(
-            stream_id, payload, flags, initial_n,
-        ))
+    pub fn new_request_fnf(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
+        Frame::RequestFnF(RequestFnF::from_payload(stream_id, payload, flags, 0))
     }
 
     pub fn new_payload(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {

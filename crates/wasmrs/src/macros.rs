@@ -10,4 +10,23 @@ macro_rules! flux_try {
             }
         }
     }};
+    ($tx:ident, $expr:expr) => {{
+        match $expr {
+            Ok(v) => v,
+            Err(e) => {
+                let _ = $tx.error(PayloadError::application_error(e.to_string()));
+                return;
+            }
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! clock {
+    ($expr:expr, $msg:literal) => {{
+        let start = std::time::Instant::now();
+        $expr;
+        let end = std::time::Instant::now();
+        println!("{} took {}ns", $msg, (end - start).as_nanos());
+    }};
 }

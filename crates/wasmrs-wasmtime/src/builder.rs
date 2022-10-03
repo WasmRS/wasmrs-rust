@@ -117,6 +117,9 @@ impl<'a> WasmtimeEngineProviderBuilder<'a> {
                     }
                 }
 
+                #[cfg(feature = "profiler")]
+                config.profiler(wasmtime::ProfilingStrategy::JitDump);
+
                 let engine = wasmtime::Engine::new(&config)?;
                 WasmtimeEngineProvider::new_with_engine(
                     self.module_bytes,

@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
-use wasmrs::flux::FluxReceiver;
+use wasmrs::flux::*;
 use wasmrs::runtime::{spawn, UnboundedReceiver};
 use wasmrs::{Frame, Payload, PayloadError, RSocket, WasmSocket};
 
@@ -29,7 +29,7 @@ impl Host {
     }
 
     pub fn new_context(&self) -> Result<CallContext> {
-        let mut socket = WasmSocket::new(HostServer {}, 1);
+        let mut socket = WasmSocket::new(HostServer {}, wasmrs::SocketSide::Host);
         let rx = socket.take_rx().unwrap();
         let state = Arc::new(socket);
 
@@ -52,7 +52,7 @@ fn spawn_writer(mut rx: UnboundedReceiver<Frame>, context: SharedContext) {
 struct HostServer {}
 
 impl RSocket for HostServer {
-    fn fire_and_forget(&self, _req: Payload) -> FluxReceiver<(), PayloadError> {
+    fn fire_and_forget(&self, _req: Payload) -> Mono<(), PayloadError> {
         todo!()
     }
 
@@ -91,7 +91,7 @@ impl CallContext {
 }
 
 impl RSocket for CallContext {
-    fn fire_and_forget(&self, _payload: Payload) -> FluxReceiver<(), PayloadError> {
+    fn fire_and_forget(&self, _payload: Payload) -> Mono<(), PayloadError> {
         todo!()
     }
 

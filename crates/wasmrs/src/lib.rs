@@ -92,11 +92,14 @@ use flux::*;
 use util::*;
 
 #[macro_use]
+extern crate tracing;
+
+#[macro_use]
 mod macros;
 
 pub use error::{Error, PayloadError};
 pub use generated::*;
-pub use socket::WasmSocket;
+pub use socket::{SocketSide, WasmSocket};
 
 use self::runtime::ConditionallySafe;
 
@@ -109,7 +112,7 @@ pub trait FrameWriter: Sync + Send {
 
 pub trait RSocket: ConditionallySafe {
     /// Fire and Forget interaction model of RSocket.
-    fn fire_and_forget(&self, payload: Payload) -> FluxReceiver<(), PayloadError>;
+    fn fire_and_forget(&self, payload: Payload) -> Mono<(), PayloadError>;
     /// Request-Response interaction model of RSocket.
     fn request_response(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError>;
     /// Request-Stream interaction model of RSocket.

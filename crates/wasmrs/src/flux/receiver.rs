@@ -29,6 +29,12 @@ where
             rx: OptionalMut::new(rx),
         }
     }
+
+    pub fn none() -> Self {
+        Self {
+            rx: OptionalMut::none(),
+        }
+    }
 }
 
 impl<Item, Err> Clone for FluxReceiver<Item, Err>

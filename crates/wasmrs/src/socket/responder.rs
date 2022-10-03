@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 
-use crate::{flux::*, ErrorCode, Payload, PayloadError, RSocket};
+use crate::{flux::*, ErrorCode, Mono, Payload, PayloadError, RSocket};
 
 #[derive(Clone)]
 pub(crate) struct Responder {
@@ -18,7 +18,7 @@ impl Responder {
 }
 
 impl RSocket for Responder {
-    fn fire_and_forget(&self, req: Payload) -> FluxReceiver<(), PayloadError> {
+    fn fire_and_forget(&self, req: Payload) -> Mono<(), PayloadError> {
         let inner = self.inner.read();
         (*inner).fire_and_forget(req)
     }
@@ -46,13 +46,13 @@ impl RSocket for Responder {
 pub(crate) struct EmptyRSocket;
 
 impl RSocket for EmptyRSocket {
-    fn fire_and_forget(&self, _req: Payload) -> FluxReceiver<(), PayloadError> {
-        let channel = Flux::<(), PayloadError>::new();
-        let _ = channel.error(PayloadError::new(
-            ErrorCode::ApplicationError.into(),
-            "Unimplemented",
-        ));
-        channel.split_receiver().unwrap()
+    fn fire_and_forget(&self, _req: Payload) -> Mono<(), PayloadError> {
+        Mono::new(async move {
+            Err(PayloadError::new(
+                ErrorCode::ApplicationError.into(),
+                "Unimplemented",
+            ))
+        })
     }
 
     fn request_response(&self, _req: Payload) -> FluxReceiver<Payload, PayloadError> {

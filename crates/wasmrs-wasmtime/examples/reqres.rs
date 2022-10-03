@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
     let num = 100000;
     let metadata = Metadata::new("greeting", "sayHello");
     let mbytes = metadata.encode();
-    println!("metadata: {:?}", mbytes);
+    // println!("metadata: {:?}", mbytes);
     let payload = Payload::new(mbytes, bytes.into());
     let mut streams = Vec::new();
     for _ in 0..num {

@@ -12,35 +12,35 @@
 
 pub type FrameFlags = u16;
 
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 #[derive()]
 pub struct RequestChannel(pub RequestPayload);
 
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 #[derive()]
 pub struct RequestStream(pub RequestPayload);
 
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 #[derive()]
 pub struct RequestResponse(pub RequestPayload);
 
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 #[derive()]
 pub struct RequestFnF(pub RequestPayload);
 
 /// Six (6) bytes reserved for FrameHeader information.
 #[derive()]
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 pub struct FrameHeader {
     pub header: bytes::Bytes,
 }
 #[derive(Clone, Default)]
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 pub struct Payload {
     pub metadata: Option<bytes::Bytes>,
@@ -48,7 +48,7 @@ pub struct Payload {
 }
 /// A Payload frame.
 #[derive()]
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 pub struct PayloadFrame {
     /// The stream ID this frame belongs to.
@@ -65,14 +65,14 @@ pub struct PayloadFrame {
     pub next: bool,
 }
 #[derive()]
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 pub struct Cancel {
     /// The stream ID this frame belongs to.
     pub stream_id: u32,
 }
 #[derive()]
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 pub struct ErrorFrame {
     /// The stream ID this frame belongs to.
@@ -81,7 +81,7 @@ pub struct ErrorFrame {
     pub data: String,
 }
 #[derive()]
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 pub struct RequestN {
     /// The stream ID this frame belongs to.
@@ -89,7 +89,7 @@ pub struct RequestN {
     pub n: u32,
 }
 #[derive()]
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 pub struct RequestPayload {
     /// The type of Request this payload creates.
@@ -109,7 +109,7 @@ pub struct RequestPayload {
 }
 /// Metadata associated with the frame.
 #[derive(Clone)]
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 pub struct Metadata {
     /// The namespace of the target operation.
@@ -120,7 +120,7 @@ pub struct Metadata {
     pub instance: bytes::Bytes,
 }
 #[derive()]
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 pub enum Frame {
     PayloadFrame(PayloadFrame),
@@ -226,7 +226,7 @@ impl Into<u32> for FrameType {
 }
 
 #[derive()]
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 pub enum FrameFlag {
     Metadata,
@@ -277,7 +277,7 @@ impl Into<u32> for FrameFlag {
 
 /// RSocket Error Codes
 #[derive(Copy, Clone)]
-#[cfg_attr(not(target_family = "wasm"), derive(Debug))]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 pub enum ErrorCode {
     InvalidSetup,

@@ -1,4 +1,4 @@
-use futures::Stream;
+use futures::{Future, FutureExt, Stream};
 use std::sync::atomic::AtomicBool;
 use std::{pin::Pin, task::Poll};
 
@@ -19,6 +19,47 @@ pub use observable::*;
 type FutureResult<Item, Err> = BoxFuture<Result<Option<Result<Item, Err>>, Error>>;
 
 pub type FluxBox<Item, Err> = Pin<Box<dyn Observable<Item, Err>>>;
+
+pub trait MonoFuture<Item, Err>: Future<Output = Result<Item, Err>> + ConditionallySafe {}
+
+#[allow(missing_debug_implementations)]
+pub struct Mono<Item, Err>(Pin<Box<dyn MonoFuture<Item, Err>>>)
+where
+    Item: ConditionallySafe,
+    Err: ConditionallySafe;
+
+impl<Item, Err> Mono<Item, Err>
+where
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
+{
+    pub fn new<Fut>(fut: Fut) -> Self
+    where
+        Fut: MonoFuture<Item, Err>,
+    {
+        Self(Box::pin(fut))
+    }
+}
+
+impl<Item, Err, T> MonoFuture<Item, Err> for T
+where
+    T: Future<Output = Result<Item, Err>> + ConditionallySafe,
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
+{
+}
+
+impl<Item, Err> Future for Mono<Item, Err>
+where
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
+{
+    type Output = Result<Item, Err>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        self.get_mut().0.poll_unpin(cx)
+    }
+}
 
 #[must_use]
 #[allow(missing_debug_implementations)]
@@ -47,6 +88,19 @@ where
         }
     }
 
+    pub fn new_parts() -> (Self, FluxReceiver<Item, Err>) {
+        let (tx, rx) = unbounded_channel();
+
+        (
+            Self {
+                complete: AtomicBool::new(false),
+                tx,
+                rx: FluxReceiver::none(),
+            },
+            FluxReceiver::new(rx),
+        )
+    }
+
     #[must_use]
     pub fn is_closed(&self) -> bool {
         self.tx.is_closed()
@@ -64,6 +118,20 @@ where
 
     pub fn split_receiver(&self) -> Result<FluxReceiver<Item, Err>, Error> {
         self.rx.eject().ok_or(Error::ReceiverAlreadyGone)
+    }
+}
+
+impl<Item, Err> Clone for Flux<Item, Err>
+where
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
+{
+    fn clone(&self) -> Self {
+        Self {
+            complete: AtomicBool::new(self.complete.load(std::sync::atomic::Ordering::SeqCst)),
+            tx: self.tx.clone(),
+            rx: self.rx.clone(),
+        }
     }
 }
 
@@ -101,20 +169,6 @@ where
 {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl<Item, Err> Clone for Flux<Item, Err>
-where
-    Item: ConditionallySafe,
-    Err: ConditionallySafe,
-{
-    fn clone(&self) -> Self {
-        Self {
-            complete: AtomicBool::new(self.complete.load(std::sync::atomic::Ordering::SeqCst)),
-            tx: self.tx.clone(),
-            rx: self.rx.clone(),
-        }
     }
 }
 
