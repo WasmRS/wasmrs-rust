@@ -1,50 +1,60 @@
 use std::{cell::UnsafeCell, rc::Rc};
 
 use futures_util::StreamExt;
-use wasmrs::{flux::*, flux_try, runtime, Payload, PayloadError, RSocket};
+use wasmrs::{flux::*, flux_try, mono_try, runtime, Payload, PayloadError, RSocket};
 
-use crate::{error::Error, OperationMap, ProcessFactory};
+use crate::{error::Error, OperationMap, ParsedPayload};
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub(crate) struct WasmServer {}
 
 impl RSocket for WasmServer {
-    fn fire_and_forget(&self, _req: Payload) -> Mono<(), PayloadError> {
-        todo!()
+    fn fire_and_forget(&self, payload: Payload) -> Mono<(), PayloadError> {
+        let metadata = mono_try!(payload.parse_metadata());
+
+        let handler = mono_try!(get_process_handler(
+            &crate::guest::REQUEST_FNF_HANDLERS,
+            metadata.index as _,
+        ));
+
+        let parsed: ParsedPayload = mono_try!(payload.try_into());
+
+        mono_try!(handler(Mono::new_success(parsed)).map_err(|e| Error::HandlerFail(e.to_string())));
+
+        Mono::new_success(())
     }
 
-    fn request_response(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
-        let (tx, rx) = Flux::new_parts();
+    fn request_response(&self, payload: Payload) -> Mono<Payload, PayloadError> {
+        let metadata = mono_try!(payload.parse_metadata());
 
-        let metadata = flux_try!(payload.parse_metadata());
-
-        let handler = flux_try!(get_process_handler(
+        let handler = mono_try!(get_process_handler(
             &crate::guest::REQUEST_RESPONSE_HANDLERS,
             metadata.index as _,
         ));
 
-        let outgoing = flux_try!(handler(rx).map_err(|e| Error::HandlerFail(e.to_string())));
-        let _ = tx.send(flux_try!(payload.try_into()));
-        tx.complete();
+        let parsed: ParsedPayload = mono_try!(payload.try_into());
 
-        outgoing.split_receiver().unwrap()
+        let outgoing = mono_try!(
+            handler(Mono::new_success(parsed)).map_err(|e| Error::HandlerFail(e.to_string()))
+        );
+
+        outgoing
     }
 
     fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
-        let (tx, rx) = Flux::new_parts();
-
         let metadata = flux_try!(payload.parse_metadata());
 
         let handler = flux_try!(get_process_handler(
-            &crate::guest::REQUEST_RESPONSE_HANDLERS,
+            &crate::guest::REQUEST_STREAM_HANDLERS,
             metadata.index as _,
         ));
 
-        let outgoing = flux_try!(handler(rx).map_err(|e| Error::HandlerFail(e.to_string())));
-        flux_try!(tx.send(flux_try!(payload.try_into())));
-        tx.complete();
+        let parsed: ParsedPayload = flux_try!(payload.try_into());
+        let mono = Mono::new_success(parsed);
 
-        outgoing.split_receiver().unwrap()
+        let outgoing = flux_try!(handler(mono).map_err(|e| Error::HandlerFail(e.to_string())));
+
+        outgoing
     }
 
     fn request_channel(
@@ -62,7 +72,7 @@ impl RSocket for WasmServer {
                 let handler = flux_try!(
                     tx,
                     get_process_handler(
-                        &crate::guest::REQUEST_RESPONSE_HANDLERS,
+                        &crate::guest::REQUEST_CHANNEL_HANDLERS,
                         metadata.index as _,
                     )
                 );
@@ -96,10 +106,10 @@ impl RSocket for WasmServer {
     }
 }
 
-fn get_process_handler(
-    kind: &'static std::thread::LocalKey<UnsafeCell<OperationMap>>,
+fn get_process_handler<T>(
+    kind: &'static std::thread::LocalKey<UnsafeCell<OperationMap<T>>>,
     index: usize,
-) -> Result<Rc<ProcessFactory>, Error> {
+) -> Result<Rc<T>, Error> {
     kind.with(|cell| {
         #[allow(unsafe_code)]
         let buffer = unsafe { &*cell.get() };

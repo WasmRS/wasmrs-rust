@@ -48,13 +48,13 @@ impl RequestPayload {
             0
         };
 
-        let metadata_len = if header.has_metadata() {
-            from_u24_bytes(&buffer.split_to(3)) as usize
+        let metadata = if header.has_metadata() {
+            let metadata_len = from_u24_bytes(&buffer.split_to(3)) as usize;
+            buffer.split_to(metadata_len)
         } else {
-            0
+            Bytes::new()
         };
 
-        let metadata: Bytes = buffer.split_to(metadata_len);
         let payload: Bytes = buffer;
 
         Ok(RequestPayload {
@@ -87,8 +87,12 @@ impl RequestPayload {
         } else {
             Vec::new()
         };
-        let mlen = to_u24_bytes(self.metadata.len() as u32);
-        let md = self.metadata;
+
+        let (mlen, md) = if self.metadata.is_empty() {
+            (Bytes::new(), Bytes::new())
+        } else {
+            (to_u24_bytes(self.metadata.len() as u32), self.metadata)
+        };
         let data = self.data;
         let frame_len = Frame::LEN_HEADER + n_bytes.len() + mlen.len() + md.len() + data.len();
         let mut bytes = BytesMut::with_capacity(frame_len);

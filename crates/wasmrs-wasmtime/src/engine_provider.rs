@@ -178,6 +178,13 @@ impl ProviderCallContext for WasmtimeCallContext {
                 .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?;
         }
 
+        let init: TypedFunc<(u32, u32, u32), ()> = self
+            .instance
+            .get_typed_func(&mut self.store, GuestExports::Init.as_ref())
+            .map_err(|_e| wasmrs_host::errors::Error::InitFailed(Error::GuestInit.to_string()))?;
+        init.call(&mut self.store, (1024, 1024, 128))
+            .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?;
+
         if let Ok(oplist) = self
             .instance
             .get_typed_func::<(), (), _>(&mut self.store, GuestExports::OpListRequest.as_ref())
@@ -185,13 +192,6 @@ impl ProviderCallContext for WasmtimeCallContext {
             trace!("Calling operation list");
             oplist.call(&mut self.store, ()).unwrap();
         }
-
-        let init: TypedFunc<(u32, u32, u32), ()> = self
-            .instance
-            .get_typed_func(&mut self.store, GuestExports::Init.as_ref())
-            .map_err(|_e| wasmrs_host::errors::Error::InitFailed(Error::GuestInit.to_string()))?;
-        init.call(&mut self.store, (1024, 1024, 128))
-            .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?;
         Ok(())
     }
 }

@@ -23,21 +23,76 @@ pub type FluxBox<Item, Err> = Pin<Box<dyn Observable<Item, Err>>>;
 pub trait MonoFuture<Item, Err>: Future<Output = Result<Item, Err>> + ConditionallySafe {}
 
 #[allow(missing_debug_implementations)]
-pub struct Mono<Item, Err>(Pin<Box<dyn MonoFuture<Item, Err>>>)
+#[must_use]
+pub struct Mono<Item, Err>
 where
     Item: ConditionallySafe,
-    Err: ConditionallySafe;
+    Err: ConditionallySafe,
+{
+    inner: Option<Pin<Box<dyn MonoFuture<Item, Err>>>>,
+    is_complete: bool,
+}
 
 impl<Item, Err> Mono<Item, Err>
 where
     Item: ConditionallySafe,
     Err: ConditionallySafe,
 {
-    pub fn new<Fut>(fut: Fut) -> Self
+    pub fn new() -> Self {
+        Self {
+            inner: None,
+            is_complete: false,
+        }
+    }
+
+    pub fn from_future<Fut>(fut: Fut) -> Self
     where
         Fut: MonoFuture<Item, Err>,
     {
-        Self(Box::pin(fut))
+        Self {
+            inner: Some(Box::pin(fut)),
+            is_complete: false,
+        }
+    }
+
+    pub fn new_error(err: Err) -> Self {
+        Self {
+            inner: Some(Box::pin(futures::future::ready(Err(err)))),
+            is_complete: true,
+        }
+    }
+
+    pub fn new_success(ok: Item) -> Self {
+        Self {
+            inner: Some(Box::pin(futures::future::ready(Ok(ok)))),
+            is_complete: true,
+        }
+    }
+
+    pub fn success(&mut self, ok: Item) {
+        assert!(
+            self.inner.is_none(),
+            "Can not push more than one value to a Mono"
+        );
+        self.inner = Some(Box::pin(futures::future::ready(Ok(ok))));
+    }
+
+    pub fn error(&mut self, error: Err) {
+        assert!(
+            self.inner.is_none(),
+            "Can not push more than one value to a Mono"
+        );
+        self.inner = Some(Box::pin(futures::future::ready(Err(error))));
+    }
+}
+
+impl<Item, Err> Default for Mono<Item, Err>
+where
+    Item: ConditionallySafe,
+    Err: ConditionallySafe,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -57,7 +112,10 @@ where
     type Output = Result<Item, Err>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
-        self.get_mut().0.poll_unpin(cx)
+        match self.get_mut().inner.as_mut() {
+            Some(mut v) => v.poll_unpin(cx),
+            None => Poll::Pending,
+        }
     }
 }
 
@@ -220,6 +278,15 @@ mod test {
         assert_eq!(value, Some(Ok(2)));
         let stream = flux.split_receiver();
         assert!(stream.is_err());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_mono() -> Result<()> {
+        let mut mono = Mono::<String, String>::new();
+        mono.success("Hello".to_owned());
+        let value = mono.await;
+        assert_eq!(value, Ok("Hello".to_owned()));
         Ok(())
     }
 

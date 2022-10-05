@@ -1,70 +1,143 @@
 use wasmrs_guest::select_all;
+use wasmrs_guest::FutureExt;
 use wasmrs_guest::StreamExt;
 
 use crate::guest::*;
 
-#[derive()]
-pub(crate) struct HelloInputs {
-    pub(crate) msg: FluxReceiver<String, PayloadError>,
-}
+pub(crate) type GEN_RC_INPUTS = FluxReceiver<String, PayloadError>;
 
-pub(crate) struct HelloOutputs {
-    pub(crate) msg: Flux<String, PayloadError>,
-}
+pub(crate) type GEN_RC_OUTPUTS = Flux<String, PayloadError>;
 
-pub(crate) struct Hello {
-    pub(crate) inputs: HelloInputs,
-    pub(crate) outputs: HelloOutputs,
-}
+pub(crate) struct GEN_RC {}
 
-impl Process for Hello {
-    fn start(input_stream: IncomingStream) -> ProcessReturnValue {
+impl RequestChannel for GEN_RC {
+    fn request_channel_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
         // generated
-        let hello_msg_channel = Flux::<String, PayloadError>::new();
-        let hello_msg_stream = hello_msg_channel.split_receiver().unwrap();
+        let (inputs_tx, inputs_rx) = Flux::<String, PayloadError>::new_parts();
 
         spawn(async move {
-            while let Ok(Some(Ok(payload))) = input_stream.recv().await {
-                // #[allow(clippy::single_match)]
-                // match payload.metadata.namespace.as_str() {
-                //     "greeting" => {
-                  hello_msg_channel
-                  .send_result(deserialize(&payload.data).map_err(|e| e.into()));
-          // }
-          // _ => {
-          //     // how to handle errors?
-          // }
-      // }
+            while let Ok(Some(Ok(payload))) = input.recv().await {
+                inputs_tx.send_result(deserialize(&payload.data).map_err(|e| e.into()));
             }
         });
-        let output_stream = OutgoingStream::new();
-        let output_hello_msg_channel = Flux::<String, PayloadError>::new();
-        let output_hello_msg_stream = output_hello_msg_channel
-            .split_receiver()
-            .unwrap()
-            .map(|v| v.and_then(|v| Ok(serialize(&v)?)));
+        let (real_out_tx, real_out_rx) = Flux::new_parts();
+        let (outputs_tx, mut outputs_rx) = Flux::new_parts();
 
-        let inner = output_stream.clone();
         spawn(async move {
-            let mut futures = select_all(vec![output_hello_msg_stream]);
-            while let Some(bytes) = futures.next().await {
-                inner.send_result(bytes.map(|b| Payload::new_optional(None, Some(Bytes::from(b)))));
+            while let Some(result) = outputs_rx.next().await {
+                match result {
+                    Ok(payload) => match serialize(&payload) {
+                        Ok(bytes) => {
+                            real_out_tx.send(Payload::new_optional(None, Some(Bytes::from(bytes))));
+                        }
+                        Err(e) => {
+                            real_out_tx.error(PayloadError::application_error(e.to_string()));
+                        }
+                    },
+                    Err(err) => {
+                        real_out_tx.error(err);
+                    }
+                }
             }
         });
 
         spawn(async move {
-            let _result = Hello {
-                inputs: HelloInputs {
-                    msg: hello_msg_stream,
+            let _result = GEN_RC {}.task(inputs_rx, outputs_tx).await;
+        });
+
+        Ok(real_out_rx)
+    }
+}
+
+pub(crate) type GEN_RS_INPUTS = Mono<String, PayloadError>;
+
+pub(crate) type GEN_RS_OUTPUTS = Flux<String, PayloadError>;
+
+pub(crate) struct GEN_RS {}
+
+impl RequestStream for GEN_RS {
+    fn request_stream_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
+        // generated
+
+        let (out_tx, out_rx) = Flux::new_parts();
+
+        let input = Mono::from_future(async move {
+            match input.await {
+                Ok(bytes) => match deserialize(&bytes.data) {
+                    Ok(v) => Ok(v),
+                    Err(e) => Err(PayloadError::application_error(e.to_string())),
                 },
-                outputs: HelloOutputs {
-                    msg: output_hello_msg_channel,
-                },
+                Err(e) => Err(PayloadError::application_error(e.to_string())),
             }
-            .task()
-            .await;
         });
 
-        Ok(output_stream)
+        spawn(async move {
+            let task = GEN_RS {};
+            let (outputs_tx, mut outputs_rx) = Flux::new_parts();
+            let outputs = outputs_tx;
+            match task.task(input, outputs).await {
+                Ok(_) => {
+                    while let Some(next) = outputs_rx.next().await {
+                        let out = match next {
+                            Ok(output) => match serialize(&output) {
+                                Ok(bytes) => Ok(Payload::new_optional(None, Some(bytes.into()))),
+                                Err(e) => Err(PayloadError::application_error(e.to_string())),
+                            },
+                            Err(e) => Err(e),
+                        };
+                        let _ = out_tx.send_result(out);
+                    }
+                    out_tx.complete();
+                }
+                Err(e) => {
+                    let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+                }
+            };
+        });
+
+        Ok(out_rx)
+    }
+}
+
+pub(crate) type GEN_RR_INPUTS = Mono<String, PayloadError>;
+
+pub(crate) type GEN_RR_OUTPUTS = Mono<String, PayloadError>;
+
+pub(crate) struct GEN_RR {}
+
+impl RequestResponse for GEN_RR {
+    fn request_response_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
+        let (tx, rx) = runtime::oneshot();
+
+        let input = Mono::from_future(async move {
+            match input.await {
+                Ok(bytes) => match deserialize(&bytes.data) {
+                    Ok(v) => Ok(v),
+                    Err(e) => Err(PayloadError::application_error(e.to_string())),
+                },
+                Err(e) => Err(PayloadError::application_error(e.to_string())),
+            }
+        });
+
+        spawn(async move {
+            let task = GEN_RR {};
+            let output = Mono::new();
+            let output = match task.task(input, output).await {
+                Ok(output) => match output.await {
+                    Ok(output) => match serialize(&output) {
+                        Ok(bytes) => Ok(Payload::new_optional(None, Some(bytes.into()))),
+                        Err(e) => Err(PayloadError::application_error(e.to_string())),
+                    },
+                    Err(e) => Err(e),
+                },
+                Err(e) => Err(PayloadError::application_error(e.to_string())),
+            };
+            let _ = tx.send(output);
+        });
+
+        Ok(Mono::from_future(async move {
+            rx.await
+                .map_err(|e| PayloadError::application_error(e.to_string()))?
+        }))
     }
 }

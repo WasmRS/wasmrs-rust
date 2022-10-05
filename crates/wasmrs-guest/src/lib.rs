@@ -82,6 +82,10 @@
 mod guest;
 pub use guest::*;
 
+pub use wasmrs::runtime;
+
+pub use futures_util::FutureExt;
+
 mod server;
 
 pub mod error;

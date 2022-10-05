@@ -17,7 +17,7 @@ pub use self::buffer::BufferState;
 use self::responder::Responder;
 
 pub enum Handler {
-    ReqRR(Flux<Payload, PayloadError>),
+    ReqRR(tokio::sync::oneshot::Sender<Result<Payload, PayloadError>>),
     ReqRS(Flux<Payload, PayloadError>),
     ReqRC(Flux<Payload, PayloadError>),
 }
@@ -161,13 +161,11 @@ impl WasmSocket {
         let result = responder.request_response(input);
 
         runtime::spawn(async move {
-            match result.recv().await {
-                Ok(Some(Ok(res))) => {
+            match result.await {
+                Ok(res) => {
                     send_payload(&tx, stream_id, res, Frame::FLAG_NEXT | Frame::FLAG_COMPLETE);
                 }
-                Ok(None) => send_complete(&tx, stream_id, Frame::FLAG_COMPLETE),
                 Err(e) => send_app_error(&tx, stream_id, e.to_string()),
-                Ok(Some(Err(e))) => send_app_error(&tx, stream_id, e.to_string()),
             };
         });
     }
@@ -267,10 +265,9 @@ impl WasmSocket {
                 match o.get() {
                     Handler::ReqRR(_) => match o.remove() {
                         Handler::ReqRR(sender) => {
-                            if flag.flag_next() && sender.send(input).is_err() {
+                            if flag.flag_next() && sender.send(Ok(input)).is_err() {
                                 println!("response successful payload for REQUEST_RESPONSE failed: sid={}",sid);
                             }
-                            sender.complete();
                         }
                         _ => unreachable!(),
                     },
@@ -317,7 +314,7 @@ impl WasmSocket {
             let e = PayloadError::new(ErrorCode::Canceled.into(), "Request cancelled");
             match handler {
                 Handler::ReqRR(sender) => {
-                    let _ = sender.error(e);
+                    let _ = sender.send(Err(e));
                 }
                 Handler::ReqRS(_) => {
                     // stream cancelled. Take no action besides removing the handler.
@@ -335,7 +332,7 @@ impl WasmSocket {
             let e = PayloadError::new(code, message);
             match handler {
                 Handler::ReqRR(sender) => {
-                    let _ = sender.error(e);
+                    let _ = sender.send(Err(e));
                 }
                 Handler::ReqRS(sender) => {
                     let _ = sender.error(e);
@@ -353,26 +350,26 @@ impl RSocket for WasmSocket {
         let sid = self.next_stream_id();
         trace!(sid, side = %self.side, "request_response");
 
-        let flux = Flux::new();
-
-        self.register_handler(sid, Handler::ReqRR(flux));
-
         send(&self.tx, Frame::new_request_fnf(sid, payload, 0));
 
-        Mono::new(async { Ok(()) })
+        Mono::new_success(())
     }
 
-    fn request_response(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
+    fn request_response(&self, payload: Payload) -> Mono<Payload, PayloadError> {
         let sid = self.next_stream_id();
         trace!(sid, side = %self.side, "request_response");
 
-        let (flux, output) = Flux::new_parts();
+        // let (flux, output) = Flux::new_parts();
+        let (tx, rx) = tokio::sync::oneshot::channel();
 
-        self.register_handler(sid, Handler::ReqRR(flux));
+        self.register_handler(sid, Handler::ReqRR(tx));
 
         send(&self.tx, Frame::new_request_response(sid, payload, 0));
 
-        output
+        Mono::<Payload, PayloadError>::from_future(async move {
+            rx.await
+                .map_err(|e| PayloadError::application_error("Oneshot communication failed"))?
+        })
     }
 
     fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
@@ -476,14 +473,12 @@ mod test {
     impl RSocket for EchoRSocket {
         fn fire_and_forget(&self, _payload: Payload) -> Mono<(), PayloadError> {
             /* no op */
-            Mono::new(async { Ok(()) })
+            Mono::from_future(async { Ok(()) })
         }
 
-        fn request_response(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
+        fn request_response(&self, payload: Payload) -> Mono<Payload, PayloadError> {
             info!("{:?}", payload);
-            let (tx, rx) = Flux::new_parts();
-            let _ = tx.send(payload);
-            rx
+            Mono::new_success(payload)
         }
 
         fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
@@ -559,7 +554,7 @@ mod test {
             Bytes::from_static(b""),
             Bytes::from_static(b"REQRES"),
         ));
-        let once = output.next().await.unwrap().unwrap();
+        let once = output.await.unwrap();
         assert_eq!(once.data, Some(Bytes::from_static(b"REQRES")));
         Ok(())
     }

@@ -23,7 +23,7 @@ impl RSocket for Responder {
         (*inner).fire_and_forget(req)
     }
 
-    fn request_response(&self, req: Payload) -> FluxReceiver<Payload, PayloadError> {
+    fn request_response(&self, req: Payload) -> Mono<Payload, PayloadError> {
         let inner = self.inner.read();
         (*inner).request_response(req)
     }
@@ -47,29 +47,16 @@ pub(crate) struct EmptyRSocket;
 
 impl RSocket for EmptyRSocket {
     fn fire_and_forget(&self, _req: Payload) -> Mono<(), PayloadError> {
-        Mono::new(async move {
-            Err(PayloadError::new(
-                ErrorCode::ApplicationError.into(),
-                "Unimplemented",
-            ))
-        })
+        Mono::new_error(PayloadError::application_error("Unimplemented"))
     }
 
-    fn request_response(&self, _req: Payload) -> FluxReceiver<Payload, PayloadError> {
-        let channel = Flux::<Payload, PayloadError>::new();
-        let _ = channel.error(PayloadError::new(
-            ErrorCode::ApplicationError.into(),
-            "Unimplemented",
-        ));
-        channel.split_receiver().unwrap()
+    fn request_response(&self, _req: Payload) -> Mono<Payload, PayloadError> {
+        Mono::new_error(PayloadError::application_error("Unimplemented"))
     }
 
     fn request_stream(&self, _req: Payload) -> FluxReceiver<Payload, PayloadError> {
         let channel = Flux::<Payload, PayloadError>::new();
-        let _ = channel.error(PayloadError::new(
-            ErrorCode::ApplicationError.into(),
-            "Unimplemented",
-        ));
+        let _ = channel.error(PayloadError::application_error("Unimplemented"));
         channel.split_receiver().unwrap()
     }
 
@@ -78,10 +65,7 @@ impl RSocket for EmptyRSocket {
         _reqs: FluxReceiver<Payload, PayloadError>,
     ) -> FluxReceiver<Payload, PayloadError> {
         let channel = Flux::<Payload, PayloadError>::new();
-        let _ = channel.error(PayloadError::new(
-            ErrorCode::ApplicationError.into(),
-            "Unimplemented",
-        ));
+        let _ = channel.error(PayloadError::application_error("Unimplemented"));
         channel.split_receiver().unwrap()
     }
 }

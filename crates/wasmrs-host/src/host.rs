@@ -56,7 +56,7 @@ impl RSocket for HostServer {
         todo!()
     }
 
-    fn request_response(&self, _payload: Payload) -> FluxReceiver<Payload, PayloadError> {
+    fn request_response(&self, _payload: Payload) -> Mono<Payload, PayloadError> {
         todo!();
     }
 
@@ -108,7 +108,7 @@ impl RSocket for CallContext {
         self.socket.fire_and_forget(payload)
     }
 
-    fn request_response(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
+    fn request_response(&self, payload: Payload) -> Mono<Payload, PayloadError> {
         self.socket.request_response(payload)
     }
 

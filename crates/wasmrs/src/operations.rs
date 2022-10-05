@@ -1,4 +1,4 @@
-use bytes::Bytes;
+use bytes::{BufMut, Bytes, BytesMut};
 
 use crate::util::{from_u16_bytes, from_u32_bytes};
 
@@ -56,6 +56,17 @@ impl From<u8> for OperationType {
     }
 }
 
+impl From<OperationType> for u8 {
+    fn from(op: OperationType) -> Self {
+        match op {
+            OperationType::RequestResponse => 1,
+            OperationType::RequestFnF => 2,
+            OperationType::RequestStream => 3,
+            OperationType::RequestChannel => 4,
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum Error {
     Magic,
@@ -109,6 +120,70 @@ impl OperationList {
             .find(|op| op.namespace == namespace && op.operation == operation)
             .map(|op| op.index)
     }
+
+    pub fn add_export(
+        &mut self,
+        index: u32,
+        kind: OperationType,
+        namespace: String,
+        operation: String,
+    ) {
+        Self::add_op(&mut self.exports, index, kind, namespace, operation);
+    }
+    pub fn add_import(
+        &mut self,
+        index: u32,
+        kind: OperationType,
+        namespace: String,
+        operation: String,
+    ) {
+        Self::add_op(&mut self.imports, index, kind, namespace, operation);
+    }
+    pub fn add_op(
+        list: &mut Vec<Operation>,
+        index: u32,
+        kind: OperationType,
+        namespace: String,
+        operation: String,
+    ) {
+        list.push(Operation {
+            index,
+            kind,
+            namespace,
+            operation,
+        });
+    }
+
+    #[must_use]
+    pub fn encode(&self) -> Bytes {
+        let mut buff = BytesMut::new();
+        let num_ops: u32 = (self.imports.len() + self.exports.len()) as u32;
+        let version = 1u16;
+        buff.put(WASMRS_MAGIC.as_slice());
+        buff.put(version.to_be_bytes().as_slice());
+        buff.put(num_ops.to_be_bytes().as_slice());
+        for op in &self.exports {
+            buff.put(Self::encode_op(op));
+        }
+        buff.freeze()
+    }
+
+    fn encode_op(op: &Operation) -> Bytes {
+        let mut buff = BytesMut::new();
+
+        let kind: u8 = op.kind.into();
+        let dir = 1u8;
+        buff.put([kind].as_slice());
+        buff.put([dir].as_slice());
+        buff.put(op.index.to_be_bytes().as_slice());
+        buff.put((op.namespace.len() as u16).to_be_bytes().as_slice());
+        buff.put(op.namespace.as_bytes());
+        buff.put((op.operation.len() as u16).to_be_bytes().as_slice());
+        buff.put(op.operation.as_bytes());
+        buff.put(0_u16.to_be_bytes().as_slice());
+        buff.freeze()
+    }
+
     pub fn decode(mut buf: Bytes) -> Result<Self, Error> {
         let magic = buf.split_to(4);
         if magic != WASMRS_MAGIC.as_slice() {

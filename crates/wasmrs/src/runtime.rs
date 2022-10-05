@@ -2,6 +2,7 @@
 mod wasm;
 use std::task::{Context, Poll};
 
+use futures::Future;
 #[cfg(target_family = "wasm")]
 pub use wasm::*;
 
@@ -61,5 +62,70 @@ where
     }
     pub fn poll_recv(&mut self, cx: &mut Context) -> Poll<Option<Item>> {
         self.0.poll_recv(cx)
+    }
+}
+
+#[must_use]
+pub fn oneshot<Item>() -> (OneShotSender<Item>, OneShotReceiver<Item>)
+where
+    Item: ConditionallySafe,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel();
+
+    (OneShotSender(tx), OneShotReceiver(rx))
+}
+
+#[allow(missing_debug_implementations)]
+pub struct OneShotSender<Item>(tokio::sync::oneshot::Sender<Item>)
+where
+    Item: ConditionallySafe;
+
+impl<Item> OneShotSender<Item>
+where
+    Item: ConditionallySafe,
+{
+    pub fn send(self, message: Item) -> Result<(), Error> {
+        self.0.send(message).map_err(|_| Error::SendFailed(0))
+    }
+
+    #[must_use]
+    pub fn is_closed(&self) -> bool {
+        self.0.is_closed()
+    }
+}
+
+#[allow(missing_debug_implementations)]
+pub struct OneShotReceiver<Item>(tokio::sync::oneshot::Receiver<Item>)
+where
+    Item: ConditionallySafe;
+
+impl<Item> OneShotReceiver<Item>
+where
+    Item: ConditionallySafe,
+{
+    pub async fn recv(self) -> Result<Item, Error> {
+        self.0.await.map_err(|e| Error::RecvFailed(80))
+    }
+    pub fn poll_recv(&mut self) -> Poll<Result<Item, Error>> {
+        match self.0.try_recv() {
+            Ok(v) => Poll::Ready(Ok(v)),
+            Err(e) => match e {
+                tokio::sync::oneshot::error::TryRecvError::Empty => Poll::Pending,
+                tokio::sync::oneshot::error::TryRecvError::Closed => {
+                    Poll::Ready(Err(Error::RecvFailed(81)))
+                }
+            },
+        }
+    }
+}
+
+impl<Item> Future for OneShotReceiver<Item>
+where
+    Item: ConditionallySafe,
+{
+    type Output = Result<Item, Error>;
+
+    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.get_mut().poll_recv()
     }
 }

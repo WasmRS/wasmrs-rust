@@ -130,7 +130,7 @@ fn linker_op_list() -> (
             let len = params[1].i32();
             let memory = get_caller_memory(&mut caller);
             let vec = get_vec_from_memory(caller.as_context(), memory, ptr.unwrap(), len.unwrap());
-            println!("oplist data: {:?}", vec);
+
             caller
                 .data()
                 .do_op_list(Bytes::from(vec))

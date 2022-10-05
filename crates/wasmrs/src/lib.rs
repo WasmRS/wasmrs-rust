@@ -125,7 +125,7 @@ pub trait RSocket: ConditionallySafe {
     /// Fire and Forget interaction model of RSocket.
     fn fire_and_forget(&self, payload: Payload) -> Mono<(), PayloadError>;
     /// Request-Response interaction model of RSocket.
-    fn request_response(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError>;
+    fn request_response(&self, payload: Payload) -> Mono<Payload, PayloadError>;
     /// Request-Stream interaction model of RSocket.
     fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError>;
     /// Request-Channel interaction model of RSocket.

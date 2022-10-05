@@ -22,6 +22,16 @@ macro_rules! flux_try {
 }
 
 #[macro_export]
+macro_rules! mono_try {
+    ($expr:expr) => {{
+        match $expr {
+            Ok(v) => v,
+            Err(e) => return Mono::new_error(PayloadError::application_error(e.to_string())),
+        }
+    }};
+}
+
+#[macro_export]
 macro_rules! clock {
     ($expr:expr, $msg:literal) => {{
         let start = std::time::Instant::now();

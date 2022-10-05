@@ -130,6 +130,7 @@ impl Frame {
 
     pub fn decode(mut bytes: Bytes) -> Result<Frame, (u32, Error)> {
         let header = FrameHeader::from_bytes(bytes.split_to(Frame::LEN_HEADER));
+        println!("{}", header);
         let stream_id = header.stream_id();
         Self::_decode(header, bytes).map_err(|e| (stream_id, e))
     }

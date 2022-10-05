@@ -49,7 +49,10 @@ async fn main() -> anyhow::Result<()> {
     let op = context.get_export(&args.namespace, &args.operation)?;
 
     let mbytes = Metadata::new(op).encode();
-    let bytes = serialize(&args.data).unwrap();
+    let val: serde_json::Value = serde_json::from_str(&args.data)?;
+    let bytes = serialize(&val).unwrap();
+
+    println!("MP Bytes: {:?}", bytes);
     let payload = Payload::new(mbytes, bytes.into());
 
     if args.stream {
@@ -57,17 +60,16 @@ async fn main() -> anyhow::Result<()> {
     } else if args.channel {
         unimplemented!()
     } else {
-        let mut response = context.request_response(payload.clone());
-        match response.next().await {
-            Some(Ok(v)) => {
-                let val: serde_json::Value = deserialize(&v.data.unwrap()).unwrap();
+        let response = context.request_response(payload.clone());
+        match response.await {
+            Ok(v) => {
+                let bytes = v.data.unwrap();
+                println!("Got MP bytes back: {:?}", bytes.to_vec());
+                let val: String = deserialize(&bytes).unwrap();
                 println!("{}", val);
             }
-            Some(Err(e)) => {
+            Err(e) => {
                 println!("Error: {}", e)
-            }
-            None => {
-                println!("No response received");
             }
         }
     }

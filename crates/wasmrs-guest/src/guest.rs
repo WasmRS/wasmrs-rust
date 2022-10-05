@@ -1,6 +1,7 @@
 pub use wasmrs::runtime::spawn;
 use wasmrs::runtime::{exhaust_pool, UnboundedReceiver};
-use wasmrs::SocketSide;
+use wasmrs::util::to_u24_bytes;
+use wasmrs::{OperationList, OperationType, SocketSide};
 
 use std::io::{Cursor, Write};
 use std::{cell::UnsafeCell, rc::Rc, sync::atomic::Ordering};
@@ -9,11 +10,13 @@ use std::sync::atomic::AtomicU32;
 pub use wasmrs::{flux::*, Frame, Metadata, Payload, PayloadError};
 
 pub type GenericError = Box<dyn std::error::Error + Send + 'static>;
-pub type OperationMap = Vec<(String, String, Rc<ProcessFactory>)>;
-pub type ProcessFactory = fn(IncomingStream) -> std::result::Result<OutgoingStream, GenericError>;
+pub type OperationMap<T> = Vec<(String, String, Rc<T>)>;
+pub type ProcessFactory<I, O> = fn(I) -> Result<O, GenericError>;
 
+pub type IncomingMono = Mono<ParsedPayload, PayloadError>;
+pub type OutgoingMono = Mono<Payload, PayloadError>;
 pub type IncomingStream = FluxReceiver<ParsedPayload, PayloadError>;
-pub type OutgoingStream = Flux<Payload, PayloadError>;
+pub type OutgoingStream = FluxReceiver<Payload, PayloadError>;
 
 use crate::error::Error;
 use crate::server::WasmServer;
@@ -22,13 +25,15 @@ pub use bytes::Bytes;
 pub use futures_util::{stream::select_all, StreamExt};
 pub use wasmrs_codec::messagepack::{deserialize, serialize};
 
-type Result<T> = std::result::Result<T, Error>;
-
 thread_local! {
   static GUEST_BUFFER: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
   static HOST_BUFFER: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
   static MAX_HOST_FRAME_SIZE: AtomicU32 = AtomicU32::new(128);
-  pub(crate) static REQUEST_RESPONSE_HANDLERS: UnsafeCell<OperationMap> = UnsafeCell::new(OperationMap::new());
+  pub(crate) static REQUEST_RESPONSE_HANDLERS: UnsafeCell<OperationMap<ProcessFactory<IncomingMono,OutgoingMono>>> = UnsafeCell::new(OperationMap::new());
+  pub(crate) static REQUEST_STREAM_HANDLERS: UnsafeCell<OperationMap<ProcessFactory<IncomingMono,OutgoingStream>>> = UnsafeCell::new(OperationMap::new());
+  pub(crate) static REQUEST_CHANNEL_HANDLERS: UnsafeCell<OperationMap<ProcessFactory<IncomingStream,OutgoingStream>>> = UnsafeCell::new(OperationMap::new());
+  pub(crate) static REQUEST_FNF_HANDLERS: UnsafeCell<OperationMap<ProcessFactory<IncomingMono,()>>> = UnsafeCell::new(OperationMap::new());
+  pub(crate) static OP_LIST: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
   static MANAGER: UnsafeCell<wasmrs::WasmSocket> = UnsafeCell::new(wasmrs::WasmSocket::new(WasmServer{}, SocketSide::Guest));
 }
 
@@ -41,7 +46,7 @@ pub struct ParsedPayload {
 impl TryFrom<Payload> for ParsedPayload {
     type Error = Error;
 
-    fn try_from(value: Payload) -> Result<Self> {
+    fn try_from(value: Payload) -> Result<Self, Self::Error> {
         Ok(ParsedPayload {
             metadata: value.parse_metadata()?,
             data: value.data.unwrap_or_default(),
@@ -56,6 +61,8 @@ extern "C" {
     pub(crate) fn _host_wasmrs_init(guest_buffer_ptr: usize, host_buffer_ptr: usize);
     #[link_name = "__send"]
     pub(crate) fn _host_wasmrs_send(recv_ptr: usize);
+    #[link_name = "__op_list"]
+    pub(crate) fn _host_op_list(ptr: usize, len: usize);
 }
 
 fn print(msg: impl AsRef<str>) {
@@ -106,7 +113,7 @@ fn spawn_writer(mut rx: UnboundedReceiver<Frame>) {
     });
 }
 
-fn read_frames(read_until: u32) -> Result<Vec<Bytes>> {
+fn read_frames(read_until: u32) -> Result<Vec<Bytes>, Error> {
     GUEST_BUFFER.with(|cell| {
         #[allow(unsafe_code)]
         let buff = unsafe { &mut *cell.get() };
@@ -126,6 +133,59 @@ fn send_error_frame(stream_id: u32, code: u32, msg: impl AsRef<str>) {
     let err = Frame::new_error(stream_id, code, msg.as_ref());
     print(msg.as_ref());
     send_host_payload(vec![err.encode()]);
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+extern "C" fn __wasmrs_op_list_request() {
+    let mut op_list = OperationList::default();
+
+    query_handler(
+        &mut op_list,
+        OperationType::RequestResponse,
+        &REQUEST_RESPONSE_HANDLERS,
+    );
+
+    query_handler(
+        &mut op_list,
+        OperationType::RequestStream,
+        &REQUEST_STREAM_HANDLERS,
+    );
+
+    query_handler(
+        &mut op_list,
+        OperationType::RequestChannel,
+        &REQUEST_CHANNEL_HANDLERS,
+    );
+    query_handler(
+        &mut op_list,
+        OperationType::RequestFnF,
+        &REQUEST_FNF_HANDLERS,
+    );
+    let bytes = op_list.encode();
+
+    let (ptr, len) = OP_LIST.with(|cell| {
+        let buff = unsafe { &mut *cell.get() };
+        *buff = bytes.to_vec();
+        (buff.as_ptr(), buff.len())
+    });
+    unsafe {
+        _host_op_list(ptr as _, len);
+    }
+}
+
+fn query_handler<T>(
+    op_list: &mut OperationList,
+    kind: OperationType,
+    cell: &'static std::thread::LocalKey<UnsafeCell<OperationMap<T>>>,
+) {
+    cell.with(|cell| {
+        #[allow(unsafe_code)]
+        let buffer = unsafe { &mut *cell.get() };
+        for (i, (ns, op, _)) in buffer.iter().enumerate() {
+            op_list.add_export(i as u32, kind, ns.clone(), op.clone());
+        }
+    });
 }
 
 #[allow(unsafe_code)]
@@ -171,7 +231,7 @@ fn send_host_payload(mut payloads: Vec<Bytes>) -> Vec<Bytes> {
                 payloads.push(payload);
                 break;
             }
-            buff.write_all(&len.to_be_bytes()).unwrap();
+            buff.write_all(&to_u24_bytes(len)).unwrap();
             buff.write_all(&payload).unwrap();
             total += 4 + len as usize;
         }
@@ -184,18 +244,28 @@ fn send_host_payload(mut payloads: Vec<Bytes>) -> Vec<Bytes> {
     payloads
 }
 
-pub trait Process {
-    fn start(input_stream: IncomingStream) -> ProcessReturnValue;
+pub trait RequestFnF {
+    fn fire_and_forget_wrapper(input: IncomingMono) -> Result<(), GenericError>;
+}
+pub trait RequestResponse {
+    fn request_response_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError>;
+}
+pub trait RequestStream {
+    fn request_stream_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError>;
+}
+pub trait RequestChannel {
+    fn request_channel_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError>;
 }
 
-pub type ProcessReturnValue = std::result::Result<OutgoingStream, GenericError>;
+pub type ProcessReturnValue = Result<OutgoingStream, GenericError>;
 
-pub fn register_request_response(
+fn register_handler<T>(
+    kind: &'static std::thread::LocalKey<UnsafeCell<OperationMap<T>>>,
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
-    handler: ProcessFactory,
+    handler: T,
 ) {
-    REQUEST_RESPONSE_HANDLERS.with(|cell| {
+    kind.with(|cell| {
         #[allow(unsafe_code)]
         let buffer = unsafe { &mut *cell.get() };
         buffer.push((
@@ -204,4 +274,36 @@ pub fn register_request_response(
             Rc::new(handler),
         ));
     });
+}
+
+pub fn register_request_response(
+    ns: impl AsRef<str>,
+    op: impl AsRef<str>,
+    handler: ProcessFactory<IncomingMono, OutgoingMono>,
+) {
+    register_handler(&REQUEST_RESPONSE_HANDLERS, ns, op, handler);
+}
+
+pub fn register_request_stream(
+    ns: impl AsRef<str>,
+    op: impl AsRef<str>,
+    handler: ProcessFactory<IncomingMono, OutgoingStream>,
+) {
+    register_handler(&REQUEST_STREAM_HANDLERS, ns, op, handler);
+}
+
+pub fn register_request_channel(
+    ns: impl AsRef<str>,
+    op: impl AsRef<str>,
+    handler: ProcessFactory<IncomingStream, OutgoingStream>,
+) {
+    register_handler(&REQUEST_CHANNEL_HANDLERS, ns, op, handler);
+}
+
+pub fn register_fire_and_forget(
+    ns: impl AsRef<str>,
+    op: impl AsRef<str>,
+    handler: ProcessFactory<IncomingMono, ()>,
+) {
+    register_handler(&REQUEST_FNF_HANDLERS, ns, op, handler);
 }

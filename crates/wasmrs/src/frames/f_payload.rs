@@ -37,8 +37,12 @@ impl RSocketFrame<PayloadFrame> for PayloadFrame {
     fn decode_frame(header: &FrameHeader, mut buffer: Bytes) -> Result<Self, Error> {
         Self::check_type(header)?;
 
-        let metadata_len = from_u24_bytes(&buffer.split_to(3)) as usize;
-        let metadata: Bytes = buffer.split_to(metadata_len);
+        let metadata = if header.has_metadata() {
+            let metadata_len = from_u24_bytes(&buffer.split_to(3)) as usize;
+            buffer.split_to(metadata_len)
+        } else {
+            Bytes::new()
+        };
         let payload: Bytes = buffer;
 
         Ok(PayloadFrame {
@@ -53,8 +57,11 @@ impl RSocketFrame<PayloadFrame> for PayloadFrame {
 
     fn encode(self) -> Bytes {
         let header = self.gen_header().encode();
-        let mlen = to_u24_bytes(self.metadata.len() as u32);
-        let md = self.metadata;
+        let (mlen, md) = if self.metadata.is_empty() {
+            (Bytes::new(), Bytes::new())
+        } else {
+            (to_u24_bytes(self.metadata.len() as u32), self.metadata)
+        };
         let data = self.data;
         let mut bytes =
             BytesMut::with_capacity(Frame::LEN_HEADER + mlen.len() + md.len() + data.len());
