@@ -112,12 +112,8 @@ pub struct RequestPayload {
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 pub struct Metadata {
-    /// The namespace of the target operation.
-    pub namespace: String,
-    /// The target operation.
-    pub operation: String,
-    /// Instance.
-    pub instance: bytes::Bytes,
+    /// The operation index.
+    pub index: u32,
 }
 #[derive()]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]

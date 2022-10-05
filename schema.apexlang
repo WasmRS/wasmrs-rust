@@ -103,12 +103,8 @@ type RequestPayload {
 
 "Metadata associated with the frame."
 type Metadata {
-    "The namespace of the target operation."
-    namespace: string,
-    "The target operation."
-    operation: string,
-    "Instance."
-    instance: bytes,
+    "The operation index."
+    index: u32,
 }
 
 "RSocket Error Codes"

@@ -6,15 +6,14 @@ use crate::{ErrorCode, FrameType};
 #[allow(missing_copy_implementations)]
 #[derive(Debug, Clone)]
 pub enum Error {
+    OpList(String),
     RSocket(u32),
     SendFailed(u8),
     RecvFailed(u8),
     ReceiverAlreadyGone,
-    RxMissing,
-    WrongType(FrameType, FrameType),
+    WrongType,
     StringConversion,
     MetadataNotFound,
-    StringDecode,
     RequestCancelled(String),
 }
 
@@ -23,7 +22,14 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::RSocket(code) => f.write_str((Into::<u32>::into(*code)).to_string().as_str()),
-            _ => f.write_str("Error"),
+            Error::OpList(msg) => f.write_str(msg),
+            Error::SendFailed(_) => f.write_str("Send failed"),
+            Error::RecvFailed(_) => f.write_str("Receive failed"),
+            Error::ReceiverAlreadyGone => f.write_str("Received already taken"),
+            Error::WrongType => f.write_str("Tried to decode frame with wrong frame decoder"),
+            Error::StringConversion => f.write_str("Could not read string bytes"),
+            Error::MetadataNotFound => f.write_str("No metadata found"),
+            Error::RequestCancelled(msg) => f.write_str(msg),
         }
     }
 }

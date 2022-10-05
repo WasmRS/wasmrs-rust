@@ -31,20 +31,20 @@ impl Host {
     pub fn new_context(&self) -> Result<CallContext> {
         let mut socket = WasmSocket::new(HostServer {}, wasmrs::SocketSide::Host);
         let rx = socket.take_rx().unwrap();
-        let state = Arc::new(socket);
+        let socket = Arc::new(socket);
 
-        let context = self.engine.borrow().new_context(state.clone())?;
+        let context = self.engine.borrow().new_context(socket.clone())?;
         context.init()?;
-        spawn_writer(rx, context);
+        spawn_writer(rx, context.clone());
 
-        CallContext::new(self.mtu, state)
+        CallContext::new(self.mtu, socket, context)
     }
 }
 
 fn spawn_writer(mut rx: UnboundedReceiver<Frame>, context: SharedContext) {
     spawn(async move {
         while let Some(frame) = rx.recv().await {
-            let _ = context.write_frame(frame.stream_id(), frame);
+            let _ = context.write_frame(frame);
         }
     });
 }
@@ -74,6 +74,7 @@ impl RSocket for HostServer {
 
 pub struct CallContext {
     socket: Arc<WasmSocket>,
+    context: SharedContext,
 }
 
 impl std::fmt::Debug for CallContext {
@@ -85,14 +86,26 @@ impl std::fmt::Debug for CallContext {
 }
 
 impl CallContext {
-    fn new(_mtu: usize, state: Arc<WasmSocket>) -> Result<Self> {
-        Ok(Self { socket: state })
+    fn new(_mtu: usize, socket: Arc<WasmSocket>, context: SharedContext) -> Result<Self> {
+        Ok(Self { socket, context })
+    }
+
+    pub fn get_import(&self, namespace: &str, operation: &str) -> Result<u32> {
+        self.context.get_import(namespace, operation)
+    }
+
+    pub fn get_export(&self, namespace: &str, operation: &str) -> Result<u32> {
+        self.context.get_export(namespace, operation)
+    }
+
+    pub fn dump_operations(&self) {
+        println!("{:#?}", self.context.get_operation_list());
     }
 }
 
 impl RSocket for CallContext {
-    fn fire_and_forget(&self, _payload: Payload) -> Mono<(), PayloadError> {
-        todo!()
+    fn fire_and_forget(&self, payload: Payload) -> Mono<(), PayloadError> {
+        self.socket.fire_and_forget(payload)
     }
 
     fn request_response(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {

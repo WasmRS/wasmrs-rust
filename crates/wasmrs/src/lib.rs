@@ -78,18 +78,18 @@
 )]
 #![doc = include_str!("../README.md")]
 // TODO REMOVE
-#![allow(clippy::needless_pass_by_value)]
+#![allow(unused, clippy::needless_pass_by_value)]
 
 mod error;
 pub mod flux;
 pub mod frames;
 mod generated;
+mod operations;
 pub mod runtime;
 mod socket;
 pub mod util;
 
 use flux::*;
-use util::*;
 
 #[macro_use]
 extern crate tracing;
@@ -99,15 +99,26 @@ mod macros;
 
 pub use error::{Error, PayloadError};
 pub use generated::*;
+pub use operations::{Operation, OperationList, OperationType};
+pub use socket::BufferState;
 pub use socket::{SocketSide, WasmSocket};
 
 use self::runtime::ConditionallySafe;
 
 type Result<T> = std::result::Result<T, Error>;
 
-pub trait FrameWriter: Sync + Send {
-    /// Fire and Forget interaction model of RSocket.
-    fn write_frame(&mut self, stream_id: u32, req: Frame) -> Result<()>;
+pub trait ModuleHost: Sync + Send {
+    /// Write a frame to a wasmRS module's memory buffer.
+    fn write_frame(&mut self, frame: Frame) -> Result<()>;
+
+    /// Get an imported operation's index.
+    fn get_export(&self, namespace: &str, operation: &str) -> Result<u32>;
+
+    /// Get an exported operation's index.
+    fn get_import(&self, namespace: &str, operation: &str) -> Result<u32>;
+
+    /// Get a cloned operation list.
+    fn get_operation_list(&mut self) -> OperationList;
 }
 
 pub trait RSocket: ConditionallySafe {

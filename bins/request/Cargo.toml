@@ -1,33 +1,15 @@
 [package]
-name = "wasmrs-wasmtime"
+name = "request"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[features]
-default = []
-profiler = []
-
-
 [dependencies]
-wasmrs-host = { path = "../wasmrs-host" }
-wasmrs = { path = "../wasmrs" }
-
-wasmtime = "1.0"
-wasmtime-wasi = { version = "1.0", features = ["sync"] }
-wasi-common = { version = "1.0" }
-
-tracing = "0.1"
-thiserror = "1.0"
-cfg-if = "1.0.0"
-parking_lot = "0.12"
-tokio = { version = "1", features = ["rt", "sync"] }
-bytes = "1.2.1"
-futures = "0.3"
-
-[dev-dependencies]
-wasmrs-codec = { path = "../wasmrs-codec" }
+wasmrs = { path = "../../crates/wasmrs" }
+wasmrs-codec = { path = "../../crates/wasmrs-codec" }
+wasmrs-wasmtime = { path = "../../crates/wasmrs-wasmtime" }
+wasmrs-host = { path = "../../crates/wasmrs-host" }
 env_logger = "0.9"
 tokio = { version = "1", features = ["macros"] }
 test-log = "0.2.10"

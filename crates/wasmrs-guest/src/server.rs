@@ -3,7 +3,7 @@ use std::{cell::UnsafeCell, rc::Rc};
 use futures_util::StreamExt;
 use wasmrs::{flux::*, flux_try, runtime, Payload, PayloadError, RSocket};
 
-use crate::{error::Error, NamespaceMap, ProcessFactory};
+use crate::{error::Error, OperationMap, ProcessFactory};
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub(crate) struct WasmServer {}
@@ -20,8 +20,7 @@ impl RSocket for WasmServer {
 
         let handler = flux_try!(get_process_handler(
             &crate::guest::REQUEST_RESPONSE_HANDLERS,
-            &metadata.namespace,
-            &metadata.operation,
+            metadata.index as _,
         ));
 
         let outgoing = flux_try!(handler(rx).map_err(|e| Error::HandlerFail(e.to_string())));
@@ -38,8 +37,7 @@ impl RSocket for WasmServer {
 
         let handler = flux_try!(get_process_handler(
             &crate::guest::REQUEST_RESPONSE_HANDLERS,
-            &metadata.namespace,
-            &metadata.operation,
+            metadata.index as _,
         ));
 
         let outgoing = flux_try!(handler(rx).map_err(|e| Error::HandlerFail(e.to_string())));
@@ -65,8 +63,7 @@ impl RSocket for WasmServer {
                     tx,
                     get_process_handler(
                         &crate::guest::REQUEST_RESPONSE_HANDLERS,
-                        &metadata.namespace,
-                        &metadata.operation,
+                        metadata.index as _,
                     )
                 );
 
@@ -100,16 +97,15 @@ impl RSocket for WasmServer {
 }
 
 fn get_process_handler(
-    kind: &'static std::thread::LocalKey<UnsafeCell<NamespaceMap>>,
-    namespace: &str,
-    op: &str,
+    kind: &'static std::thread::LocalKey<UnsafeCell<OperationMap>>,
+    index: usize,
 ) -> Result<Rc<ProcessFactory>, Error> {
     kind.with(|cell| {
         #[allow(unsafe_code)]
         let buffer = unsafe { &*cell.get() };
         buffer
-            .get(namespace)
-            .and_then(|opmap| opmap.get(op).cloned())
+            .get(index)
+            .map(|(_, _, op)| op.clone())
             .ok_or(Error::NoHandler)
     })
 }

@@ -6,7 +6,7 @@ use crate::WasmtimeEngineProvider;
 #[allow(missing_debug_implementations)]
 #[must_use]
 #[derive(Default)]
-pub struct WasmtimeEngineProviderBuilder<'a> {
+pub struct WasmtimeBuilder<'a> {
     engine: Option<wasmtime::Engine>,
     module_bytes: &'a [u8],
     cache_enabled: bool,
@@ -16,11 +16,11 @@ pub struct WasmtimeEngineProviderBuilder<'a> {
 }
 
 #[allow(deprecated)]
-impl<'a> WasmtimeEngineProviderBuilder<'a> {
+impl<'a> WasmtimeBuilder<'a> {
     /// A new WasmtimeEngineProviderBuilder instance,
     /// must provide the wasm module to be loaded
     pub fn new(module_bytes: &'a [u8]) -> Self {
-        WasmtimeEngineProviderBuilder {
+        WasmtimeBuilder {
             module_bytes,
             ..Default::default()
         }

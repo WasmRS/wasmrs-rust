@@ -10,6 +10,8 @@ pub mod host_exports {
     pub const SEND: &str = "__send";
     /// The wasmRS protocol function `__console_log`
     pub const LOG: &str = "__console_log";
+    /// The wasmRS protocol function `__op_list`
+    pub const OP_LIST: &str = "__op_list";
 }
 
 /// The exported host functions as an enum.
@@ -19,6 +21,7 @@ pub enum HostExports {
     Init,
     Send,
     Log,
+    OpList,
 }
 
 impl FromStr for HostExports {
@@ -29,6 +32,7 @@ impl FromStr for HostExports {
             host_exports::INIT => Self::Init,
             host_exports::SEND => Self::Send,
             host_exports::LOG => Self::Log,
+            host_exports::OP_LIST => Self::OpList,
             _ => return Err(()),
         };
         Ok(result)
@@ -41,6 +45,7 @@ impl AsRef<str> for HostExports {
             Self::Init => host_exports::INIT,
             Self::Send => host_exports::SEND,
             Self::Log => host_exports::LOG,
+            Self::OpList => host_exports::OP_LIST,
         }
     }
 }
@@ -59,6 +64,9 @@ pub mod guest_exports {
     /// The wasmRS protocol function `__wasmrs_send`
     pub const SEND: &str = "__wasmrs_send";
 
+    /// The wasmRS protocol function `__wasmrs_op_list_request`
+    pub const OP_LIST_REQUEST: &str = "__wasmrs_op_list_request";
+
     /// The wasmRS protocol function `_start`
     pub const TINYGO_START: &str = "_start";
 
@@ -72,6 +80,7 @@ pub mod guest_exports {
 pub enum GuestExports {
     Init,
     Start,
+    OpListRequest,
     Send,
 }
 
@@ -82,6 +91,7 @@ impl FromStr for GuestExports {
         let result = match s {
             guest_exports::INIT => Self::Init,
             guest_exports::TINYGO_START => Self::Start,
+            guest_exports::OP_LIST_REQUEST => Self::OpListRequest,
             guest_exports::SEND => Self::Send,
             _ => return Err(()),
         };
@@ -95,6 +105,7 @@ impl AsRef<str> for GuestExports {
             GuestExports::Init => guest_exports::INIT,
             GuestExports::Start => guest_exports::TINYGO_START,
             GuestExports::Send => guest_exports::SEND,
+            GuestExports::OpListRequest => guest_exports::OP_LIST_REQUEST,
         }
     }
 }

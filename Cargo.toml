@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*"]
+members = ["crates/*", "bins/*"]
 
 exclude = [
   "wasm/reqres-component",

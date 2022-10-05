@@ -1,7 +1,9 @@
 use bytes::{BufMut, BytesMut};
 use std::sync::Arc;
-use wasmrs::{Frame, WasmSocket};
-use wasmrs_host::{EngineProvider, GuestExports, ProviderCallContext, SharedContext, WasiParams};
+use wasmrs::{Frame, OperationList, WasmSocket};
+use wasmrs_host::{
+    CallbackProvider, EngineProvider, GuestExports, ProviderCallContext, SharedContext, WasiParams,
+};
 use wasmtime::{Engine, Instance, Linker, Memory, Module, Store, TypedFunc};
 
 use super::Result;
@@ -72,13 +74,13 @@ impl WasmtimeEngineProvider {
 impl EngineProvider for WasmtimeEngineProvider {
     fn new_context(
         &self,
-        state: Arc<WasmSocket>,
+        socket: Arc<WasmSocket>,
     ) -> std::result::Result<SharedContext, wasmrs_host::errors::Error> {
-        let store = new_store(&self.wasi_params, &self.engine)
+        let store = new_store(&self.wasi_params, socket, &self.engine)
             .map_err(|e| wasmrs_host::errors::Error::NewContext(e.to_string()))?;
 
         let context = SharedContext::new(
-            WasmtimeCallContext::new(state, self.linker.clone(), &self.module, store)
+            WasmtimeCallContext::new(self.linker.clone(), &self.module, store)
                 .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?,
         );
 
@@ -91,17 +93,15 @@ struct WasmtimeCallContext {
     memory: Memory,
     store: Store<ProviderStore>,
     instance: Instance,
-    state: Arc<WasmSocket>,
 }
 
 impl WasmtimeCallContext {
     pub(crate) fn new(
-        state: Arc<WasmSocket>,
         mut linker: Linker<ProviderStore>,
         module: &Module,
         mut store: Store<ProviderStore>,
     ) -> Result<Self> {
-        wasmrs_wasmtime::add_to_linker(&mut linker, &state)?;
+        wasmrs_wasmtime::add_to_linker(&mut linker)?;
         let instance = linker.instantiate(&mut store, module)?;
 
         let guest_send = instance
@@ -112,45 +112,80 @@ impl WasmtimeCallContext {
         Ok(Self {
             guest_send,
             memory,
-            state,
             instance,
             store,
         })
     }
 }
 
-impl wasmrs::FrameWriter for WasmtimeCallContext {
+impl wasmrs::ModuleHost for WasmtimeCallContext {
     /// Request-Response interaction model of RSocket.
-    fn write_frame(
-        &mut self,
-        _stream_id: u32,
-        req: Frame,
-    ) -> std::result::Result<(), wasmrs::Error> {
+    fn write_frame(&mut self, req: Frame) -> std::result::Result<(), wasmrs::Error> {
         let bytes = req.encode();
+        trace!(?bytes, "writing frame");
 
-        let start_pos = 0;
-        let buffer_len_bytes = (bytes.len() as u32).to_be_bytes();
+        let buffer_len_bytes = wasmrs::util::to_u24_bytes(bytes.len() as u32);
         let mut buffer = BytesMut::with_capacity(buffer_len_bytes.len() + bytes.len());
-        buffer.put(buffer_len_bytes.as_slice());
+        buffer.put(buffer_len_bytes);
         buffer.put(bytes);
 
-        let written = write_bytes_to_memory(
-            &mut self.store,
-            self.memory,
-            &buffer,
-            start_pos,
-            self.state.guest_buffer().get_start(),
-            self.state.guest_buffer().get_size(),
-        );
+        let start = self.store.data().guest_buffer.get_start();
+        let len = self.store.data().guest_buffer.get_size();
+
+        let written = write_bytes_to_memory(&mut self.store, self.memory, &buffer, start, len);
 
         let _call = self.guest_send.call(&mut self.store, written as i32);
 
         Ok(())
     }
+
+    fn get_export(
+        &self,
+        namespace: &str,
+        operation: &str,
+    ) -> std::result::Result<u32, wasmrs::Error> {
+        self.store
+            .data()
+            .get_export(namespace, operation)
+            .map_err(|e| wasmrs::Error::OpList(e.to_string()))
+    }
+
+    fn get_import(
+        &self,
+        namespace: &str,
+        operation: &str,
+    ) -> std::result::Result<u32, wasmrs::Error> {
+        self.store
+            .data()
+            .get_import(namespace, operation)
+            .map_err(|e| wasmrs::Error::OpList(e.to_string()))
+    }
+
+    fn get_operation_list(&mut self) -> OperationList {
+        self.store.data().op_list.lock().clone()
+    }
 }
 
 impl ProviderCallContext for WasmtimeCallContext {
     fn init(&mut self) -> std::result::Result<(), wasmrs_host::errors::Error> {
+        if let Ok(start) = self
+            .instance
+            .get_typed_func(&mut self.store, GuestExports::Start.as_ref())
+        {
+            trace!("Calling tinygo _start method");
+            start
+                .call(&mut self.store, ())
+                .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?;
+        }
+
+        if let Ok(oplist) = self
+            .instance
+            .get_typed_func::<(), (), _>(&mut self.store, GuestExports::OpListRequest.as_ref())
+        {
+            trace!("Calling operation list");
+            oplist.call(&mut self.store, ()).unwrap();
+        }
+
         let init: TypedFunc<(u32, u32, u32), ()> = self
             .instance
             .get_typed_func(&mut self.store, GuestExports::Init.as_ref())

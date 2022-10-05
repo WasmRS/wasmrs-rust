@@ -12,7 +12,8 @@ pub(crate) mod request_payload;
 
 use crate::{
     generated::{Cancel, ErrorFrame, PayloadFrame, RequestChannel, RequestResponse, RequestStream},
-    read_data, read_string, Error, RequestFnF, RequestN,
+    util::from_u32_bytes,
+    Error, RequestFnF, RequestN,
 };
 use bytes::Bytes;
 
@@ -44,14 +45,9 @@ impl Payload {
             return Err(Error::MetadataNotFound);
         }
         let bytes = self.metadata.as_ref().unwrap();
-        let (namespace, nslen) = read_string(0, bytes)?;
-        let (operation, oplen) = read_string(nslen, bytes)?;
-        let (instance, _) = read_data(nslen + oplen, bytes)?;
-        Ok(Metadata {
-            namespace,
-            operation,
-            instance: instance.into(),
-        })
+        let index = from_u32_bytes(&bytes[0..4]);
+
+        Ok(Metadata { index })
     }
 }
 
@@ -236,7 +232,7 @@ pub trait RSocketFrame<T> {
         if header.frame_type() == Self::FRAME_TYPE {
             Ok(())
         } else {
-            Err(Error::WrongType(header.frame_type(), Self::FRAME_TYPE))
+            Err(Error::WrongType)
         }
     }
     fn kind(&self) -> FrameType {

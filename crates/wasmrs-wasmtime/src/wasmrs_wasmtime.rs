@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
-use wasmrs::WasmSocket;
-use wasmrs_host::{HostExports, IntoEnumIterator};
+use bytes::Bytes;
+use wasmrs_host::{CallbackProvider, HostExports, IntoEnumIterator};
 use wasmtime::{AsContext, Caller, FuncType, Linker, Trap, Val, ValType};
 
 use crate::{
@@ -9,23 +7,24 @@ use crate::{
     store::ProviderStore,
 };
 
-pub(crate) fn add_to_linker(
-    linker: &mut Linker<ProviderStore>,
-    host: &Arc<WasmSocket>,
-) -> super::Result<()> {
+pub(crate) fn add_to_linker(linker: &mut Linker<ProviderStore>) -> super::Result<()> {
     let module_name = wasmrs_host::HOST_NAMESPACE;
     for export in HostExports::iter() {
         match export {
             HostExports::Send => {
-                let (extern_type, extern_fn) = linker_send(host.clone());
+                let (extern_type, extern_fn) = linker_send();
                 linker.func_new(module_name, export.as_ref(), extern_type, extern_fn)?;
             }
             HostExports::Init => {
-                let (extern_type, extern_fn) = linker_init(host.clone());
+                let (extern_type, extern_fn) = linker_init();
                 linker.func_new(module_name, export.as_ref(), extern_type, extern_fn)?;
             }
             HostExports::Log => {
-                let (extern_type, extern_fn) = linker_console_log(host.clone());
+                let (extern_type, extern_fn) = linker_console_log();
+                linker.func_new(module_name, export.as_ref(), extern_type, extern_fn)?;
+            }
+            HostExports::OpList => {
+                let (extern_type, extern_fn) = linker_op_list();
                 linker.func_new(module_name, export.as_ref(), extern_type, extern_fn)?;
             }
         };
@@ -33,9 +32,7 @@ pub(crate) fn add_to_linker(
     Ok(())
 }
 
-fn linker_send(
-    host: Arc<WasmSocket>,
-) -> (
+fn linker_send() -> (
     FuncType,
     impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
 ) {
@@ -53,27 +50,28 @@ fn linker_send(
             let bytes = read_frame(
                 caller.as_context(),
                 memory,
-                host.host_buffer().get_start() as _,
+                caller.data().host_buffer.get_start() as _,
                 read_until,
             )
             .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
+            trace!(?bytes, "got frame");
 
-            host.do_host_send(bytes)
+            caller
+                .data()
+                .do_host_send(bytes)
                 .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
             Ok(())
         },
     )
 }
 
-fn linker_init(
-    host: Arc<WasmSocket>,
-) -> (
+fn linker_init() -> (
     FuncType,
     impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
 ) {
     (
         FuncType::new(vec![ValType::I32, ValType::I32], vec![]),
-        move |_caller, params: &[Val], _results: &mut [Val]| {
+        move |caller, params: &[Val], _results: &mut [Val]| {
             trace!(
                 import = wasmrs_host::HostExports::Init.as_ref(),
                 ?params,
@@ -83,20 +81,20 @@ fn linker_init(
             let guest_buff_ptr = params[0].unwrap_i32();
             let host_buff_ptr = params[1].unwrap_i32();
 
-            host.do_host_init(
-                guest_buff_ptr.try_into().unwrap(),
-                host_buff_ptr.try_into().unwrap(),
-            )
-            .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
+            caller
+                .data()
+                .do_host_init(
+                    guest_buff_ptr.try_into().unwrap(),
+                    host_buff_ptr.try_into().unwrap(),
+                )
+                .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
 
             Ok(())
         },
     )
 }
 
-fn linker_console_log(
-    host: Arc<WasmSocket>,
-) -> (
+fn linker_console_log() -> (
     FuncType,
     impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
 ) {
@@ -110,7 +108,33 @@ fn linker_console_log(
 
             let msg = std::str::from_utf8(&vec).unwrap();
 
-            host.do_console_log(msg);
+            caller.data().do_console_log(msg);
+            Ok(())
+        },
+    )
+}
+
+fn linker_op_list() -> (
+    FuncType,
+    impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
+) {
+    (
+        FuncType::new(vec![ValType::I32, ValType::I32], vec![]),
+        move |mut caller, params: &[Val], _results: &mut [Val]| {
+            trace!(
+                import = %wasmrs_host::HostExports::OpList,
+                ?params,
+                "guest calling host"
+            );
+            let ptr = params[0].i32();
+            let len = params[1].i32();
+            let memory = get_caller_memory(&mut caller);
+            let vec = get_vec_from_memory(caller.as_context(), memory, ptr.unwrap(), len.unwrap());
+            println!("oplist data: {:?}", vec);
+            caller
+                .data()
+                .do_op_list(Bytes::from(vec))
+                .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
             Ok(())
         },
     )

@@ -88,7 +88,7 @@ mod engine_provider;
 pub mod errors;
 mod store;
 
-pub use builder::WasmtimeEngineProviderBuilder;
+pub use builder::WasmtimeBuilder;
 pub use engine_provider::WasmtimeEngineProvider;
 
 #[macro_use]

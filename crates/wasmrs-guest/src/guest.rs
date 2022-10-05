@@ -3,14 +3,13 @@ use wasmrs::runtime::{exhaust_pool, UnboundedReceiver};
 use wasmrs::SocketSide;
 
 use std::io::{Cursor, Write};
-use std::{cell::UnsafeCell, collections::HashMap, rc::Rc, sync::atomic::Ordering};
+use std::{cell::UnsafeCell, rc::Rc, sync::atomic::Ordering};
 
 use std::sync::atomic::AtomicU32;
 pub use wasmrs::{flux::*, Frame, Metadata, Payload, PayloadError};
 
 pub type GenericError = Box<dyn std::error::Error + Send + 'static>;
-pub type NamespaceMap = HashMap<String, OperationMap>;
-pub type OperationMap = HashMap<String, Rc<ProcessFactory>>;
+pub type OperationMap = Vec<(String, String, Rc<ProcessFactory>)>;
 pub type ProcessFactory = fn(IncomingStream) -> std::result::Result<OutgoingStream, GenericError>;
 
 pub type IncomingStream = FluxReceiver<ParsedPayload, PayloadError>;
@@ -29,7 +28,7 @@ thread_local! {
   static GUEST_BUFFER: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
   static HOST_BUFFER: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
   static MAX_HOST_FRAME_SIZE: AtomicU32 = AtomicU32::new(128);
-  pub(crate) static REQUEST_RESPONSE_HANDLERS: UnsafeCell<NamespaceMap> = UnsafeCell::new(NamespaceMap::new());
+  pub(crate) static REQUEST_RESPONSE_HANDLERS: UnsafeCell<OperationMap> = UnsafeCell::new(OperationMap::new());
   static MANAGER: UnsafeCell<wasmrs::WasmSocket> = UnsafeCell::new(wasmrs::WasmSocket::new(WasmServer{}, SocketSide::Guest));
 }
 
@@ -81,8 +80,6 @@ pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u
     let rx = MANAGER.with(|cell| {
         #[allow(unsafe_code)]
         let manager = unsafe { &mut *cell.get() };
-        manager.host_buffer().update_size(host_buffer_size);
-        manager.guest_buffer().update_size(guest_buffer_size);
         manager.take_rx().unwrap()
     });
     let host_ptr = HOST_BUFFER.with(|cell| {
@@ -201,9 +198,10 @@ pub fn register_request_response(
     REQUEST_RESPONSE_HANDLERS.with(|cell| {
         #[allow(unsafe_code)]
         let buffer = unsafe { &mut *cell.get() };
-        let ops = buffer
-            .entry(ns.as_ref().to_owned())
-            .or_insert_with(HashMap::new);
-        ops.insert(op.as_ref().to_owned(), Rc::new(handler));
+        buffer.push((
+            ns.as_ref().to_owned(),
+            op.as_ref().to_owned(),
+            Rc::new(handler),
+        ));
     });
 }

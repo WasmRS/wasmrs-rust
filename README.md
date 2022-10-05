@@ -30,29 +30,29 @@ $ just debug
 Req/Response
 
 ```
-$ cargo run -p wasmrs-wasmtime --example wasmrs --release
+$ cargo run --bin request -- file.wasm NAMESPACE OPERATION 'DATA AS JSON'
 ```
 
 Req/Stream
 
 ```
-$ cargo run -p wasmrs-wasmtime --example reqstream
+$ cargo run --bin request -- file.wasm NAMESPACE OPERATION 'DATA AS JSON' --stream
 ```
 
 Req/Channel
 
 ```
-$ cargo run -p wasmrs-wasmtime --example reqchannel
+$ cargo run --bin request -- file.wasm NAMESPACE OPERATION 'DATA AS JSON' --channel
 ```
 
 ## Enable trace logging
 
 ```
-RUST_LOG=wasmrs=trace cargo run -p wasmrs-wasmtime --example reqstream
+RUST_LOG=wasmrs=trace cargo run --bin request ...
 ```
 
 ## All together now
 
 ```
-$ just debug && RUST_LOG=wasmrs=trace cargo run -p wasmrs-wasmtime --example reqstream
+$ just debug && RUST_LOG=wasmrs=trace cargo run --bin request -- file.wasm NAMESPACE OPERATION 'DATA AS JSON'
 ```

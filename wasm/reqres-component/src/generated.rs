@@ -25,16 +25,16 @@ impl Process for Hello {
 
         spawn(async move {
             while let Ok(Some(Ok(payload))) = input_stream.recv().await {
-                #[allow(clippy::single_match)]
-                match payload.metadata.namespace.as_str() {
-                    "greeting" => {
-                        hello_msg_channel
-                            .send_result(deserialize(&payload.data).map_err(|e| e.into()));
-                    }
-                    _ => {
-                        // how to handle errors?
-                    }
-                }
+                // #[allow(clippy::single_match)]
+                // match payload.metadata.namespace.as_str() {
+                //     "greeting" => {
+                  hello_msg_channel
+                  .send_result(deserialize(&payload.data).map_err(|e| e.into()));
+          // }
+          // _ => {
+          //     // how to handle errors?
+          // }
+      // }
             }
         });
         let output_stream = OutgoingStream::new();

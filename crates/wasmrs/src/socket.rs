@@ -10,11 +10,10 @@ use futures::StreamExt;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 mod responder;
-use bytes::Bytes;
 
 use crate::{Error, Payload};
 
-use self::buffer::BufferState;
+pub use self::buffer::BufferState;
 use self::responder::Responder;
 
 pub enum Handler {
@@ -45,8 +44,8 @@ pub struct WasmSocket {
     pub(super) handlers: Arc<SafeMap<u32, Handler>>,
     abort_handles: Arc<SafeMap<u32, AbortHandle>>,
     channels: Arc<SafeMap<u32, UnboundedSender<u32>>>,
-    host_buffer: BufferState,
-    guest_buffer: BufferState,
+    // host_buffer: BufferState,
+    // guest_buffer: BufferState,
     pub(super) stream_index: AtomicU32,
     tx: UnboundedSender<Frame>,
     rx: Option<UnboundedReceiver<Frame>>,
@@ -82,24 +81,13 @@ impl WasmSocket {
             handlers: streams,
             abort_handles,
             channels,
-            host_buffer: Default::default(),
-            guest_buffer: Default::default(),
             responder: Responder::new(Box::new(rsocket)),
         }
     }
 
     pub fn take_rx(&mut self) -> Result<UnboundedReceiver<Frame>, Error> {
-        self.rx.take().ok_or(Error::RxMissing)
+        self.rx.take().ok_or(Error::ReceiverAlreadyGone)
     }
-
-    pub fn host_buffer(&self) -> &BufferState {
-        &self.host_buffer
-    }
-
-    pub fn guest_buffer(&self) -> &BufferState {
-        &self.guest_buffer
-    }
-
     pub(crate) fn next_stream_id(&self) -> u32 {
         self.stream_index.fetch_add(2, Ordering::SeqCst)
     }
@@ -113,6 +101,14 @@ impl WasmSocket {
         let (tx, rx) = unbounded_channel();
         self.channels.insert(stream_id, tx);
         rx
+    }
+
+    pub fn decode_frame(&self, bytes: Vec<u8>) -> Result<Frame, (u32, Error)> {
+        Frame::decode(bytes.into())
+    }
+
+    pub fn send(&self, frame: Frame) {
+        send(&self.tx, frame);
     }
 
     pub fn process_once(&self, frame: Frame) -> Result<(), Error> {
@@ -350,33 +346,6 @@ impl WasmSocket {
             }
         }
     }
-
-    /// Invoked after a guest has completed its initialization.
-    pub fn do_host_init(
-        &self,
-        guest_buff_ptr: u32,
-        host_buff_ptr: u32,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        self.host_buffer().update_start(host_buff_ptr);
-        self.guest_buffer().update_start(guest_buff_ptr);
-        Ok(())
-    }
-
-    /// Invoked when the guest module wishes to send a stream frame to the host.
-    pub fn do_host_send(&self, frame_bytes: Bytes) -> Result<(), Box<dyn std::error::Error>> {
-        let _result = match Frame::decode(frame_bytes) {
-            Ok(frame) => self.process_once(frame),
-            Err((stream_id, err)) => self
-                .tx
-                .send(Frame::new_error(stream_id, 0, err.to_string())),
-        };
-        Ok(())
-    }
-
-    /// Invoked when the guest module wants to write a message to the host's `stdout`
-    pub fn do_console_log(&self, msg: &str) {
-        println!("{}", msg);
-    }
 }
 
 impl RSocket for WasmSocket {
@@ -501,6 +470,7 @@ mod test {
 
     use super::*;
     use anyhow::Result;
+    use bytes::Bytes;
     struct EchoRSocket;
 
     impl RSocket for EchoRSocket {
