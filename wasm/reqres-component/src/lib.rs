@@ -11,11 +11,12 @@ extern "C" fn __wasmrs_init(
     max_host_frame_len: u32,
 ) {
     guest::init(guest_buffer_size, host_buffer_size, max_host_frame_len);
-    // guest::register_fire_and_forget(
-    //     "echo",
-    //     "fire_and_forget",
-    //     crate::GEN_FNF::fire_and_forget_wrapper,
-    // );
+
+    guest::register_request_response(
+        "greeting.v1",
+        "sayHello",
+        crate::GEN_TG_RR::request_response_wrapper,
+    );
     guest::register_request_response(
         "echo",
         "request_response",
@@ -31,6 +32,23 @@ extern "C" fn __wasmrs_init(
         "request_channel",
         crate::GEN_RC::request_channel_wrapper,
     );
+}
+
+impl GEN_TG_RR {
+    async fn task(
+        self,
+        input: Mono<GEN_TG_RR_INPUTS, PayloadError>,
+        mut output: Mono<GEN_TG_RR_OUTPUTS, PayloadError>,
+    ) -> Result<GEN_RR_OUTPUTS, GenericError> {
+        let result = input.await;
+        println!("REQUEST_RESPONSE: {:?}", result);
+        if let Ok(msg) = result {
+            output.success(format!("I got : {} {}", msg.firstName, msg.lastName))
+        } else {
+            output.error(PayloadError::application_error("Did not receive message"))
+        };
+        Ok(output)
+    }
 }
 
 impl GEN_RR {

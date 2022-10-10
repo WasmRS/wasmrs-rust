@@ -1,6 +1,0 @@
-build:
-    cargo build --release --target=wasm32-unknown-unknown
-    cp ./target/wasm32-unknown-unknown/release/req_stream_component.wasm ../../build/
-debug:
-    cargo build --target=wasm32-wasi
-    cp ./target/wasm32-wasi/debug/req_stream_component.wasm ../../build/

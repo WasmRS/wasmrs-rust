@@ -42,7 +42,7 @@ impl RequestChannel for GEN_RC {
         });
 
         spawn(async move {
-            let _result = GEN_RC {}.task(inputs_rx, outputs_tx).await;
+            let _result = Self {}.task(inputs_rx, outputs_tx).await;
         });
 
         Ok(real_out_rx)
@@ -72,7 +72,7 @@ impl RequestStream for GEN_RS {
         });
 
         spawn(async move {
-            let task = GEN_RS {};
+            let task = Self {};
             let (outputs_tx, mut outputs_rx) = Flux::new_parts();
             let outputs = outputs_tx;
             match task.task(input, outputs).await {
@@ -120,7 +120,57 @@ impl RequestResponse for GEN_RR {
         });
 
         spawn(async move {
-            let task = GEN_RR {};
+            let task = Self {};
+            let output = Mono::new();
+            let output = match task.task(input, output).await {
+                Ok(output) => match output.await {
+                    Ok(output) => match serialize(&output) {
+                        Ok(bytes) => Ok(Payload::new_optional(None, Some(bytes.into()))),
+                        Err(e) => Err(PayloadError::application_error(e.to_string())),
+                    },
+                    Err(e) => Err(e),
+                },
+                Err(e) => Err(PayloadError::application_error(e.to_string())),
+            };
+            let _ = tx.send(output);
+        });
+
+        Ok(Mono::from_future(async move {
+            rx.await
+                .map_err(|e| PayloadError::application_error(e.to_string()))?
+        }))
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+pub(crate) struct GEN_TG_RR_INPUTS {
+    pub(crate) firstName: String,
+    pub(crate) lastName: String,
+}
+
+pub(crate) type GEN_TG_RR_OUTPUTS = String;
+
+pub(crate) struct GEN_TG_RR {}
+
+impl RequestResponse for GEN_TG_RR {
+    fn request_response_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
+        let (tx, rx) = runtime::oneshot();
+
+        let input = Mono::from_future(async move {
+            match input.await {
+                Ok(bytes) => {
+                    println!("got bytes: {:?}", bytes.data);
+                    match deserialize(&bytes.data) {
+                        Ok(v) => Ok(v),
+                        Err(e) => Err(PayloadError::application_error(e.to_string())),
+                    }
+                }
+                Err(e) => Err(PayloadError::application_error(e.to_string())),
+            }
+        });
+
+        spawn(async move {
+            let task = Self {};
             let output = Mono::new();
             let output = match task.task(input, output).await {
                 Ok(output) => match output.await {

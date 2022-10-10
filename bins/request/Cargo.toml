@@ -11,7 +11,7 @@ wasmrs-codec = { path = "../../crates/wasmrs-codec" }
 wasmrs-wasmtime = { path = "../../crates/wasmrs-wasmtime" }
 wasmrs-host = { path = "../../crates/wasmrs-host" }
 env_logger = "0.9"
-tokio = { version = "1", features = ["macros"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 test-log = "0.2.10"
 tracing-subscriber = { version = "0.3", default-features = false, features = [
   "env-filter",

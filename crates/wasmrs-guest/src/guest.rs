@@ -56,23 +56,12 @@ impl TryFrom<Payload> for ParsedPayload {
 
 #[link(wasm_import_module = "wasmrs")]
 extern "C" {
-    pub(crate) fn __console_log(ptr: *const u8, len: usize);
     #[link_name = "__init_buffers"]
     pub(crate) fn _host_wasmrs_init(guest_buffer_ptr: usize, host_buffer_ptr: usize);
     #[link_name = "__send"]
     pub(crate) fn _host_wasmrs_send(recv_ptr: usize);
     #[link_name = "__op_list"]
     pub(crate) fn _host_op_list(ptr: usize, len: usize);
-}
-
-fn print(msg: impl AsRef<str>) {
-    #[allow(unsafe_code)]
-    unsafe {
-        __console_log(
-            msg.as_ref().as_ptr() as usize as *const u8,
-            msg.as_ref().len(),
-        );
-    }
 }
 
 pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u32) {
@@ -131,7 +120,6 @@ fn read_frames(read_until: u32) -> Result<Vec<Bytes>, Error> {
 
 fn send_error_frame(stream_id: u32, code: u32, msg: impl AsRef<str>) {
     let err = Frame::new_error(stream_id, code, msg.as_ref());
-    print(msg.as_ref());
     send_host_payload(vec![err.encode()]);
 }
 

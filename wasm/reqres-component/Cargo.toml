@@ -17,3 +17,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wasmrs-guest = { path = "../../crates/wasmrs-guest" }
+serde = { version = "1", features = ["derive"] }
