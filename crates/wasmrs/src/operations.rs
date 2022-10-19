@@ -125,8 +125,8 @@ impl OperationList {
         &mut self,
         index: u32,
         kind: OperationType,
-        namespace: String,
-        operation: String,
+        namespace: impl AsRef<str>,
+        operation: impl AsRef<str>,
     ) {
         Self::add_op(&mut self.exports, index, kind, namespace, operation);
     }
@@ -134,8 +134,8 @@ impl OperationList {
         &mut self,
         index: u32,
         kind: OperationType,
-        namespace: String,
-        operation: String,
+        namespace: impl AsRef<str>,
+        operation: impl AsRef<str>,
     ) {
         Self::add_op(&mut self.imports, index, kind, namespace, operation);
     }
@@ -143,14 +143,14 @@ impl OperationList {
         list: &mut Vec<Operation>,
         index: u32,
         kind: OperationType,
-        namespace: String,
-        operation: String,
+        namespace: impl AsRef<str>,
+        operation: impl AsRef<str>,
     ) {
         list.push(Operation {
             index,
             kind,
-            namespace,
-            operation,
+            namespace: namespace.as_ref().to_owned(),
+            operation: operation.as_ref().to_owned(),
         });
     }
 
@@ -163,16 +163,18 @@ impl OperationList {
         buff.put(version.to_be_bytes().as_slice());
         buff.put(num_ops.to_be_bytes().as_slice());
         for op in &self.exports {
-            buff.put(Self::encode_op(op));
+            buff.put(Self::encode_op(op, 1));
+        }
+        for op in &self.imports {
+            buff.put(Self::encode_op(op, 2));
         }
         buff.freeze()
     }
 
-    fn encode_op(op: &Operation) -> Bytes {
+    fn encode_op(op: &Operation, dir: u8) -> Bytes {
         let mut buff = BytesMut::new();
 
         let kind: u8 = op.kind.into();
-        let dir = 1u8;
         buff.put([kind].as_slice());
         buff.put([dir].as_slice());
         buff.put(op.index.to_be_bytes().as_slice());

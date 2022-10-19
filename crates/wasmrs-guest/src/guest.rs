@@ -1,13 +1,15 @@
 pub use wasmrs::runtime::spawn;
 use wasmrs::runtime::{exhaust_pool, UnboundedReceiver};
 use wasmrs::util::to_u24_bytes;
-use wasmrs::{OperationList, OperationType, SocketSide};
+use wasmrs::SocketSide;
 
 use std::io::{Cursor, Write};
 use std::{cell::UnsafeCell, rc::Rc, sync::atomic::Ordering};
 
 use std::sync::atomic::AtomicU32;
-pub use wasmrs::{flux::*, Frame, Metadata, Payload, PayloadError};
+pub use wasmrs::{
+    flux::*, Frame, Metadata, OperationList, OperationType, Payload, PayloadError, RSocket,
+};
 
 pub type GenericError = Box<dyn std::error::Error + Send + 'static>;
 pub type OperationMap<T> = Vec<(String, String, Rc<T>)>;
@@ -33,11 +35,53 @@ thread_local! {
   pub(crate) static REQUEST_STREAM_HANDLERS: UnsafeCell<OperationMap<ProcessFactory<IncomingMono,OutgoingStream>>> = UnsafeCell::new(OperationMap::new());
   pub(crate) static REQUEST_CHANNEL_HANDLERS: UnsafeCell<OperationMap<ProcessFactory<IncomingStream,OutgoingStream>>> = UnsafeCell::new(OperationMap::new());
   pub(crate) static REQUEST_FNF_HANDLERS: UnsafeCell<OperationMap<ProcessFactory<IncomingMono,()>>> = UnsafeCell::new(OperationMap::new());
-  pub(crate) static OP_LIST: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
-  static MANAGER: UnsafeCell<wasmrs::WasmSocket> = UnsafeCell::new(wasmrs::WasmSocket::new(WasmServer{}, SocketSide::Guest));
+  pub(crate) static OP_LIST: UnsafeCell<OperationList> = UnsafeCell::new(OperationList::default());
+  pub(crate) static OP_LIST_BYTES: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
+  static SOCKET: UnsafeCell<wasmrs::WasmSocket> = UnsafeCell::new(wasmrs::WasmSocket::new(WasmServer{}, SocketSide::Guest));
+}
+
+#[allow(missing_debug_implementations, missing_copy_implementations)]
+pub struct Host {}
+
+impl RSocket for Host {
+    fn fire_and_forget(&self, payload: Payload) -> Mono<(), PayloadError> {
+        SOCKET.with(|cell| {
+            #[allow(unsafe_code)]
+            let socket = unsafe { &mut *cell.get() };
+            socket.fire_and_forget(payload)
+        })
+    }
+
+    fn request_response(&self, payload: Payload) -> Mono<Payload, PayloadError> {
+        SOCKET.with(|cell| {
+            #[allow(unsafe_code)]
+            let socket = unsafe { &mut *cell.get() };
+            socket.request_response(payload)
+        })
+    }
+
+    fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
+        SOCKET.with(|cell| {
+            #[allow(unsafe_code)]
+            let socket = unsafe { &mut *cell.get() };
+            socket.request_stream(payload)
+        })
+    }
+
+    fn request_channel(
+        &self,
+        stream: FluxReceiver<Payload, PayloadError>,
+    ) -> FluxReceiver<Payload, PayloadError> {
+        SOCKET.with(|cell| {
+            #[allow(unsafe_code)]
+            let socket = unsafe { &mut *cell.get() };
+            socket.request_channel(stream)
+        })
+    }
 }
 
 #[allow(missing_debug_implementations)]
+#[derive(Debug)]
 pub struct ParsedPayload {
     pub metadata: Metadata,
     pub data: Bytes,
@@ -73,7 +117,7 @@ pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u
         buffer.resize(guest_buffer_size as usize, 0);
         buffer.as_ptr()
     });
-    let rx = MANAGER.with(|cell| {
+    let rx = SOCKET.with(|cell| {
         #[allow(unsafe_code)]
         let manager = unsafe { &mut *cell.get() };
         manager.take_rx().unwrap()
@@ -97,7 +141,7 @@ pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u
 fn spawn_writer(mut rx: UnboundedReceiver<Frame>) {
     spawn(async move {
         while let Some(frame) = rx.recv().await {
-            send_host_payload(vec![frame.encode()]);
+            send_host_frame(vec![frame.encode()]);
         }
     });
 }
@@ -120,59 +164,48 @@ fn read_frames(read_until: u32) -> Result<Vec<Bytes>, Error> {
 
 fn send_error_frame(stream_id: u32, code: u32, msg: impl AsRef<str>) {
     let err = Frame::new_error(stream_id, code, msg.as_ref());
-    send_host_payload(vec![err.encode()]);
+    send_host_frame(vec![err.encode()]);
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
 extern "C" fn __wasmrs_op_list_request() {
-    let mut op_list = OperationList::default();
+    let bytes = OP_LIST.with(|cell| unsafe { cell.get().as_ref().unwrap() }.encode());
 
-    query_handler(
-        &mut op_list,
-        OperationType::RequestResponse,
-        &REQUEST_RESPONSE_HANDLERS,
-    );
-
-    query_handler(
-        &mut op_list,
-        OperationType::RequestStream,
-        &REQUEST_STREAM_HANDLERS,
-    );
-
-    query_handler(
-        &mut op_list,
-        OperationType::RequestChannel,
-        &REQUEST_CHANNEL_HANDLERS,
-    );
-    query_handler(
-        &mut op_list,
-        OperationType::RequestFnF,
-        &REQUEST_FNF_HANDLERS,
-    );
-    let bytes = op_list.encode();
-
-    let (ptr, len) = OP_LIST.with(|cell| {
+    let (ptr, len) = OP_LIST_BYTES.with(|cell| {
         let buff = unsafe { &mut *cell.get() };
         *buff = bytes.to_vec();
         (buff.as_ptr(), buff.len())
     });
+
     unsafe {
         _host_op_list(ptr as _, len);
     }
 }
 
-fn query_handler<T>(
-    op_list: &mut OperationList,
+fn add_export(
+    index: u32,
     kind: OperationType,
-    cell: &'static std::thread::LocalKey<UnsafeCell<OperationMap<T>>>,
+    namespace: impl AsRef<str>,
+    operation: impl AsRef<str>,
 ) {
-    cell.with(|cell| {
+    OP_LIST.with(|op_list| {
         #[allow(unsafe_code)]
-        let buffer = unsafe { &mut *cell.get() };
-        for (i, (ns, op, _)) in buffer.iter().enumerate() {
-            op_list.add_export(i as u32, kind, ns.clone(), op.clone());
-        }
+        let op_list = unsafe { &mut *op_list.get() };
+        op_list.add_export(index, kind, namespace, operation);
+    });
+}
+
+pub fn add_import(
+    index: u32,
+    kind: OperationType,
+    namespace: impl AsRef<str>,
+    operation: impl AsRef<str>,
+) {
+    OP_LIST.with(|op_list| {
+        #[allow(unsafe_code)]
+        let op_list = unsafe { &mut *op_list.get() };
+        op_list.add_import(index, kind, namespace, operation);
     });
 }
 
@@ -187,13 +220,12 @@ extern "C" fn __wasmrs_send(read_until: u32) {
     }
     let bytes_list = read_result.unwrap();
 
-    MANAGER.with(|cell| {
-        let manager = unsafe { &mut *cell.get() };
+    SOCKET.with(|cell| {
+        let socket = unsafe { &mut *cell.get() };
         for bytes in bytes_list {
-            let frame = Frame::decode(bytes);
-            match frame {
+            match Frame::decode(bytes) {
                 Ok(frame) => {
-                    let _ = manager.process_once(frame);
+                    let _ = socket.process_once(frame);
                 }
                 Err(_e) => {
                     send_error_frame(0, 0, "Could not decode frame data");
@@ -206,7 +238,7 @@ extern "C" fn __wasmrs_send(read_until: u32) {
     exhaust_pool();
 }
 
-fn send_host_payload(mut payloads: Vec<Bytes>) -> Vec<Bytes> {
+fn send_host_frame(mut payloads: Vec<Bytes>) -> Vec<Bytes> {
     let host_start = HOST_BUFFER.with(|cell| {
         #[allow(unsafe_code)]
         let buff = unsafe { &mut *cell.get() };
@@ -252,7 +284,7 @@ fn register_handler<T>(
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
     handler: T,
-) {
+) -> u32 {
     kind.with(|cell| {
         #[allow(unsafe_code)]
         let buffer = unsafe { &mut *cell.get() };
@@ -261,7 +293,8 @@ fn register_handler<T>(
             op.as_ref().to_owned(),
             Rc::new(handler),
         ));
-    });
+        (buffer.len() - 1) as _
+    })
 }
 
 pub fn register_request_response(
@@ -269,7 +302,8 @@ pub fn register_request_response(
     op: impl AsRef<str>,
     handler: ProcessFactory<IncomingMono, OutgoingMono>,
 ) {
-    register_handler(&REQUEST_RESPONSE_HANDLERS, ns, op, handler);
+    let index = register_handler(&REQUEST_RESPONSE_HANDLERS, &ns, &op, handler);
+    add_export(index, OperationType::RequestResponse, ns, op);
 }
 
 pub fn register_request_stream(
@@ -277,7 +311,8 @@ pub fn register_request_stream(
     op: impl AsRef<str>,
     handler: ProcessFactory<IncomingMono, OutgoingStream>,
 ) {
-    register_handler(&REQUEST_STREAM_HANDLERS, ns, op, handler);
+    let index = register_handler(&REQUEST_STREAM_HANDLERS, &ns, &op, handler);
+    add_export(index, OperationType::RequestStream, ns, op);
 }
 
 pub fn register_request_channel(
@@ -285,7 +320,8 @@ pub fn register_request_channel(
     op: impl AsRef<str>,
     handler: ProcessFactory<IncomingStream, OutgoingStream>,
 ) {
-    register_handler(&REQUEST_CHANNEL_HANDLERS, ns, op, handler);
+    let index = register_handler(&REQUEST_CHANNEL_HANDLERS, &ns, &op, handler);
+    add_export(index, OperationType::RequestChannel, ns, op);
 }
 
 pub fn register_fire_and_forget(
@@ -293,5 +329,6 @@ pub fn register_fire_and_forget(
     op: impl AsRef<str>,
     handler: ProcessFactory<IncomingMono, ()>,
 ) {
-    register_handler(&REQUEST_FNF_HANDLERS, ns, op, handler);
+    let index = register_handler(&REQUEST_FNF_HANDLERS, &ns, &op, handler);
+    add_export(index, OperationType::RequestFnF, ns, op);
 }

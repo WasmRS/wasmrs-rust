@@ -9,6 +9,7 @@ pub type BoxFuture<Output> = std::pin::Pin<Box<dyn Future<Output = Output> + 'st
 thread_local! {
   static LOCAL_POOL: UnsafeCell<futures_executor::LocalPool> = UnsafeCell::new(futures_executor::LocalPool::new());
   static SPAWNER: UnsafeCell<Option<futures_executor::LocalSpawner>> = UnsafeCell::new(None);
+  static IS_RUNNING: AtomicBool = AtomicBool::new(false);
 }
 
 pub fn spawn<Fut>(future: Fut)
@@ -36,15 +37,32 @@ where
     });
 }
 
+fn is_running() -> bool {
+    IS_RUNNING.with(|cell| cell.load(std::sync::atomic::Ordering::SeqCst))
+}
+
+fn running_state(state: bool) {
+    IS_RUNNING.with(|cell| cell.store(state, std::sync::atomic::Ordering::SeqCst));
+}
+
 pub fn exhaust_pool() {
-    LOCAL_POOL.with(|cell| {
-        #[allow(unsafe_code)]
-        let pool = unsafe { &mut *cell.get() };
-        pool.run_until_stalled();
-    });
+    if !is_running() {
+        running_state(true);
+        LOCAL_POOL.with(|cell| {
+            #[allow(unsafe_code)]
+            let pool = unsafe { &mut *cell.get() };
+            // match pool.try_run_one() {
+            //     true => println!("ran one"),
+            //     false => println!("didn't run anything"),
+            // }
+            pool.run_until_stalled();
+        });
+        running_state(false);
+    }
 }
 
 use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
 
 #[allow(missing_debug_implementations)]
 pub struct SafeMap<K, V>(UnsafeCell<HashMap<K, V>>)

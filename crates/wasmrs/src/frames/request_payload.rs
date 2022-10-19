@@ -57,6 +57,9 @@ impl RequestPayload {
 
         let payload: Bytes = buffer;
 
+        println!("metadata bytes: {:?}", metadata.to_vec());
+        println!("payload bytes: {:?}", payload.to_vec());
+
         Ok(RequestPayload {
             frame_type,
             stream_id: header.stream_id(),

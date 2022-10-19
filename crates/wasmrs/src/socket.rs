@@ -31,8 +31,8 @@ pub enum SocketSide {
 impl std::fmt::Display for SocketSide {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            SocketSide::Guest => "host",
-            SocketSide::Host => "guest",
+            SocketSide::Guest => "guest",
+            SocketSide::Host => "host",
         })
     }
 }
@@ -44,8 +44,6 @@ pub struct WasmSocket {
     pub(super) handlers: Arc<SafeMap<u32, Handler>>,
     abort_handles: Arc<SafeMap<u32, AbortHandle>>,
     channels: Arc<SafeMap<u32, UnboundedSender<u32>>>,
-    // host_buffer: BufferState,
-    // guest_buffer: BufferState,
     pub(super) stream_index: AtomicU32,
     tx: UnboundedSender<Frame>,
     rx: Option<UnboundedReceiver<Frame>>,
@@ -64,7 +62,7 @@ impl std::fmt::Debug for WasmSocket {
 impl WasmSocket {
     pub fn new(rsocket: impl RSocket + 'static, side: SocketSide) -> WasmSocket {
         let first_stream_id = match side {
-            SocketSide::Guest => 0,
+            SocketSide::Guest => 2,
             SocketSide::Host => 1,
         };
 
@@ -88,12 +86,12 @@ impl WasmSocket {
     pub fn take_rx(&mut self) -> Result<UnboundedReceiver<Frame>, Error> {
         self.rx.take().ok_or(Error::ReceiverAlreadyGone)
     }
+
     pub(crate) fn next_stream_id(&self) -> u32 {
         self.stream_index.fetch_add(2, Ordering::SeqCst)
     }
 
     pub fn register_handler(&self, stream_id: u32, handler: Handler) {
-        trace!(stream_id, side=%self.side, "registering handler");
         self.handlers.insert(stream_id, handler);
     }
 
@@ -113,6 +111,10 @@ impl WasmSocket {
 
     pub fn process_once(&self, frame: Frame) -> Result<(), Error> {
         let stream_id = frame.stream_id();
+        println!(
+            "processing side:{} stream {} frame: {:?}",
+            self.side, stream_id, frame
+        );
         trace!(stream_id, side = %self.side, kind = %frame.frame_type(), "process_once");
         let flag = frame.get_flag();
         match frame {
@@ -265,8 +267,13 @@ impl WasmSocket {
                 match o.get() {
                     Handler::ReqRR(_) => match o.remove() {
                         Handler::ReqRR(sender) => {
-                            if flag.flag_next() && sender.send(Ok(input)).is_err() {
-                                println!("response successful payload for REQUEST_RESPONSE failed: sid={}",sid);
+                            if flag.flag_next() {
+                                info!(payload = ?input, "sending payload");
+                                let result = sender.send(Ok(input));
+                                info!("sent payload");
+                                if result.is_err() {
+                                    println!("response successful payload for REQUEST_RESPONSE failed: sid={}",sid);
+                                }
                             }
                         }
                         _ => unreachable!(),
@@ -359,7 +366,6 @@ impl RSocket for WasmSocket {
         let sid = self.next_stream_id();
         trace!(sid, side = %self.side, "request_response");
 
-        // let (flux, output) = Flux::new_parts();
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         self.register_handler(sid, Handler::ReqRR(tx));
@@ -367,8 +373,12 @@ impl RSocket for WasmSocket {
         send(&self.tx, Frame::new_request_response(sid, payload, 0));
 
         Mono::<Payload, PayloadError>::from_future(async move {
-            rx.await
-                .map_err(|e| PayloadError::application_error("Oneshot communication failed"))?
+            trace!("awaiting request_response response");
+            let a = rx
+                .await
+                .map_err(|e| PayloadError::application_error("Request-response channel failed"))?;
+            trace!("got request_response response");
+            a
         })
     }
 
@@ -435,7 +445,8 @@ impl RSocket for WasmSocket {
 }
 
 fn send(tx: &UnboundedSender<Frame>, frame: Frame) {
-    let _ = tx.send(frame);
+    trace!("sending frame to socket writer: {:?}", frame);
+    tx.send(frame).unwrap();
 }
 
 fn send_payload(tx: &UnboundedSender<Frame>, stream_id: u32, payload: Payload, flag: FrameFlags) {

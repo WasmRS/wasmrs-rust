@@ -19,7 +19,7 @@ pub fn serialize<T>(item: &T) -> Result<Vec<u8>, crate::error::Error>
 where
     T: ?Sized + Serialize,
 {
-    mp_serialize(item).map_err(Error::MsgPackEncode)
+    mp_serialize(item).map_err(|_| Error::MsgPackEncode)
 }
 
 #[doc(hidden)]
@@ -33,5 +33,5 @@ pub fn mp_deserialize<'de, T: Deserialize<'de>>(
 /// for message exchange between actor and host. Use of any other function to.
 /// deserialize could result in breaking incompatibilities.
 pub fn deserialize<'de, T: Deserialize<'de>>(buf: &'de [u8]) -> Result<T, crate::error::Error> {
-    mp_deserialize(buf).map_err(Error::MsgPackDecode)
+    mp_deserialize(buf).map_err(|_| Error::MsgPackDecode)
 }

@@ -113,8 +113,18 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         match self.get_mut().inner.as_mut() {
-            Some(mut v) => v.poll_unpin(cx),
-            None => Poll::Pending,
+            Some(mut inner_future) => {
+                let poll = inner_future.poll_unpin(cx);
+                if matches!(poll, Poll::Pending) {
+                    cx.waker().wake_by_ref();
+                }
+                poll
+            }
+            None => {
+                unreachable!();
+                // cx.waker().wake_by_ref();
+                // Poll::Pending
+            }
         }
     }
 }
