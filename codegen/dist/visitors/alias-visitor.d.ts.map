@@ -1,0 +1,1 @@
+{"version":3,"file":"alias-visitor.d.ts","sourceRoot":"","sources":["../../src/visitors/alias-visitor.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,KAAK,EAAE,OAAO,EAAE,MAAM,sBAAsB,CAAC;AAItD,OAAO,EAAE,eAAe,EAAE,MAAM,WAAW,CAAC;AAE5C;;;;;;;;;;;GAWG;AACH,qBAAa,YAAa,SAAQ,eAAe,CAAC,KAAK,CAAC;gBAC1C,OAAO,EAAE,OAAO;IAI5B,MAAM,IAAI,MAAM;CAYjB"}

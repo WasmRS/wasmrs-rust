@@ -100,37 +100,33 @@ mod macros;
 pub use error::{Error, PayloadError};
 pub use generated::*;
 pub use operations::{Operation, OperationList, OperationType};
-pub use socket::BufferState;
-pub use socket::{SocketSide, WasmSocket};
+pub use socket::{BufferState, SocketSide, WasmSocket};
 
 use self::runtime::ConditionallySafe;
 
 type Result<T> = std::result::Result<T, Error>;
 
 pub trait ModuleHost: Sync + Send {
-    /// Write a frame to a wasmRS module's memory buffer.
-    fn write_frame(&mut self, frame: Frame) -> Result<()>;
+  /// Write a frame to a wasmRS module's memory buffer.
+  fn write_frame(&mut self, frame: Frame) -> Result<()>;
 
-    /// Get an imported operation's index.
-    fn get_export(&self, namespace: &str, operation: &str) -> Result<u32>;
+  /// Get an imported operation's index.
+  fn get_export(&self, namespace: &str, operation: &str) -> Result<u32>;
 
-    /// Get an exported operation's index.
-    fn get_import(&self, namespace: &str, operation: &str) -> Result<u32>;
+  /// Get an exported operation's index.
+  fn get_import(&self, namespace: &str, operation: &str) -> Result<u32>;
 
-    /// Get a cloned operation list.
-    fn get_operation_list(&mut self) -> OperationList;
+  /// Get a cloned operation list.
+  fn get_operation_list(&mut self) -> OperationList;
 }
 
 pub trait RSocket: ConditionallySafe {
-    /// Fire and Forget interaction model of RSocket.
-    fn fire_and_forget(&self, payload: Payload) -> Mono<(), PayloadError>;
-    /// Request-Response interaction model of RSocket.
-    fn request_response(&self, payload: Payload) -> Mono<Payload, PayloadError>;
-    /// Request-Stream interaction model of RSocket.
-    fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError>;
-    /// Request-Channel interaction model of RSocket.
-    fn request_channel(
-        &self,
-        stream: FluxReceiver<Payload, PayloadError>,
-    ) -> FluxReceiver<Payload, PayloadError>;
+  /// Fire and Forget interaction model of RSocket.
+  fn fire_and_forget(&self, payload: Payload) -> Mono<(), PayloadError>;
+  /// Request-Response interaction model of RSocket.
+  fn request_response(&self, payload: Payload) -> Mono<Payload, PayloadError>;
+  /// Request-Stream interaction model of RSocket.
+  fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError>;
+  /// Request-Channel interaction model of RSocket.
+  fn request_channel(&self, stream: FluxReceiver<Payload, PayloadError>) -> FluxReceiver<Payload, PayloadError>;
 }

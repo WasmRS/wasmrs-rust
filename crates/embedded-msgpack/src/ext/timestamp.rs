@@ -119,6 +119,7 @@ impl<'a> TryFrom<Ext<'a>> for Timestamp {
 
     #[allow(clippy::cast_possible_truncation)]
     fn try_from(ext: Ext<'a>) -> Result<Self, Self::Error> {
+        println!("ext: {:?}", ext);
         if ext.typ == EXT_TIMESTAMP {
             match ext.data.len() {
                 4 => {

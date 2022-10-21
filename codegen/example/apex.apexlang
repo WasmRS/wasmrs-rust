@@ -1,0 +1,6 @@
+namespace "test"
+
+interface Iota {
+  sayHello(firstName: string, lastName: bool): string
+}
+

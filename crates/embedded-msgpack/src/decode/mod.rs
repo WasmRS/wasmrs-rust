@@ -23,6 +23,13 @@ pub enum Error {
     CustomError,
     #[cfg(feature = "custom-error-messages")]
     CustomErrorWithMessage(heapless::String<64>),
+    NotAscii,
+    InvalidBoolean,
+    InvalidBinType,
+    InvalidStringType,
+    InvalidArrayType,
+    InvalidMapType,
+    InvalidNewTypeLength,
 }
 
 #[cfg(feature = "serde")]
@@ -187,7 +194,7 @@ pub fn read_bool<B: ByteSlice>(buf: B) -> Result<(bool, usize), Error> {
     match Marker::from(buf[0]) {
         Marker::True => Ok((true, 1)),
         Marker::False => Ok((false, 1)),
-        _ => Err(Error::InvalidType),
+        _ => Err(Error::InvalidBoolean),
     }
 }
 
@@ -391,7 +398,7 @@ pub fn read_bin<B: ByteSlice>(buf: B) -> Result<(B, usize), Error> {
                 Err(Error::EndOfBuffer)
             }
         }
-        _ => Err(Error::InvalidType),
+        _ => Err(Error::InvalidBinType),
     }
 }
 
@@ -449,14 +456,14 @@ pub fn read_str(buf: &[u8]) -> Result<(&str, usize), Error> {
                 return Err(Error::EndOfBuffer);
             }
         }
-        _ => return Err(Error::InvalidType),
+        x => return Err(Error::InvalidStringType),
     };
     let buf = &buf[header_len..header_len + len];
     let s = if buf.is_ascii() {
         // This is safe because all ASCII characters are valid UTF-8 characters
         unsafe { core::str::from_utf8_unchecked(buf) }
     } else {
-        return Err(Error::InvalidType);
+        return Err(Error::NotAscii);
     };
     Ok((s, header_len + len))
 }
@@ -504,7 +511,7 @@ pub fn read_array_len<B: ByteSlice>(buf: B) -> Result<(usize, usize), Error> {
                 return Err(Error::EndOfBuffer);
             }
         }
-        _ => return Err(Error::InvalidType),
+        _ => return Err(Error::InvalidArrayType),
     };
     Ok((len, header_len))
 }
@@ -539,7 +546,7 @@ pub fn read_map_len<B: ByteSlice>(buf: B) -> Result<(usize, usize), Error> {
             let len = BigEndian::read_u32(&buf[1..header_len]) as usize;
             (len, header_len)
         }
-        _ => return Err(Error::InvalidType),
+        _ => return Err(Error::InvalidMapType),
     };
     if buf.len() >= header_len + len {
         Ok((len, header_len))

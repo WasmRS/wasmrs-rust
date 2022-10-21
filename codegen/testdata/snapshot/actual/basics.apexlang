@@ -1,0 +1,251 @@
+namespace "apex.testing"
+
+        alias MyString = string
+
+
+        alias UUID = string
+
+    
+    func hello(this: string,that: u64): string
+    
+    
+    interface MyService {
+    
+     emptyVoid(): void
+    
+    
+     unaryType(value: MyType): MyType
+    
+    
+     unaryEnum(value: MyEnum): MyEnum
+    
+    
+     unaryAlias(value: UUID): UUID
+    
+    
+     unaryString(value: string): string
+    
+    
+     unaryI64(value: i64): i64
+    
+    
+     unaryI32(value: i32): i32
+    
+    
+     unaryI16(value: i16): i16
+    
+    
+     unaryI8(value: i8): i8
+    
+    
+     unaryU64(value: u64): u64
+    
+    
+     unaryU32(value: u32): u32
+    
+    
+     unaryU16(value: u16): u16
+    
+    
+     unaryU8(value: u8): u8
+    
+    
+     unaryF64(value: f64): f64
+    
+    
+     unaryF32(value: f32): f32
+    
+    
+     unaryBytes(value: bytes): bytes
+    
+    
+     funcType(value: MyType,optional: MyType?): MyType
+    
+    
+     funcEnum(value: MyEnum,optional: MyEnum?): MyEnum
+    
+    
+     funcAlias(value: UUID,optional: UUID?): UUID
+    
+    
+     funcString(value: string,optional: string?): string
+    
+    
+     funcI64(value: i64,optional: i64?): i64
+    
+    
+     funcI32(value: i32,optional: i32?): i32
+    
+    
+     funcI16(value: i16,optional: i16?): i16
+    
+    
+     funcI8(value: i8,optional: i8?): i8
+    
+    
+     funcU64(value: u64,optional: u64?): u64
+    
+    
+     funcU32(value: u32,optional: u32?): u32
+    
+    
+     funcU16(value: u16,optional: u16?): u16
+    
+    
+     funcU8(value: u8,optional: u8?): u8
+    
+    
+     funcF64(value: f64,optional: f64?): f64
+    
+    
+     funcF32(value: f32,optional: f32?): f32
+    
+    
+     funcBytes(value: bytes,optional: bytes?): bytes
+    }
+
+    
+    interface Repository {
+    
+     getData(): MyType
+    }
+
+    "MyType is a class"
+    type MyType{
+      "same type value"
+      sameValue: MyType?
+
+      "type value"
+      typeValue: MyOtherType
+
+      "string value"
+      stringValue: string
+
+      "string option"
+      stringOption: string?
+
+      "i64 value"
+      i64Value: i64
+
+      "i64 option"
+      i64Option: i64?
+
+      "i32 value"
+      i32Value: i32
+
+      "i32 option"
+      i32Option: i32?
+
+      "i16 value"
+      i16Value: i16
+
+      "i16 option"
+      i16Option: i16?
+
+      "i8 value"
+      i8Value: i8
+
+      "i8 option"
+      i8Option: i8?
+
+      "u64 value"
+      u64Value: u64
+
+      "u64 option"
+      u64Option: u64?
+
+      "u32 value"
+      u32Value: u32
+
+      "u32 option"
+      u32Option: u32?
+
+      "u16 value"
+      u16Value: u16
+
+      "u16 option"
+      u16Option: u16?
+
+      "u8 value"
+      u8Value: u8
+
+      "u8 option"
+      u8Option: u8?
+
+      "f64 value"
+      f64Value: f64
+
+      "f64 option"
+      f64Option: f64?
+
+      "f32 value"
+      f32Value: f32
+
+      "f32 option"
+      f32Option: f32?
+
+      "datetime value"
+      datetimeValue: datetime
+
+      "datetime option"
+      datetimeOption: datetime?
+
+      "bytes value"
+      bytesValue: bytes
+
+      "bytes option"
+      bytesOption: bytes?
+
+      "map value"
+      mapValue: {string : i64 }
+
+      "map of types"
+      mapOfTypes: {string : MyType }
+
+      "array value"
+      arrayValue: [string]
+
+      "array of types"
+      arrayOfTypes: [MyType]
+
+      "union value"
+      unionValue: MyUnion
+
+      "union option"
+      unionOption: MyUnion?
+
+      "enum value"
+      enumValue: MyEnum
+
+      "enum option"
+      enumOption: MyEnum?
+
+      "enum value"
+      aliasValue: UUID
+
+      "enum option"
+      aliasOption: UUID?
+
+      
+    }
+    
+    type MyOtherType{
+      
+      foo: string
+
+      
+      bar: string
+
+      
+    }
+    
+    union MyUnion = MyType|MyEnum|MyString
+    
+    "MyEnum is an emuneration"
+    enum MyEnum{
+      "ONE value"
+      ONE  = 0  as one"TWO value"
+      TWO  = 1"THREE value"
+      THREE  = 2  as three
+    }
+    

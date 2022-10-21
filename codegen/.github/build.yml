@@ -1,0 +1,48 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - release-*
+    tags:
+      - v*
+  pull_request:
+    branches:
+      - main
+      - release-*
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 16
+          registry-url: https://registry.npmjs.org/
+      - run: npm install
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run build
+
+      - uses: actions/setup-go@v3
+        with:
+          go-version: "1.19"
+
+      - name: Install Apex CLI
+        run: wget -q https://apexlang.io/install.sh -O - | /bin/bash
+
+      - name: Generator diff test
+        run: ./diffcheck.sh
+        working-directory: ./testdata
+
+      - name: Is Release?
+        if: startswith(github.ref, 'refs/tags/v')
+        run: echo "DEPLOY_PACKAGE=true" >> $GITHUB_ENV
+
+      - name: Publish to npm
+        if: env.DEPLOY_PACKAGE == 'true'
+        run: npm pack && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}

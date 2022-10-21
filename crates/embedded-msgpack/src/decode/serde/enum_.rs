@@ -38,8 +38,8 @@ impl<'de, 'a> de::VariantAccess<'de> for UnitVariantAccess<'a, 'de> {
         self.de.index += header_len;
         match len {
             1 => seed.deserialize(self.de),
-            0 => Err(Error::InvalidType),
-            _ => Err(Error::InvalidType),
+            0 => Err(Error::InvalidNewTypeLength),
+            _ => Err(Error::InvalidNewTypeLength),
         }
     }
 

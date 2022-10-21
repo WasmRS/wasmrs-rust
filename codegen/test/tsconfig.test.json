@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.json",
+  "include": ["../src/**/*", "./**/*"],
+  "exclude": ["../dist", "../node_modules"],
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "outDir": "./dist/test" /* Redirect output structure to the directory. */,
+    "rootDir": ".." /* Specify the root directory of input files. Use to control the output directory structure with --outDir. */,
+    "typeRoots": ["../types", "../node_modules/@types"]
+  }
+}

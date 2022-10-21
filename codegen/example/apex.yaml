@@ -1,0 +1,5 @@
+spec: ./apex.apexlang
+generates:
+  generated.rs:
+    module: ../src
+    config:

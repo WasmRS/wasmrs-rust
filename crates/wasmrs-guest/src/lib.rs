@@ -80,12 +80,12 @@
 #![allow(clippy::needless_pass_by_value)]
 
 mod guest;
-pub use guest::*;
-
-pub use wasmrs::runtime;
-
 pub use futures_util::FutureExt;
+pub use guest::*;
+pub use wasmrs::runtime;
 
 mod server;
 
 pub mod error;
+
+pub use wasmrs_codec::messagepack::Timestamp;

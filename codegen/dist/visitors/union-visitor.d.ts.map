@@ -1,0 +1,1 @@
+{"version":3,"file":"union-visitor.d.ts","sourceRoot":"","sources":["../../src/visitors/union-visitor.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,OAAO,EAAE,KAAK,EAAE,MAAM,sBAAsB,CAAC;AAItD,OAAO,EAAE,eAAe,EAAE,MAAM,WAAW,CAAC;AAE5C;;;;;;;;;GASG;AACH,qBAAa,YAAa,SAAQ,eAAe,CAAC,KAAK,CAAC;gBAC1C,OAAO,EAAE,OAAO;IAI5B,MAAM,IAAI,MAAM;CAgBjB"}

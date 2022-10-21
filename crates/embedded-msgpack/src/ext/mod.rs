@@ -8,6 +8,7 @@ use crate::marker::Marker;
 #[allow(unused_imports)]
 use byteorder::{BigEndian, ByteOrder};
 
+#[derive(Debug)]
 pub struct Ext<'a> {
     typ: i8,
     data: &'a [u8],

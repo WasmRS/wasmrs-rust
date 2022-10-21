@@ -1,0 +1,23 @@
+unstable_features = true
+enum_discrim_align_threshold = 10
+# fn_params_layout = "Compressed"
+# fn_call_width = 80
+# fn_single_line = true
+# indent_style = "Visual"
+# inline_attribute_width = 50
+max_width = 120
+# overflow_delimited_expr = true
+where_single_line = true
+
+tab_spaces = 2
+newline_style = "Unix"
+reorder_imports = true
+reorder_modules = true
+remove_nested_parens = true
+edition = "2021"
+imports_indent = "Block"
+imports_granularity = "Module"
+imports_layout = "HorizontalVertical"
+group_imports = "StdExternalCrate"
+trailing_comma = "Vertical"
+trailing_semicolon = true
