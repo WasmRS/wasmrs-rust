@@ -13,6 +13,7 @@ std = ['embedded-msgpack/std', 'serde/std']
 embedded-msgpack = { path = "../embedded-msgpack", version = "0.2.2", default-features = false, features = [
   "alloc",
   # "custom-error-messages",
+  "timestamp",
   "i64",
   "u64",
   "bin32",
