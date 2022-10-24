@@ -21,6 +21,12 @@ export declare class SourceGenerator<T extends VisitorTypes> extends BaseVisitor
      */
     constructor(node: T, context: Context);
     /**
+     * Walk the node, calling visitor functions as it traverses the tree.
+     *
+     * @returns Itself.
+     */
+    walk<U extends SourceGenerator<T>>(this: U): U;
+    /**
      * Get the buffer's contents.
      *
      * @returns The buffer's contents.

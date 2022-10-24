@@ -8,5 +8,5 @@ import { AnyType, ObjectMap } from "@apexlang/core/model";
  *
  * @throws Throws if there is a type unaccounted for.
  */
-export declare function convertType(typ: AnyType, config: ObjectMap): string;
+export declare function convertType(typ: AnyType, config: ObjectMap, asRef?: boolean, lifetime?: string): string;
 //# sourceMappingURL=types.d.ts.map

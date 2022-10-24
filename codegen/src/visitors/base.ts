@@ -37,7 +37,16 @@ export class SourceGenerator<T extends VisitorTypes> extends BaseVisitor {
     this.node = node;
     this.context = context;
     this.config = context.config;
+  }
+
+  /**
+   * Walk the node, calling visitor functions as it traverses the tree.
+   *
+   * @returns Itself.
+   */
+  walk<U extends SourceGenerator<T>>(this: U): U {
     this.node.accept(this.context, this);
+    return this;
   }
 
   /**

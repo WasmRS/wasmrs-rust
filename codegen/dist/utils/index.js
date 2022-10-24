@@ -1,5 +1,6 @@
 export * as types from "./types.js";
 export * as convert from "./conversions.js";
+import { noCase } from "@apexlang/codegen/utils";
 /**
  * A utility function to checks if a name is a reserved word.
  *
@@ -21,4 +22,10 @@ const reservedWords = [
     "function",
     "class",
 ];
+export function constantCase(str) {
+    return noCase(str, {
+        delimiter: "_",
+        transform: (str) => str.toUpperCase(),
+    });
+}
 //# sourceMappingURL=index.js.map

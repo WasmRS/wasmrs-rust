@@ -7,4 +7,5 @@ export * as convert from "./conversions.js";
  * @returns true or false depending on if the name is found in the reservedWords list.
  */
 export declare function isReservedWord(name: string): boolean;
+export declare function constantCase(str: string): string;
 //# sourceMappingURL=index.d.ts.map

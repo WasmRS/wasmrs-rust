@@ -1,4 +1,5 @@
-import { ObjectMap, Operation, Parameter } from "@apexlang/core/model";
+import { utils } from "@apexlang/codegen/rust";
+import { ObjectMap, Parameter } from "@apexlang/core/model";
 import { convertType } from "./types";
 
 /**
@@ -8,52 +9,7 @@ import { convertType } from "./types";
  * @returns A string suitable for the destination format or an empty string.
  */
 export function convertDescription(description?: string): string {
-  if (description) {
-    // Return what descriptions should look like in your destination format
-    // Oftentimes descriptions map to comments in code, e.g.
-    //
-    // return `// ${description}`;
-    return "";
-  } else {
-    // Else return nothing
-    return "";
-  }
-}
-
-/**
- * Generate new source for an Operation
- *
- * @param op - An Operation node to convert
- * @param global - Whether this is a global operation (`func`) or a method in an interface.
- * @param config - The context's configuration.
- * @returns The new generated output for the Operation
- *
- */
-export function convertOperation(
-  op: Operation,
-  global: boolean,
-  config: ObjectMap
-): string {
-  // The name of the Operation.
-  const name = op.name;
-
-  // A comment generated from the description.
-  const comment = convertDescription(op.description);
-
-  // The return type of the operation, converted via `convertType()`
-  const type = convertType(op.type, config);
-
-  // Iterate over the Operation's Parameters and generate new output.
-  const params = op.parameters.map((arg) => convertParameter(arg, config));
-
-  if (global) {
-    // Generate output for global functions here.
-  } else {
-    // Generate method output here.
-  }
-
-  // Combine the above to create and return new output.
-  return ``;
+  return utils.rustDoc(description);
 }
 
 /**

@@ -16,6 +16,7 @@ import { SourceGenerator } from "./base.js";
 export class AliasVisitor extends SourceGenerator {
     constructor(context) {
         super(context.alias, context);
+        this.walk();
     }
     buffer() {
         // The name of the Alias from the Apex schema.

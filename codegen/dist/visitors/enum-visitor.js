@@ -17,6 +17,7 @@ import { SourceGenerator } from "./base.js";
 export class EnumVisitor extends SourceGenerator {
     constructor(context) {
         super(context.enum, context);
+        this.walk();
     }
     buffer() {
         // The name of the Enum from the Apex schema.

@@ -1,23 +1,13 @@
-import { Context, Interface } from "@apexlang/core/model";
-import { convertDescription, convertOperation } from "../utils/conversions.js";
+import { Context, Interface, ObjectMap, Operation } from "@apexlang/core/model";
+import { convertDescription, convertParameter } from "../utils/conversions.js";
+import { convertType } from "../utils/types.js";
 
 import { SourceGenerator } from "./base.js";
 
-/**
- * Apex interfaces come from syntax like this:
- *
- * ```apexlang
- * interface RetailStore {
- *   order(item:u32): u32
- * }
- * ```
- *
- * View a sample model here:
- * https://apexlang.github.io/ast-viewer/#aW50ZXJmYWNlIFJldGFpbFN0b3JlIHsKICBvcmRlcihpdGVtOnUzMik6IHUzMgp9Cgo=
- */
 export class InterfaceVisitor extends SourceGenerator<Interface> {
   constructor(context: Context) {
     super(context.interface, context);
+    this.walk();
   }
 
   buffer(): string {
@@ -45,4 +35,40 @@ export class InterfaceVisitor extends SourceGenerator<Interface> {
     // state by calling `this.writer.string()`.
     this.write(``);
   }
+}
+
+/**
+ * Generate new source for an Operation
+ *
+ * @param op - An Operation node to convert
+ * @param global - Whether this is a global operation (`func`) or a method in an interface.
+ * @param config - The context's configuration.
+ * @returns The new generated output for the Operation
+ *
+ */
+export function convertOperation(
+  op: Operation,
+  global: boolean,
+  config: ObjectMap
+): string {
+  // The name of the Operation.
+  const name = op.name;
+
+  // A comment generated from the description.
+  const comment = convertDescription(op.description);
+
+  // The return type of the operation, converted via `convertType()`
+  const type = convertType(op.type, config);
+
+  // Iterate over the Operation's Parameters and generate new output.
+  const params = op.parameters.map((arg) => convertParameter(arg, config));
+
+  if (global) {
+    // Generate output for global functions here.
+  } else {
+    // Generate method output here.
+  }
+
+  // Combine the above to create and return new output.
+  return ``;
 }

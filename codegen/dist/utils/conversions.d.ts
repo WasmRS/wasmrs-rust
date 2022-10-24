@@ -1,4 +1,4 @@
-import { ObjectMap, Operation, Parameter } from "@apexlang/core/model";
+import { ObjectMap, Parameter } from "@apexlang/core/model";
 /**
  * Convert a description to the appropriate format for the destination.
  *
@@ -6,16 +6,6 @@ import { ObjectMap, Operation, Parameter } from "@apexlang/core/model";
  * @returns A string suitable for the destination format or an empty string.
  */
 export declare function convertDescription(description?: string): string;
-/**
- * Generate new source for an Operation
- *
- * @param op - An Operation node to convert
- * @param global - Whether this is a global operation (`func`) or a method in an interface.
- * @param config - The context's configuration.
- * @returns The new generated output for the Operation
- *
- */
-export declare function convertOperation(op: Operation, global: boolean, config: ObjectMap): string;
 /**
  * Generate new source for a Parameter
  *

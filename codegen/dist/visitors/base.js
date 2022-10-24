@@ -20,7 +20,15 @@ export class SourceGenerator extends BaseVisitor {
         this.node = node;
         this.context = context;
         this.config = context.config;
+    }
+    /**
+     * Walk the node, calling visitor functions as it traverses the tree.
+     *
+     * @returns Itself.
+     */
+    walk() {
         this.node.accept(this.context, this);
+        return this;
     }
     /**
      * Get the buffer's contents.
