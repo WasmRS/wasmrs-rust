@@ -13,7 +13,7 @@ use super::Error;
 
 type Result<T> = core::result::Result<T, Error>;
 
-// #[cfg(test)]
+#[cfg(test)]
 fn print_debug<T>(prefix: &str, function_name: &str, de: &Deserializer) {
     #[cfg(not(feature = "std"))]
     extern crate std;
@@ -27,7 +27,8 @@ fn print_debug<T>(prefix: &str, function_name: &str, de: &Deserializer) {
         &de.slice[de.index..core::cmp::min(de.slice.len(), de.index + 10)]
     );
 }
-// #[cfg(test)]
+
+#[cfg(test)]
 fn print_debug_value<T, V: core::fmt::Debug>(function_name: &str, de: &Deserializer, value: &V) {
     #[cfg(not(feature = "std"))]
     extern crate std;
@@ -41,10 +42,10 @@ fn print_debug_value<T, V: core::fmt::Debug>(function_name: &str, de: &Deseriali
         &de.slice[de.index..core::cmp::min(de.slice.len(), de.index + 10)]
     );
 }
-// #[cfg(not(test))]
-// fn print_debug<T>(_prefix: &str, _function_name: &str, _de: &Deserializer) {}
-// #[cfg(not(test))]
-// fn print_debug_value<T, V: core::fmt::Debug>(_function_name: &str, _de: &Deserializer, _value: &V) {}
+#[cfg(not(test))]
+fn print_debug<T>(_prefix: &str, _function_name: &str, _de: &Deserializer) {}
+#[cfg(not(test))]
+fn print_debug_value<T, V: core::fmt::Debug>(_function_name: &str, _de: &Deserializer, _value: &V) {}
 
 pub(crate) struct Deserializer<'b> {
     slice: &'b [u8],
@@ -52,11 +53,17 @@ pub(crate) struct Deserializer<'b> {
 }
 
 impl<'a> Deserializer<'a> {
-    pub const fn new(slice: &'a [u8]) -> Deserializer<'_> { Deserializer { slice, index: 0 } }
+    pub const fn new(slice: &'a [u8]) -> Deserializer<'_> {
+        Deserializer { slice, index: 0 }
+    }
 
-    fn eat_byte(&mut self) { self.index += 1; }
+    fn eat_byte(&mut self) {
+        self.index += 1;
+    }
 
-    fn peek(&mut self) -> Option<Marker> { Some(Marker::from_u8(*self.slice.get(self.index)?)) }
+    fn peek(&mut self) -> Option<Marker> {
+        Some(Marker::from_u8(*self.slice.get(self.index)?))
+    }
 }
 
 // NOTE(deserialize_*signed) we avoid parsing into u64 and then casting to a smaller integer, which
@@ -70,7 +77,7 @@ macro_rules! deserialize_primitive {
             print_debug::<V>("Deserializer::deserialize_", stringify!($ty), &self);
             let (value, len) = paste! { super::[<read_ $ty>](&self.slice[self.index..])? };
             self.index += len;
-            print_debug_value::<$ty, $ty>(stringify!(concat_idents!(Deserializer::deserialize_, $ty)), &self, &value);
+            // print_debug_value::<$ty, $ty>(stringify!(concat_idents!(Deserializer::deserialize_, $ty)), &self, &value);
             paste! { visitor.[<visit_ $ty>](value) }
         }}
     };
@@ -208,7 +215,9 @@ impl ::serde::de::StdError for Error {}
 impl de::Error for Error {
     #[cfg_attr(not(feature = "custom-error-messages"), allow(unused_variables))]
     fn custom<T>(msg: T) -> Self
-    where T: fmt::Display {
+    where
+        T: fmt::Display,
+    {
         #[cfg(not(feature = "custom-error-messages"))]
         {
             Error::CustomError
@@ -248,5 +257,7 @@ impl fmt::Display for Error {
         )
     }
     #[cfg(not(debug_assertions))]
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result { Ok(()) }
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Ok(())
+    }
 }

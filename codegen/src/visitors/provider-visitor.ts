@@ -85,14 +85,12 @@ ${trimLines([comment])}
 pub(crate) fn ${name}(
   inputs: ${name}::Inputs<'_>,
 ) -> wasmrs_guest::Mono<${name}::Outputs, PayloadError> {
-  // let inputs = Inputs { message, user_id };
   let op_id_bytes = ${indexConstant}_INDEX_BYTES.as_slice();
   let payload = match wasmrs_guest::serialize(&inputs) {
       Ok(bytes) => Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()),
       Err(e) => return Mono::new_error(PayloadError::application_error(e.to_string())),
   };
   let fut = Host::default().request_response(payload).map(|result| {
-      println!("response: {:?}", result);
       result
           .map(|payload| Ok(deserialize::<${name}::Outputs>(&payload.data.unwrap())?))?
   });

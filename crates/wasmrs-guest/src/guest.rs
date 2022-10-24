@@ -107,7 +107,12 @@ extern "C" {
 }
 
 pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u32) {
-  tracing::trace!("guest::init() called");
+  tracing::trace!(
+    "guest::init({}, {}, {}) called",
+    guest_buffer_size,
+    host_buffer_size,
+    max_host_frame_len
+  );
 
   let guest_ptr = GUEST_BUFFER.with(|cell| {
     #[allow(unsafe_code)]
@@ -234,6 +239,7 @@ fn send_host_frame(mut payloads: Vec<Bytes>) -> Vec<Bytes> {
     let mut total = 0;
     let mut buff = Cursor::new(buff);
     while let Some(payload) = payloads.pop() {
+      println!("frame len: {}", payload.len());
       let len = payload.len() as u32;
       if (total + len as usize) > max {
         payloads.push(payload);

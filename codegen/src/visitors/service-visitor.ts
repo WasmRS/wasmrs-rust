@@ -52,6 +52,7 @@ pub mod ${service_module} {
 
     const [traitFn, wrapper, types] = convertOperation(
       operation,
+      this.node.name,
       false,
       this.config
     );
@@ -65,12 +66,13 @@ pub mod ${service_module} {
 
 export function convertOperation(
   op: Operation,
+  iface: string,
   global: boolean,
   config: ObjectMap
 ): [string, string, string] {
   const name = rustify(op.name);
-  const service_module = `${op.name}_service`;
-  const component_name = `${rustifyCaps(op.name)}Component`;
+  const service_module = `${rustify(iface)}_service`;
+  const component_name = `${rustifyCaps(iface)}Component`;
 
   const comment = convertDescription(op.description);
 

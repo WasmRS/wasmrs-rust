@@ -48,7 +48,9 @@ where
   }
 
   pub fn from_future<Fut>(fut: Fut) -> Self
-  where Fut: MonoFuture<Item, Err> {
+  where
+    Fut: MonoFuture<Item, Err>,
+  {
     Self {
       inner: Some(Box::pin(fut)),
       is_complete: false,
@@ -106,13 +108,11 @@ where
   type Output = Result<Item, Err>;
 
   fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
-    warn!("polling");
     match self.get_mut().inner.as_mut() {
       Some(mut inner_future) => inner_future.poll_unpin(cx),
       None => {
-        unreachable!();
-        // cx.waker().wake_by_ref();
-        // Poll::Pending
+        cx.waker().wake_by_ref();
+        Poll::Pending
       }
     }
   }
