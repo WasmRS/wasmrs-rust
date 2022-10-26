@@ -1,0 +1,34 @@
+[package]
+name = "wasmrs-codec"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ['std']
+std = ['embedded-msgpack/std', 'serde/std']
+
+[dependencies]
+embedded-msgpack = { path = "../embedded-msgpack", version = "0.2", default-features = false, features = [
+  "alloc",
+  # "custom-error-messages",
+  "timestamp",
+  "i64",
+  "u64",
+  "bin32",
+  "map32",
+  "array32",
+  "str32",
+  "fixext",
+  "ext",
+  "ext8",
+  "ext16",
+  "ext32",
+  "serde",
+  "serde_bytes",
+] }
+serde = { version = "1", features = [
+  "derive",
+  "alloc",
+], default-features = false }
