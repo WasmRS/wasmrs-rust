@@ -88,4 +88,5 @@ mod server;
 
 pub mod error;
 
+pub use futures_util::Stream;
 pub use wasmrs_codec::messagepack::Timestamp;
