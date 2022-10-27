@@ -12,7 +12,6 @@ use std::time::Duration;
 use bytes::Bytes;
 use futures::stream::{AbortHandle, Abortable};
 use futures::{StreamExt, TryFutureExt};
-use tokio::task::yield_now;
 mod responder;
 
 pub use self::buffer::BufferState;
