@@ -14,6 +14,7 @@ use super::Error;
 type Result<T> = core::result::Result<T, Error>;
 
 #[cfg(test)]
+#[allow(dead_code)]
 fn print_debug<T>(prefix: &str, function_name: &str, de: &Deserializer) {
     #[cfg(not(feature = "std"))]
     extern crate std;
@@ -29,6 +30,7 @@ fn print_debug<T>(prefix: &str, function_name: &str, de: &Deserializer) {
 }
 
 #[cfg(test)]
+#[allow(dead_code)]
 fn print_debug_value<T, V: core::fmt::Debug>(function_name: &str, de: &Deserializer, value: &V) {
     #[cfg(not(feature = "std"))]
     extern crate std;
@@ -43,8 +45,10 @@ fn print_debug_value<T, V: core::fmt::Debug>(function_name: &str, de: &Deseriali
     );
 }
 #[cfg(not(test))]
+#[allow(dead_code)]
 fn print_debug<T>(_prefix: &str, _function_name: &str, _de: &Deserializer) {}
 #[cfg(not(test))]
+#[allow(dead_code)]
 fn print_debug_value<T, V: core::fmt::Debug>(_function_name: &str, _de: &Deserializer, _value: &V) {}
 
 pub(crate) struct Deserializer<'b> {

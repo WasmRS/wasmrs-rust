@@ -456,7 +456,7 @@ pub fn read_str(buf: &[u8]) -> Result<(&str, usize), Error> {
                 return Err(Error::EndOfBuffer);
             }
         }
-        x => return Err(Error::InvalidStringType),
+        _ => return Err(Error::InvalidStringType),
     };
     let buf = &buf[header_len..header_len + len];
     let s = if buf.is_ascii() {
