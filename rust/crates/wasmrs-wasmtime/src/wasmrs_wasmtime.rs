@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use wasmrs_host::{CallbackProvider, HostExports, IntoEnumIterator};
-use wasmtime::{AsContext, Caller, FuncType, Linker, Trap, Val, ValType};
+use wasmtime::{AsContext, Caller, FuncType, Linker, Val, ValType};
 
 use crate::memory::{get_caller_memory, get_vec_from_memory, read_frame};
 use crate::store::ProviderStore;
@@ -32,7 +32,7 @@ pub(crate) fn add_to_linker(linker: &mut Linker<ProviderStore>) -> super::Result
 
 fn linker_send() -> (
   FuncType,
-  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
+  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), wasi_common::Error> + Send + Sync + 'static,
 ) {
   (
     FuncType::new(vec![ValType::I32], vec![]),
@@ -51,13 +51,10 @@ fn linker_send() -> (
         caller.data().host_buffer.get_start() as _,
         read_until,
       )
-      .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
+      .map_err(wasi_common::Error::new)?;
       trace!(?bytes, "got frame");
 
-      caller
-        .data()
-        .do_host_send(bytes)
-        .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
+      caller.data().do_host_send(bytes).map_err(wasi_common::Error::new)?;
       Ok(())
     },
   )
@@ -65,7 +62,7 @@ fn linker_send() -> (
 
 fn linker_init() -> (
   FuncType,
-  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
+  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), wasi_common::Error> + Send + Sync + 'static,
 ) {
   (
     FuncType::new(vec![ValType::I32, ValType::I32], vec![]),
@@ -82,7 +79,7 @@ fn linker_init() -> (
       caller
         .data()
         .do_host_init(guest_buff_ptr.try_into().unwrap(), host_buff_ptr.try_into().unwrap())
-        .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
+        .map_err(wasi_common::Error::new)?;
 
       Ok(())
     },
@@ -91,7 +88,7 @@ fn linker_init() -> (
 
 fn linker_console_log() -> (
   FuncType,
-  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
+  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), wasi_common::Error> + Send + Sync + 'static,
 ) {
   (
     FuncType::new(vec![ValType::I32, ValType::I32], vec![]),
@@ -111,7 +108,7 @@ fn linker_console_log() -> (
 
 fn linker_op_list() -> (
   FuncType,
-  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), Trap> + Send + Sync + 'static,
+  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), wasi_common::Error> + Send + Sync + 'static,
 ) {
   (
     FuncType::new(vec![ValType::I32, ValType::I32], vec![]),
@@ -129,7 +126,7 @@ fn linker_op_list() -> (
       caller
         .data()
         .do_op_list(Bytes::from(vec))
-        .map_err(|e| wasmtime::Trap::new(e.to_string()))?;
+        .map_err(wasi_common::Error::new)?;
       Ok(())
     },
   )

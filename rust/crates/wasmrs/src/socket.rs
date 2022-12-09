@@ -245,6 +245,7 @@ impl WasmSocket {
       send_app_error(&tx, sid, "Invalid RequestN (n=0)");
       return;
     }
+    #[allow(clippy::option_if_let_else)]
     match self.channels.cloned(&sid) {
       Some(reqn_tx) => {
         reqn_tx.send(n).unwrap();

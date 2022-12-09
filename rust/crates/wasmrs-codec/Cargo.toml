@@ -10,7 +10,7 @@ default = ['std']
 std = ['embedded-msgpack/std', 'serde/std']
 
 [dependencies]
-embedded-msgpack = { path = "../embedded-msgpack", version = "0.2", default-features = false, features = [
+embedded-msgpack = { version = "0.2", default-features = false, features = [
   "alloc",
   # "custom-error-messages",
   "timestamp",

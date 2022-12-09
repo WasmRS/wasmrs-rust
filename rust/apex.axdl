@@ -1,0 +1,123 @@
+namespace "wasmrs.rsocket.v1"
+
+import {index_type} from "@apexlang/core"
+
+enum FrameType @index_type(type:u8) {
+    Reserved = 0 as "RESERVED"
+    Setup = 1 as "SETUP"
+    Lease = 2 as "LEASE"
+    Keepalive = 3 as "KEEPALIVE"
+    RequestResponse = 4 as "REQUEST_RESPONSE"
+    RequestFNF = 5 as "REQUEST_FNF"
+    RequestStream = 6 as "REQUEST_STREAM"
+    RequestChannel = 7 as "REQUEST_CHANNEL"
+    RequestN = 8 as "REQUEST_N"
+    Cancel = 9 as "CANCEL"
+    Payload = 10 as "PAYLOAD"
+    Err = 11 as "ERROR"
+    MetadataPush = 12 as "METADATA_PUSH"
+    Resume = 13 as "RESUME"
+    ResumeOK = 14 as "RESUME_OK"
+    Ext = 63 as "EXT"
+}
+
+alias FrameFlags = u16
+
+enum FrameFlag {
+  Metadata = 0 as "M"
+  Follows = 1 as "FRS"
+  Complete = 2 as "CL"
+  Next = 3 as "N"
+  Ignore = 4 as "I"
+}
+
+"Six (6) bytes reserved for FrameHeader information."
+type FrameHeader {
+  header: bytes
+}
+
+
+type Payload {
+  metadata: bytes?
+  data: bytes?
+}
+
+union Frame = PayloadFrame | Cancel | ErrorFrame | RequestN | RequestResponse | RequestFnF | RequestStream | RequestChannel
+
+"A Payload frame."
+type PayloadFrame {
+  "The stream ID this frame belongs to."
+	streamId: u32
+  "Any metadata associated with the Payload as raw bytes."
+	metadata: bytes
+  "The actual payload data as raw bytes."
+	data: bytes
+  "Whether this payload is broken up into multiple frames."
+	follows: bool
+  "Whether or not this frame is the last frame in a stream."
+  complete: bool
+  "TODO"
+  next: bool
+}
+
+type Cancel {
+  "The stream ID this frame belongs to."
+  streamId: u32
+}
+
+type ErrorFrame {
+  "The stream ID this frame belongs to."
+  streamId: u32
+	code: u32
+	data: string
+}
+
+type RequestN {
+  "The stream ID this frame belongs to."
+  streamId: u32
+	n: u32
+}
+
+
+alias RequestChannel = RequestPayload
+alias RequestStream = RequestPayload
+alias RequestResponse = RequestPayload
+alias RequestFnF = RequestPayload
+
+type RequestPayload {
+  "The type of Request this payload creates."
+  frameType: FrameType
+  "The stream ID this frame belongs to."
+  streamId: u32
+  "Any metadata associated with the Payload as raw bytes."
+	metadata: bytes
+  "The actual payload data as raw bytes."
+	data: bytes
+  "Whether this payload is broken up into multiple frames."
+	follows: bool
+  "Whether or not this frame is the last frame in a stream."
+  complete: bool
+  "TODO"
+	initialN: u32
+}
+
+"Metadata associated with the frame."
+type Metadata {
+    "The operation index."
+    index: u32,
+}
+
+"RSocket Error Codes"
+enum ErrorCode {
+  InvalidSetup = 1
+  UnsupportedSetup = 2
+  RejectedSetup = 3
+  RejectedResume = 4
+  ConnectionError = 257
+  ConnectionClose = 258
+  ApplicationError = 513
+  Rejected = 514
+  Canceled = 515
+  Invalid = 516
+  Reserved = 4294967295
+}
