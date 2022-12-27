@@ -1,10 +1,6 @@
 [workspace]
 members = ["crates/*", "bins/*"]
-exclude = [
-  "wasm/reqres-component",
-  "wasm/req-stream-component",
-  "wasm/req-channel-component",
-]
+exclude = ["wasm/reqres-component"]
 
 [workspace.dependencies]
 env_logger = "0.10.0"

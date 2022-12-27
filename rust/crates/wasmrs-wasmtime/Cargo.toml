@@ -9,8 +9,8 @@ default = []
 profiler = []
 
 [dependencies]
-wasmrs-host = { path = "../wasmrs-host" }
-wasmrs = { path = "../wasmrs" }
+wasmrs-host = { path = "../wasmrs-host", version = "0.1.0" }
+wasmrs = { path = "../wasmrs", version = "0.1.0" }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 parking_lot = { workspace = true }
@@ -25,7 +25,7 @@ anyhow = { version = "1.0" }
 
 [dev-dependencies]
 env_logger = { workspace = true }
-wasmrs-codec = { path = "../wasmrs-codec" }
+wasmrs-codec = { path = "../wasmrs-codec", version = "0.1.0" }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 test-log = "0.2.10"
 tracing-subscriber = { version = "0.3", default-features = false, features = [
