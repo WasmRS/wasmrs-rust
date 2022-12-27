@@ -1,5 +1,12 @@
 [workspace]
-members = ["crates/*", "bins/*"]
+members = [
+  "crates/wasmrs-codec",
+  "crates/wasmrs",
+  "crates/wasmrs-guest",
+  "crates/wasmrs-host",
+  "crates/wasmrs-wasmtime",
+  "bins/*"
+]
 exclude = ["wasm/reqres-component"]
 
 [workspace.dependencies]
