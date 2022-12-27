@@ -3,7 +3,7 @@ use std::sync::Arc;
 use parking_lot::RwLock;
 
 use crate::flux::*;
-use crate::{ErrorCode, Mono, Payload, PayloadError, RSocket};
+use crate::{Mono, Payload, PayloadError, RSocket};
 
 #[derive(Clone)]
 pub(crate) struct Responder {

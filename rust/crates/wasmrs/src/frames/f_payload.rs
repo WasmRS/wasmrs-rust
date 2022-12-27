@@ -1,9 +1,27 @@
 use bytes::{BufMut, Bytes, BytesMut};
 
-use super::{Error, RSocketFlags, RSocketFrame};
-use crate::generated::{FrameFlags, FrameHeader, FrameType, PayloadFrame};
+use super::{request_payload::RequestPayload, Error, FrameFlags, FrameHeader, FrameType, RSocketFlags, RSocketFrame};
 use crate::util::{from_u24_bytes, to_u24_bytes};
 use crate::{Frame, Payload};
+
+/// A Payload frame.
+#[derive()]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[must_use]
+pub struct PayloadFrame {
+  /// The stream ID this frame belongs to.
+  pub stream_id: u32,
+  /// Any metadata associated with the Payload as raw bytes.
+  pub metadata: Bytes,
+  /// The actual payload data as raw bytes.
+  pub data: Bytes,
+  /// Whether this payload is broken up into multiple frames.
+  pub follows: bool,
+  /// Whether or not this frame is the last frame in a stream.
+  pub complete: bool,
+  /// TODO
+  pub next: bool,
+}
 
 impl PayloadFrame {
   pub(crate) fn from_payload(stream_id: u32, payload: Payload, flags: FrameFlags) -> Self {

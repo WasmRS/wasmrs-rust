@@ -1,9 +1,18 @@
 use bytes::{BufMut, Bytes, BytesMut};
 
-use super::{Error, RSocketFrame};
-use crate::generated::{ErrorFrame, FrameHeader, FrameType};
+use super::{Error, FrameHeader, FrameType, RSocketFrame};
 use crate::util::from_u32_bytes;
 use crate::Frame;
+
+#[derive()]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[must_use]
+pub struct ErrorFrame {
+  /// The stream ID this frame belongs to.
+  pub stream_id: u32,
+  pub code: u32,
+  pub data: String,
+}
 
 impl ErrorFrame {}
 

@@ -1,8 +1,15 @@
 use bytes::Bytes;
 
-use super::{Error, RSocketFrame};
-use crate::generated::{Cancel, FrameHeader, FrameType};
+use super::{Error, FrameHeader, FrameType, RSocketFrame};
 use crate::Frame;
+
+#[derive(Clone, Copy)]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[must_use]
+pub struct Cancel {
+  /// The stream ID this frame belongs to.
+  pub stream_id: u32,
+}
 
 impl RSocketFrame<Cancel> for Cancel {
   const FRAME_TYPE: FrameType = FrameType::Cancel;

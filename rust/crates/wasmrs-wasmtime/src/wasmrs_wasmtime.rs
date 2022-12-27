@@ -2,6 +2,7 @@ use bytes::Bytes;
 use wasmrs_host::{CallbackProvider, HostExports, IntoEnumIterator};
 use wasmtime::{AsContext, Caller, FuncType, Linker, Val, ValType};
 
+use crate::errors::Error;
 use crate::memory::{get_caller_memory, get_vec_from_memory, read_frame};
 use crate::store::ProviderStore;
 
@@ -11,19 +12,27 @@ pub(crate) fn add_to_linker(linker: &mut Linker<ProviderStore>) -> super::Result
     match export {
       HostExports::Send => {
         let (extern_type, extern_fn) = linker_send();
-        linker.func_new(module_name, export.as_ref(), extern_type, extern_fn)?;
+        linker
+          .func_new(module_name, export.as_ref(), extern_type, extern_fn)
+          .map_err(Error::Func)?;
       }
       HostExports::Init => {
         let (extern_type, extern_fn) = linker_init();
-        linker.func_new(module_name, export.as_ref(), extern_type, extern_fn)?;
+        linker
+          .func_new(module_name, export.as_ref(), extern_type, extern_fn)
+          .map_err(Error::Func)?;
       }
       HostExports::Log => {
         let (extern_type, extern_fn) = linker_console_log();
-        linker.func_new(module_name, export.as_ref(), extern_type, extern_fn)?;
+        linker
+          .func_new(module_name, export.as_ref(), extern_type, extern_fn)
+          .map_err(Error::Func)?;
       }
       HostExports::OpList => {
         let (extern_type, extern_fn) = linker_op_list();
-        linker.func_new(module_name, export.as_ref(), extern_type, extern_fn)?;
+        linker
+          .func_new(module_name, export.as_ref(), extern_type, extern_fn)
+          .map_err(Error::Func)?;
       }
     };
   }
@@ -32,7 +41,7 @@ pub(crate) fn add_to_linker(linker: &mut Linker<ProviderStore>) -> super::Result
 
 fn linker_send() -> (
   FuncType,
-  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), wasi_common::Error> + Send + Sync + 'static,
+  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
 ) {
   (
     FuncType::new(vec![ValType::I32], vec![]),
@@ -50,11 +59,10 @@ fn linker_send() -> (
         memory,
         caller.data().host_buffer.get_start() as _,
         read_until,
-      )
-      .map_err(wasi_common::Error::new)?;
+      )?;
       trace!(?bytes, "got frame");
 
-      caller.data().do_host_send(bytes).map_err(wasi_common::Error::new)?;
+      caller.data().do_host_send(bytes)?;
       Ok(())
     },
   )
@@ -62,7 +70,7 @@ fn linker_send() -> (
 
 fn linker_init() -> (
   FuncType,
-  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), wasi_common::Error> + Send + Sync + 'static,
+  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
 ) {
   (
     FuncType::new(vec![ValType::I32, ValType::I32], vec![]),
@@ -78,8 +86,7 @@ fn linker_init() -> (
 
       caller
         .data()
-        .do_host_init(guest_buff_ptr.try_into().unwrap(), host_buff_ptr.try_into().unwrap())
-        .map_err(wasi_common::Error::new)?;
+        .do_host_init(guest_buff_ptr.try_into().unwrap(), host_buff_ptr.try_into().unwrap())?;
 
       Ok(())
     },
@@ -88,7 +95,7 @@ fn linker_init() -> (
 
 fn linker_console_log() -> (
   FuncType,
-  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), wasi_common::Error> + Send + Sync + 'static,
+  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
 ) {
   (
     FuncType::new(vec![ValType::I32, ValType::I32], vec![]),
@@ -108,7 +115,7 @@ fn linker_console_log() -> (
 
 fn linker_op_list() -> (
   FuncType,
-  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), wasi_common::Error> + Send + Sync + 'static,
+  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
 ) {
   (
     FuncType::new(vec![ValType::I32, ValType::I32], vec![]),
@@ -123,10 +130,7 @@ fn linker_op_list() -> (
       let memory = get_caller_memory(&mut caller);
       let vec = get_vec_from_memory(caller.as_context(), memory, ptr.unwrap(), len.unwrap());
 
-      caller
-        .data()
-        .do_op_list(Bytes::from(vec))
-        .map_err(wasi_common::Error::new)?;
+      caller.data().do_op_list(Bytes::from(vec))?;
       Ok(())
     },
   )

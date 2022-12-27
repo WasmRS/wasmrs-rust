@@ -4,19 +4,18 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 wasmrs = { path = "../wasmrs" }
-parking_lot = "0.12"
-thiserror = "1.0"
-futures-util = "0.3"
-futures-core = "0.3"
-tokio = { version = "1", features = ["sync", "rt"] }
+parking_lot = { workspace = true }
+thiserror = { workspace = true }
+futures-util = { workspace = true }
+futures-core = { workspace = true }
+tokio = { workspace = true, features = ["sync", "rt"] }
 strum = { version = "0.24", features = ["derive"] }
-tracing = "0.1"
-bytes = "1.2"
+tracing = { workspace = true }
+bytes = { workspace = true }
 dashmap = "5.4"
 
 [dev-dependencies]
-tokio = { version = "1", features = ["macros"] }
+tokio = { workspace = true, features = ["macros"] }
 anyhow = { version = "1.0" }

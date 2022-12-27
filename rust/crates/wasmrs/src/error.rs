@@ -1,6 +1,6 @@
 //! Library-specific error types and utility functions
 
-use crate::{ErrorCode, FrameType};
+use crate::frames::ErrorCode;
 
 /// Error type for wasmRS RSocket errors.
 #[allow(missing_copy_implementations)]

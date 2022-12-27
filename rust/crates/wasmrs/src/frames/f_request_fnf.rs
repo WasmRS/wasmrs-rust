@@ -1,8 +1,12 @@
 use bytes::Bytes;
 
-use super::{Error, RSocketFrame};
-use crate::generated::{FrameHeader, FrameType, RequestFnF};
-use crate::{Frame, FrameFlags, Payload, RequestPayload};
+use super::{request_payload::RequestPayload, Error, FrameFlags, FrameHeader, FrameType, RSocketFlags, RSocketFrame};
+use crate::{Frame, Payload};
+
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[must_use]
+#[derive()]
+pub struct RequestFnF(pub RequestPayload);
 
 impl RequestFnF {
   pub(crate) fn from_payload(stream_id: u32, payload: Payload, flags: FrameFlags, initial_n: u32) -> Self {
@@ -30,7 +34,7 @@ impl RSocketFrame<RequestFnF> for RequestFnF {
 
   fn decode_frame(header: &FrameHeader, buffer: Bytes) -> Result<Self, Error> {
     Self::check_type(header)?;
-    Ok(Self(crate::generated::RequestPayload::decode(header, buffer)?))
+    Ok(Self(RequestPayload::decode(header, buffer)?))
   }
 
   fn encode(self) -> Bytes {
@@ -57,8 +61,6 @@ mod test {
   use anyhow::Result;
 
   use super::*;
-  use crate::frames::RSocketFrame;
-  use crate::generated::RequestPayload;
 
   static BYTES: &[u8] = include_bytes!("../../testdata/frame.request_fnf.bin");
 

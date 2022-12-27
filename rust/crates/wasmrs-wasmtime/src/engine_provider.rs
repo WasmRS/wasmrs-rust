@@ -51,7 +51,7 @@ impl Clone for WasmtimeEngineProvider {
 impl WasmtimeEngineProvider {
   /// Creates a new instance of a [WasmtimeEngineProvider] from a separately created [wasmtime::Engine].
   pub(crate) fn new_with_engine(buf: &[u8], engine: Engine, wasi_params: Option<WasiParams>) -> Result<Self> {
-    let module = Module::new(&engine, buf)?;
+    let module = Module::new(&engine, buf).map_err(Error::Module)?;
 
     let mut linker: Linker<ProviderStore> = Linker::new(&engine);
     wasmtime_wasi::add_to_linker(&mut linker, |s| s.wasi_ctx.as_mut().unwrap()).unwrap();
@@ -94,10 +94,10 @@ impl WasmtimeCallContext {
     mut store: Store<ProviderStore>,
   ) -> Result<Self> {
     wasmrs_wasmtime::add_to_linker(&mut linker)?;
-    let instance = linker.instantiate(&mut store, module)?;
+    let instance = linker.instantiate(&mut store, module).map_err(Error::Linker)?;
 
     let guest_send = instance
-      .get_typed_func::<i32, (), _>(&mut store, GuestExports::Send.as_ref())
+      .get_typed_func::<i32, ()>(&mut store, GuestExports::Send.as_ref())
       .map_err(|_| crate::errors::Error::GuestSend)?;
     let memory = instance.get_memory(&mut store, "memory").unwrap();
 
@@ -174,7 +174,7 @@ impl ProviderCallContext for WasmtimeCallContext {
 
     if let Ok(oplist) = self
       .instance
-      .get_typed_func::<(), (), _>(&mut self.store, GuestExports::OpListRequest.as_ref())
+      .get_typed_func::<(), ()>(&mut self.store, GuestExports::OpListRequest.as_ref())
     {
       trace!("Calling operation list");
       oplist.call(&mut self.store, ()).unwrap();

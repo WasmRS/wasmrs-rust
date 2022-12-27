@@ -4,15 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [features]
 default = ['std']
-std = ['embedded-msgpack/std', 'serde/std']
+std = ['wasm-msgpack/std', 'serde/std']
 
 [dependencies]
-embedded-msgpack = { version = "0.2", default-features = false, features = [
+wasm-msgpack = { version = "0.2", default-features = false, features = [
   "alloc",
-  # "custom-error-messages",
   "timestamp",
   "i64",
   "u64",
@@ -28,7 +26,7 @@ embedded-msgpack = { version = "0.2", default-features = false, features = [
   "serde",
   "serde_bytes",
 ] }
-serde = { version = "1", features = [
+serde = { workspace = true, features = [
   "derive",
   "alloc",
 ], default-features = false }

@@ -1,10 +1,8 @@
-# wasmrs-wasmtime
+# wasmrs-codec
 
-This crate provides the wasmtime implementation for wasmrs hosts.
+This crate provides the MessagePack encoding/decoding implementation for wasmRS modules.
 
 ## Usage
-
-See the [example](https://github.com/nanobus/iota/blob/main/rust/crates/wasmrs-wasmtime/examples/request.rs) for usage.
 
 For more information on wasmRS, see the core [wasmrs](https://github.com/nanobus/iota/blob/main/rust/crates/wasmrs/README.md) crate.
 

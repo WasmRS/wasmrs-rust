@@ -103,7 +103,7 @@ impl<'a> WasmtimeBuilder<'a> {
         if self.cache_enabled {
           config.strategy(wasmtime::Strategy::Cranelift);
           if let Some(cache) = &self.cache_path {
-            config.cache_config_load(cache)?;
+            config.cache_config_load(cache).map_err(Error::Initialization)?;
           } else if let Err(e) = config.cache_config_load_default() {
             warn!("Wasmtime cache configuration not found ({}). Repeated loads will speed up significantly with a cache configuration. See https://docs.wasmtime.dev/cli-cache.html for more information.",e);
           }
@@ -112,7 +112,7 @@ impl<'a> WasmtimeBuilder<'a> {
         #[cfg(feature = "profiler")]
         config.profiler(wasmtime::ProfilingStrategy::JitDump);
 
-        let engine = wasmtime::Engine::new(&config)?;
+        let engine = wasmtime::Engine::new(&config).map_err(Error::Initialization)?;
         WasmtimeEngineProvider::new_with_engine(self.module_bytes, engine, self.wasi_params.clone())
       }
     }?;

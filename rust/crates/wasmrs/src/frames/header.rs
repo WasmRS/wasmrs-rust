@@ -1,7 +1,8 @@
 use bytes::{BufMut, Bytes, BytesMut};
 
+use super::{Error, FrameFlags, FrameHeader, FrameType, RSocketFlags};
 use crate::util::from_u16_bytes;
-use crate::{Frame, FrameFlags, FrameHeader, FrameType};
+use crate::Frame;
 
 impl FrameHeader {
   pub(crate) fn new(stream_id: u32, frame_type: FrameType, frame_flags: u16) -> Self {
@@ -103,6 +104,7 @@ impl std::fmt::Display for FrameHeader {
 
 #[cfg(test)]
 mod test {
+  use super::*;
   use anyhow::Result;
 
   fn print_binary(v: &[u8]) {
@@ -112,7 +114,6 @@ mod test {
     }
     println!("[{}]", bytes.join(" "));
   }
-  use crate::generated::{FrameHeader, FrameType};
   use crate::Frame;
 
   #[test]

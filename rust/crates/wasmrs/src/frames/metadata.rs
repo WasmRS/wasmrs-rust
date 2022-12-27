@@ -1,6 +1,6 @@
 use bytes::{BufMut, Bytes, BytesMut};
 
-use crate::Metadata;
+use super::Metadata;
 
 impl Metadata {
   pub fn new(index: u32) -> Metadata {

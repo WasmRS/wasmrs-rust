@@ -12,23 +12,253 @@ pub(crate) mod request_payload;
 
 use bytes::Bytes;
 
-use crate::generated::{
-  self as frames,
-  Cancel,
-  ErrorFrame,
-  FrameFlags,
-  FrameHeader,
-  FrameType,
-  Payload,
-  PayloadFrame,
-  RequestChannel,
-  RequestResponse,
-  RequestStream,
-};
 use crate::util::from_u32_bytes;
-use crate::{Error, Frame, Metadata, RequestFnF, RequestN};
+use crate::Error;
 
-impl crate::generated::FrameFlag {}
+use self::f_cancel::Cancel;
+use self::f_error::ErrorFrame;
+use self::f_payload::PayloadFrame;
+use self::f_request_channel::RequestChannel;
+use self::f_request_fnf::RequestFnF;
+use self::f_request_n::RequestN;
+use self::f_request_response::RequestResponse;
+use self::f_request_stream::RequestStream;
+
+pub type FrameFlags = u16;
+
+/// Six (6) bytes reserved for FrameHeader information.
+#[derive()]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[must_use]
+pub struct FrameHeader {
+  pub header: Bytes,
+}
+#[derive(Clone, Default)]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[must_use]
+pub struct Payload {
+  pub metadata: Option<Bytes>,
+  pub data: Option<Bytes>,
+}
+
+/// Metadata associated with the frame.
+#[derive(Clone, Copy)]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[must_use]
+pub struct Metadata {
+  /// The operation index.
+  pub index: u32,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum FrameType {
+  Reserved,
+  Setup,
+  Lease,
+  Keepalive,
+  RequestResponse,
+  RequestFnf,
+  RequestStream,
+  RequestChannel,
+  RequestN,
+  Cancel,
+  Payload,
+  Err,
+  MetadataPush,
+  Resume,
+  ResumeOk,
+  Ext,
+}
+impl std::fmt::Display for FrameType {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(
+      f,
+      "{}",
+      match self {
+        Self::Reserved => "RESERVED",
+        Self::Setup => "SETUP",
+        Self::Lease => "LEASE",
+        Self::Keepalive => "KEEPALIVE",
+        Self::RequestResponse => "REQUEST_RESPONSE",
+        Self::RequestFnf => "REQUEST_FNF",
+        Self::RequestStream => "REQUEST_STREAM",
+        Self::RequestChannel => "REQUEST_CHANNEL",
+        Self::RequestN => "REQUEST_N",
+        Self::Cancel => "CANCEL",
+        Self::Payload => "PAYLOAD",
+        Self::Err => "ERROR",
+        Self::MetadataPush => "METADATA_PUSH",
+        Self::Resume => "RESUME",
+        Self::ResumeOk => "RESUME_OK",
+        Self::Ext => "EXT",
+      }
+    )
+  }
+}
+impl TryFrom<u8> for FrameType {
+  type Error = String;
+  fn try_from(index: u8) -> Result<Self, Self::Error> {
+    match index {
+      0 => Ok(Self::Reserved),
+      1 => Ok(Self::Setup),
+      2 => Ok(Self::Lease),
+      3 => Ok(Self::Keepalive),
+      4 => Ok(Self::RequestResponse),
+      5 => Ok(Self::RequestFnf),
+      6 => Ok(Self::RequestStream),
+      7 => Ok(Self::RequestChannel),
+      8 => Ok(Self::RequestN),
+      9 => Ok(Self::Cancel),
+      10 => Ok(Self::Payload),
+      11 => Ok(Self::Err),
+      12 => Ok(Self::MetadataPush),
+      13 => Ok(Self::Resume),
+      14 => Ok(Self::ResumeOk),
+      63 => Ok(Self::Ext),
+      _ => Err(format!("{} is not a valid index for FrameType", index)),
+    }
+  }
+}
+impl Into<u32> for FrameType {
+  fn into(self) -> u32 {
+    match self {
+      Self::Reserved => unreachable!(),
+      Self::Setup => 1,
+      Self::Lease => 2,
+      Self::Keepalive => 3,
+      Self::RequestResponse => 4,
+      Self::RequestFnf => 5,
+      Self::RequestStream => 6,
+      Self::RequestChannel => 7,
+      Self::RequestN => 8,
+      Self::Cancel => 9,
+      Self::Payload => 10,
+      Self::Err => 11,
+      Self::MetadataPush => 12,
+      Self::Resume => 13,
+      Self::ResumeOk => 14,
+      Self::Ext => 63,
+    }
+  }
+}
+
+#[derive(Clone, Copy)]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[must_use]
+pub enum FrameFlag {
+  Metadata,
+  Follows,
+  Complete,
+  Next,
+  Ignore,
+}
+impl std::fmt::Display for FrameFlag {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(
+      f,
+      "{}",
+      match self {
+        Self::Metadata => "M",
+        Self::Follows => "FRS",
+        Self::Complete => "CL",
+        Self::Next => "N",
+        Self::Ignore => "I",
+      }
+    )
+  }
+}
+impl TryFrom<u32> for FrameFlag {
+  type Error = String;
+  fn try_from(index: u32) -> Result<Self, Self::Error> {
+    match index {
+      0 => Ok(Self::Metadata),
+      1 => Ok(Self::Follows),
+      2 => Ok(Self::Complete),
+      3 => Ok(Self::Next),
+      4 => Ok(Self::Ignore),
+      _ => Err(format!("{} is not a valid index for FrameFlag", index)),
+    }
+  }
+}
+impl Into<u32> for FrameFlag {
+  fn into(self) -> u32 {
+    match self {
+      Self::Metadata => unreachable!(),
+      Self::Follows => 1,
+      Self::Complete => 2,
+      Self::Next => 3,
+      Self::Ignore => 4,
+    }
+  }
+}
+
+/// RSocket Error Codes
+#[derive(Copy, Clone)]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[must_use]
+pub enum ErrorCode {
+  InvalidSetup,
+  UnsupportedSetup,
+  RejectedSetup,
+  RejectedResume,
+  ConnectionError,
+  ConnectionClose,
+  ApplicationError,
+  Rejected,
+  Canceled,
+  Invalid,
+  Reserved,
+}
+impl TryFrom<u32> for ErrorCode {
+  type Error = String;
+  fn try_from(index: u32) -> Result<Self, Self::Error> {
+    match index {
+      1 => Ok(Self::InvalidSetup),
+      2 => Ok(Self::UnsupportedSetup),
+      3 => Ok(Self::RejectedSetup),
+      4 => Ok(Self::RejectedResume),
+      257 => Ok(Self::ConnectionError),
+      258 => Ok(Self::ConnectionClose),
+      513 => Ok(Self::ApplicationError),
+      514 => Ok(Self::Rejected),
+      515 => Ok(Self::Canceled),
+      516 => Ok(Self::Invalid),
+      4294967295 => Ok(Self::Reserved),
+      _ => Err(format!("{} is not a valid index for ErrorCode", index)),
+    }
+  }
+}
+impl Into<u32> for ErrorCode {
+  fn into(self) -> u32 {
+    match self {
+      Self::InvalidSetup => 1,
+      Self::UnsupportedSetup => 2,
+      Self::RejectedSetup => 3,
+      Self::RejectedResume => 4,
+      Self::ConnectionError => 257,
+      Self::ConnectionClose => 258,
+      Self::ApplicationError => 513,
+      Self::Rejected => 514,
+      Self::Canceled => 515,
+      Self::Invalid => 516,
+      Self::Reserved => 4294967295,
+    }
+  }
+}
+
+#[derive()]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[must_use]
+pub enum Frame {
+  PayloadFrame(PayloadFrame),
+  Cancel(Cancel),
+  ErrorFrame(ErrorFrame),
+  RequestN(RequestN),
+  RequestResponse(RequestResponse),
+  RequestFnF(RequestFnF),
+  RequestStream(RequestStream),
+  RequestChannel(RequestChannel),
+}
 
 impl Payload {
   pub fn new(metadata: Bytes, data: Bytes) -> Self {
@@ -136,7 +366,6 @@ impl Frame {
 
   pub fn decode(mut bytes: Bytes) -> Result<Frame, (u32, Error)> {
     let header = FrameHeader::from_bytes(bytes.split_to(Frame::LEN_HEADER));
-    println!("{}", header);
     let stream_id = header.stream_id();
     Self::_decode(header, bytes).map_err(|e| (stream_id, e))
   }
@@ -146,19 +375,19 @@ impl Frame {
       FrameType::Reserved => todo!(),
       FrameType::Setup => todo!(),
       FrameType::RequestResponse => {
-        frames::Frame::RequestResponse(frames::RequestResponse::decode_frame(&header, buffer)?)
+        Frame::RequestResponse(f_request_response::RequestResponse::decode_frame(&header, buffer)?)
       }
-      FrameType::RequestFnf => frames::Frame::RequestFnF(frames::RequestFnF::decode_frame(&header, buffer)?),
-      FrameType::RequestStream => frames::Frame::RequestStream(frames::RequestStream::decode_frame(&header, buffer)?),
+      FrameType::RequestFnf => Frame::RequestFnF(f_request_fnf::RequestFnF::decode_frame(&header, buffer)?),
+      FrameType::RequestStream => Frame::RequestStream(f_request_stream::RequestStream::decode_frame(&header, buffer)?),
       FrameType::RequestChannel => {
-        frames::Frame::RequestChannel(frames::RequestChannel::decode_frame(&header, buffer)?)
+        Frame::RequestChannel(f_request_channel::RequestChannel::decode_frame(&header, buffer)?)
       }
-      FrameType::RequestN => frames::Frame::RequestN(RequestN::decode_frame(&header, buffer)?),
-      FrameType::Cancel => frames::Frame::Cancel(Cancel {
+      FrameType::RequestN => Frame::RequestN(f_request_n::RequestN::decode_frame(&header, buffer)?),
+      FrameType::Cancel => Frame::Cancel(Cancel {
         stream_id: header.stream_id(),
       }),
-      FrameType::Payload => frames::Frame::PayloadFrame(frames::PayloadFrame::decode_frame(&header, buffer)?),
-      FrameType::Err => frames::Frame::ErrorFrame(frames::ErrorFrame::decode_frame(&header, buffer)?),
+      FrameType::Payload => Frame::PayloadFrame(f_payload::PayloadFrame::decode_frame(&header, buffer)?),
+      FrameType::Err => Frame::ErrorFrame(f_error::ErrorFrame::decode_frame(&header, buffer)?),
       FrameType::Ext => todo!(),
       _ => unreachable!(), // Maybe not todo?,
     };

@@ -1,9 +1,18 @@
 use bytes::Bytes;
 
-use super::{Error, RSocketFrame};
-use crate::generated::{FrameHeader, FrameType, RequestN};
+use super::{request_payload::RequestPayload, Error, FrameFlags, FrameHeader, FrameType, RSocketFlags, RSocketFrame};
 use crate::util::from_u32_bytes;
 use crate::Frame;
+use crate::Payload;
+
+#[derive(Clone, Copy)]
+#[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[must_use]
+pub struct RequestN {
+  /// The stream ID this frame belongs to.
+  pub stream_id: u32,
+  pub n: u32,
+}
 
 impl RequestN {}
 

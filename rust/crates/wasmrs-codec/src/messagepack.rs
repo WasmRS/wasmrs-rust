@@ -1,15 +1,15 @@
-pub use embedded_msgpack::timestamp::Timestamp;
 use serde::{Deserialize, Serialize};
+pub use wasm_msgpack::timestamp::Timestamp;
 
 use crate::error::Error;
 
 #[doc(hidden)]
-pub fn mp_serialize<T>(item: &T) -> std::result::Result<Vec<u8>, embedded_msgpack::encode::Error>
+pub fn mp_serialize<T>(item: &T) -> std::result::Result<Vec<u8>, wasm_msgpack::encode::Error>
 where
   T: ?Sized + Serialize,
 {
   let mut buf = [0; 1024 * 100];
-  let written = embedded_msgpack::encode::serde::to_array(item, &mut buf)?;
+  let written = wasm_msgpack::encode::serde::to_array(item, &mut buf)?;
   Ok(buf[0..written].to_vec())
 }
 
@@ -24,10 +24,8 @@ where
 }
 
 #[doc(hidden)]
-pub fn mp_deserialize<'de, T: Deserialize<'de>>(
-  buf: &'de [u8],
-) -> std::result::Result<T, embedded_msgpack::decode::Error> {
-  embedded_msgpack::decode::from_slice(buf)
+pub fn mp_deserialize<'de, T: Deserialize<'de>>(buf: &'de [u8]) -> std::result::Result<T, wasm_msgpack::decode::Error> {
+  wasm_msgpack::decode::from_slice(buf)
 }
 
 /// The standard function for de-serializing codec structs from a format suitable.

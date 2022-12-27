@@ -83,7 +83,6 @@
 mod error;
 pub mod flux;
 pub mod frames;
-mod generated;
 mod operations;
 pub mod runtime;
 mod socket;
@@ -98,7 +97,7 @@ extern crate tracing;
 mod macros;
 
 pub use error::{Error, PayloadError};
-pub use generated::*;
+pub use frames::{ErrorCode, Frame, Metadata, Payload};
 pub use operations::{Operation, OperationList, OperationType};
 pub use socket::{BufferState, SocketSide, WasmSocket};
 

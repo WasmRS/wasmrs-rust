@@ -5,6 +5,22 @@ pub enum Error {
   #[error("Initialization failed: {0}")]
   InitializationFailed(Box<dyn std::error::Error + Send + Sync>),
 
+  /// WASMTime initialization failed
+  #[error("Initialization failed: {0}")]
+  Initialization(anyhow::Error),
+
+  /// WASMTime Linker initialization failed
+  #[error("Linker initialization failed: {0}")]
+  Linker(anyhow::Error),
+
+  /// Setting up linked functions failed.
+  #[error("Could not create WebAssembly function: {0}")]
+  Func(anyhow::Error),
+
+  /// WASMTime module instantiation failed
+  #[error("Could not instantiate new WASM Module: {0}")]
+  Module(anyhow::Error),
+
   /// Error originating from [wasi_common]
   #[error("{0}")]
   WasiError(#[from] wasi_common::Error),
@@ -24,12 +40,17 @@ pub enum Error {
 
 impl From<Error> for wasmrs::Error {
   fn from(e: Error) -> Self {
-    match e {
-      Error::InitializationFailed(_) => wasmrs::Error::RSocket(wasmrs::ErrorCode::ConnectionError.into()),
-      Error::WasiError(_) => wasmrs::Error::RSocket(wasmrs::ErrorCode::ConnectionError.into()),
-      Error::GuestInit => wasmrs::Error::RSocket(wasmrs::ErrorCode::ApplicationError.into()),
-      Error::GuestSend => wasmrs::Error::RSocket(wasmrs::ErrorCode::ApplicationError.into()),
-      Error::GuestMemory => wasmrs::Error::RSocket(wasmrs::ErrorCode::Canceled.into()),
-    }
+    let code = match e {
+      Error::InitializationFailed(_) => wasmrs::ErrorCode::ConnectionError,
+      Error::Initialization(_) => wasmrs::ErrorCode::ConnectionError,
+      Error::Func(_) => wasmrs::ErrorCode::ConnectionError,
+      Error::Linker(_) => wasmrs::ErrorCode::ConnectionError,
+      Error::Module(_) => wasmrs::ErrorCode::ConnectionError,
+      Error::WasiError(_) => wasmrs::ErrorCode::ConnectionError,
+      Error::GuestInit => wasmrs::ErrorCode::ApplicationError,
+      Error::GuestSend => wasmrs::ErrorCode::ApplicationError,
+      Error::GuestMemory => wasmrs::ErrorCode::Canceled,
+    };
+    wasmrs::Error::RSocket(code.into())
   }
 }

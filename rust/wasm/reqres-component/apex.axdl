@@ -1,0 +1,18 @@
+import * from "@apexlang/core"
+import * from "@apexlang/rest"
+import * from "@apexlang/openapi"
+
+namespace "suite"
+
+"Test interface"
+interface test @service {
+  "Returns 'test'"
+  test(): string
+
+  "Returns what is sent"
+  echo(input: string): string
+
+  "Returns the input string reversed"
+  reverse(input: string): string
+
+}

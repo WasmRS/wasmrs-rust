@@ -25,6 +25,7 @@ pub use futures_util::StreamExt;
 pub use wasmrs_codec::messagepack::{deserialize, serialize};
 
 use crate::error::Error;
+use crate::imports::{_host_op_list, _host_wasmrs_init, _host_wasmrs_send};
 use crate::server::WasmServer;
 
 thread_local! {
@@ -96,16 +97,6 @@ impl TryFrom<Payload> for ParsedPayload {
   }
 }
 
-#[link(wasm_import_module = "wasmrs")]
-extern "C" {
-  #[link_name = "__init_buffers"]
-  pub(crate) fn _host_wasmrs_init(guest_buffer_ptr: usize, host_buffer_ptr: usize);
-  #[link_name = "__send"]
-  pub(crate) fn _host_wasmrs_send(size: usize);
-  #[link_name = "__op_list"]
-  pub(crate) fn _host_op_list(ptr: usize, len: usize);
-}
-
 pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u32) {
   tracing::trace!(
     "guest::init({}, {}, {}) called",
@@ -141,6 +132,49 @@ pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u
   }
 }
 
+#[allow(unsafe_code)]
+pub(crate) fn op_list_request() {
+  let bytes = OP_LIST.with(|cell| unsafe { cell.get().as_ref().unwrap() }.encode());
+
+  let (ptr, len) = OP_LIST_BYTES.with(|cell| {
+    let buff = unsafe { &mut *cell.get() };
+    *buff = bytes.to_vec();
+    (buff.as_ptr(), buff.len())
+  });
+
+  unsafe {
+    _host_op_list(ptr as _, len);
+  }
+}
+
+#[allow(unsafe_code)]
+pub(crate) fn send_frame(read_until: u32) {
+  tracing::trace!("__wasmrs_send() called");
+  let read_result = read_frames(read_until);
+  if read_result.is_err() {
+    send_error_frame(0, 0, "Could not read local buffer");
+    return;
+  }
+  let bytes_list = read_result.unwrap();
+
+  SOCKET.with(|cell| {
+    let socket = unsafe { &mut *cell.get() };
+    for bytes in bytes_list {
+      match Frame::decode(bytes) {
+        Ok(frame) => {
+          let _ = socket.process_once(frame);
+        }
+        Err(_e) => {
+          send_error_frame(0, 0, "Could not decode frame data");
+          continue;
+        }
+      }
+    }
+  });
+
+  exhaust_pool();
+}
+
 fn spawn_writer(mut rx: UnboundedReceiver<Frame>) {
   spawn(async move {
     while let Some(frame) = rx.recv().await {
@@ -170,22 +204,6 @@ fn send_error_frame(stream_id: u32, code: u32, msg: impl AsRef<str>) {
   send_host_frame(vec![err.encode()]);
 }
 
-#[allow(unsafe_code)]
-#[no_mangle]
-extern "C" fn __wasmrs_op_list_request() {
-  let bytes = OP_LIST.with(|cell| unsafe { cell.get().as_ref().unwrap() }.encode());
-
-  let (ptr, len) = OP_LIST_BYTES.with(|cell| {
-    let buff = unsafe { &mut *cell.get() };
-    *buff = bytes.to_vec();
-    (buff.as_ptr(), buff.len())
-  });
-
-  unsafe {
-    _host_op_list(ptr as _, len);
-  }
-}
-
 fn add_export(index: u32, kind: OperationType, namespace: impl AsRef<str>, operation: impl AsRef<str>) {
   OP_LIST.with(|op_list| {
     #[allow(unsafe_code)]
@@ -202,35 +220,6 @@ pub fn add_import(index: u32, kind: OperationType, namespace: impl AsRef<str>, o
   });
 }
 
-#[allow(unsafe_code)]
-#[no_mangle]
-extern "C" fn __wasmrs_send(read_until: u32) {
-  tracing::trace!("__wasmrs_send() called");
-  let read_result = read_frames(read_until);
-  if read_result.is_err() {
-    send_error_frame(0, 0, "Could not read local buffer");
-    return;
-  }
-  let bytes_list = read_result.unwrap();
-
-  SOCKET.with(|cell| {
-    let socket = unsafe { &mut *cell.get() };
-    for bytes in bytes_list {
-      match Frame::decode(bytes) {
-        Ok(frame) => {
-          let _ = socket.process_once(frame);
-        }
-        Err(_e) => {
-          send_error_frame(0, 0, "Could not decode frame data");
-          continue;
-        }
-      }
-    }
-  });
-
-  exhaust_pool();
-}
-
 fn send_host_frame(mut payloads: Vec<Bytes>) -> Vec<Bytes> {
   let size = HOST_BUFFER.with(|cell| {
     #[allow(unsafe_code)]
@@ -239,7 +228,6 @@ fn send_host_frame(mut payloads: Vec<Bytes>) -> Vec<Bytes> {
     let mut total = 0;
     let mut buff = Cursor::new(buff);
     while let Some(payload) = payloads.pop() {
-      println!("frame len: {}", payload.len());
       let len = payload.len() as u32;
       if (total + len as usize) > max {
         payloads.push(payload);
