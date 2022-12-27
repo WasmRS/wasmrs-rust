@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "MessagePack Codec implementation used by wasmRS iotas"
 license = "Apache-2.0"
+repository = "https://github.com/nanobus/iota"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
