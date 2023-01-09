@@ -1,5 +1,11 @@
+use std::io::BufRead;
+
 use clap::Parser;
-use wasmrs::{Metadata, Payload, RSocket};
+use futures::StreamExt;
+use wasmrs::{
+  flux::{Flux, Observer},
+  Metadata, Payload, RSocket,
+};
 use wasmrs_codec::messagepack::*;
 use wasmrs_host::WasiParams;
 use wasmrs_wasmtime::WasmtimeBuilder;
@@ -20,7 +26,7 @@ struct Args {
   operation: String,
 
   /// Data to send
-  #[arg()]
+  #[arg(default_value = "\"\"")]
   data: String,
 
   /// Treat request as request_stream
@@ -47,25 +53,49 @@ async fn main() -> anyhow::Result<()> {
   let op = context.get_export(&args.namespace, &args.operation)?;
 
   let mbytes = Metadata::new(op).encode();
-  let val: serde_json::Value = serde_json::from_str(&args.data)?;
-  let bytes = serialize(&val).unwrap();
 
-  let payload = Payload::new(mbytes, bytes.into());
+  if args.channel {
+    let stdin = std::io::stdin();
+    let (tx, rx) = Flux::new_parts();
 
-  if args.stream {
-    unimplemented!()
-  } else if args.channel {
-    unimplemented!()
+    let task = tokio::spawn(async move {
+      let mut response = context.request_channel(rx);
+      while let Some(Ok(payload)) = response.next().await {
+        let bytes = payload.data.unwrap();
+        let val: String = deserialize(&bytes).unwrap();
+        println!("{}", val);
+      }
+    });
+    for (_i, line) in stdin.lock().lines().enumerate() {
+      let bytes = serialize(&line.unwrap()).unwrap();
+      let payload = Payload::new(mbytes.clone(), bytes.into());
+      let _ = tx.send(payload);
+    }
+    drop(tx);
+    task.await?;
   } else {
-    let response = context.request_response(payload.clone());
-    match response.await {
-      Ok(v) => {
+    let val: serde_json::Value = serde_json::from_str(&args.data)?;
+    let bytes = serialize(&val).unwrap();
+
+    let payload = Payload::new(mbytes, bytes.into());
+    if args.stream {
+      let mut response = context.request_stream(payload.clone());
+      while let Some(Ok(v)) = response.next().await {
         let bytes = v.data.unwrap();
         let val: String = deserialize(&bytes).unwrap();
         println!("{}", val);
       }
-      Err(e) => {
-        println!("Error: {}", e)
+    } else {
+      let response = context.request_response(payload.clone());
+      match response.await {
+        Ok(v) => {
+          let bytes = v.data.unwrap();
+          let val: String = deserialize(&bytes).unwrap();
+          println!("{}", val);
+        }
+        Err(e) => {
+          println!("Error: {}", e)
+        }
       }
     }
   }

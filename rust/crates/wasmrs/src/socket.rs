@@ -248,7 +248,9 @@ impl WasmSocket {
     #[allow(clippy::option_if_let_else)]
     match self.channels.cloned(&sid) {
       Some(reqn_tx) => {
-        reqn_tx.send(n).unwrap();
+        if reqn_tx.send(n).is_err() {
+          send_app_error(&tx, sid, "RequestN channel closed");
+        };
       }
       None => {
         send_app_error(&tx, sid, "RequestN called for missing Stream ID");
@@ -418,7 +420,6 @@ impl RSocket for WasmSocket {
         }
       }
       channels.remove(&sid);
-
       send_complete(&tx, sid, Frame::FLAG_COMPLETE);
     });
 
