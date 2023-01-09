@@ -2,7 +2,9 @@
 members = [
   "crates/wasmrs-codec",
   "crates/wasmrs",
+  "crates/wasmrs-runtime",
   "crates/wasmrs-guest",
+  "crates/wasmrs-rx",
   "crates/wasmrs-host",
   "crates/wasmrs-wasmtime",
   "bins/*"

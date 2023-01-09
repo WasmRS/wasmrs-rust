@@ -14,7 +14,7 @@ fn request_response(input: Mono<ParsedPayload, PayloadError>) -> Result<Mono<Pay
   Ok(Mono::from_future(async move {
     let input = deserialize::<String>(&input.await.unwrap().data).unwrap();
     let output = format!("Hello, {}!", input);
-    Ok(Payload::new_optional(None, Some(serialize(&output).unwrap().into())))
+    Ok(Payload::new_data(None, Some(serialize(&output).unwrap().into())))
   }))
 }
 
@@ -22,12 +22,12 @@ fn request_stream(
   input: Mono<ParsedPayload, PayloadError>,
 ) -> Result<FluxReceiver<Payload, PayloadError>, GenericError> {
   let channel = Flux::<Payload, PayloadError>::new();
-  let rx = channel.split_receiver().unwrap();
+  let rx = channel.take_rx().unwrap();
   spawn(async move {
     let input = deserialize::<String>(&input.await.unwrap().data).unwrap();
     for char in input.chars() {
       channel
-        .send(Payload::new_optional(None, Some(serialize(&char).unwrap().into())))
+        .send(Payload::new_data(None, Some(serialize(&char).unwrap().into())))
         .unwrap();
     }
   });
@@ -38,7 +38,7 @@ fn request_channel(
   mut input: FluxReceiver<ParsedPayload, PayloadError>,
 ) -> Result<FluxReceiver<Payload, PayloadError>, GenericError> {
   let channel = Flux::<Payload, PayloadError>::new();
-  let rx = channel.split_receiver().unwrap();
+  let rx = channel.take_rx().unwrap();
   spawn(async move {
     while let Some(payload) = input.next().await {
       if let Err(e) = payload {
@@ -48,7 +48,7 @@ fn request_channel(
       let payload = payload.unwrap();
       let input = deserialize::<String>(&payload.data).unwrap();
       let output: String = input.chars().rev().collect();
-      if let Err(e) = channel.send(Payload::new_optional(None, Some(serialize(&output).unwrap().into()))) {
+      if let Err(e) = channel.send(Payload::new_data(None, Some(serialize(&output).unwrap().into()))) {
         println!("{}", e);
       }
     }

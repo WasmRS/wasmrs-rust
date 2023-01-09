@@ -24,6 +24,7 @@ use self::f_request_n::RequestN;
 use self::f_request_response::RequestResponse;
 use self::f_request_stream::RequestStream;
 
+/// The type that holds the bitmask for Frame flags.
 pub type FrameFlags = u16;
 
 /// Six (6) bytes reserved for FrameHeader information.
@@ -31,13 +32,17 @@ pub type FrameFlags = u16;
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 pub struct FrameHeader {
+  /// The header bytes.
   pub header: Bytes,
 }
 #[derive(Clone, Default)]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
+/// A complete [Payload] object that includes metadata and data bytes.
 pub struct Payload {
+  /// Metadata bytes if they exist.
   pub metadata: Option<Bytes>,
+  /// The core payload data bytes if it exists.
   pub data: Option<Bytes>,
 }
 
@@ -51,6 +56,8 @@ pub struct Metadata {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+/// Frame types from https://rsocket.io/about/protocol
+#[allow(missing_docs)]
 pub enum FrameType {
   Reserved,
   Setup,
@@ -145,6 +152,8 @@ impl Into<u32> for FrameType {
 #[derive(Clone, Copy)]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
+/// Frame flags come from https://rsocket.io/about/protocol
+#[allow(missing_docs)]
 pub enum FrameFlag {
   Metadata,
   Follows,
@@ -196,6 +205,8 @@ impl Into<u32> for FrameFlag {
 #[derive(Copy, Clone)]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
+/// Error codes come from https://rsocket.io/about/protocol
+#[allow(missing_docs)]
 pub enum ErrorCode {
   InvalidSetup,
   UnsupportedSetup,
@@ -249,6 +260,8 @@ impl Into<u32> for ErrorCode {
 #[derive()]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
+/// An enum that can hold any time of wasmrs frame.
+#[allow(missing_docs)]
 pub enum Frame {
   PayloadFrame(PayloadFrame),
   Cancel(Cancel),
@@ -261,24 +274,31 @@ pub enum Frame {
 }
 
 impl Payload {
+  /// Create a new payload with the passed metadata and data bytes.
   pub fn new(metadata: Bytes, data: Bytes) -> Self {
     Self {
       metadata: Some(metadata),
       data: Some(data),
     }
   }
-  pub fn new_optional(metadata: Option<Bytes>, data: Option<Bytes>) -> Self {
+
+  /// Create new payload with just data and no metadata set yet.
+  pub fn new_data(metadata: Option<Bytes>, data: Option<Bytes>) -> Self {
     Self { metadata, data }
   }
+
+  /// Create an empty payload.
   pub fn empty() -> Self {
     Self {
       metadata: None,
       data: None,
     }
   }
+
+  /// Parse the metadata bytes into a [Metadata] object.
   pub fn parse_metadata(&self) -> Result<Metadata, Error> {
     if self.metadata.is_none() {
-      return Err(Error::MetadataNotFound);
+      return Err(crate::Error::MetadataNotFound);
     }
     let bytes = self.metadata.as_ref().unwrap();
     let index = from_u32_bytes(&bytes[0..4]);
@@ -309,20 +329,22 @@ impl Frame {
   pub(crate) const FLAG_COMPLETE: FrameFlags = 1 << 6;
   pub(crate) const FLAG_FOLLOW: FrameFlags = 1 << 7;
   pub(crate) const FLAG_METADATA: FrameFlags = 1 << 8;
+  /// The maximum number of N for RequestN
   pub const REQUEST_MAX: u32 = 0x7FFF_FFFF; // 2147483647
 
-  pub fn is_followable_or_payload(&self) -> (bool, bool) {
-    match &self {
-      Frame::RequestFnF(_) => (true, false),
-      Frame::RequestResponse(_) => (true, false),
-      Frame::RequestStream(_) => (true, false),
-      Frame::RequestChannel(_) => (true, false),
-      Frame::PayloadFrame(_) => (true, true),
-      _ => (false, false),
-    }
-  }
+  // pub fn is_followable_or_payload(&self) -> (bool, bool) {
+  //   match &self {
+  //     Frame::RequestFnF(_) => (true, false),
+  //     Frame::RequestResponse(_) => (true, false),
+  //     Frame::RequestStream(_) => (true, false),
+  //     Frame::RequestChannel(_) => (true, false),
+  //     Frame::PayloadFrame(_) => (true, true),
+  //     _ => (false, false),
+  //   }
+  // }
 
   #[must_use]
+  /// Get the stream id for the frame.
   pub fn stream_id(&self) -> u32 {
     match self {
       Frame::PayloadFrame(frame) => frame.stream_id,
@@ -337,6 +359,7 @@ impl Frame {
   }
 
   #[must_use]
+  /// Get the set flags for the frame.
   pub fn get_flag(&self) -> FrameFlags {
     match self {
       Frame::PayloadFrame(frame) => frame.get_flag(),
@@ -351,6 +374,7 @@ impl Frame {
   }
 
   #[must_use]
+  /// Get the [FrameType].
   pub fn frame_type(&self) -> FrameType {
     match self {
       Frame::PayloadFrame(_) => FrameType::Payload,
@@ -364,6 +388,7 @@ impl Frame {
     }
   }
 
+  /// Decode [Bytes] into a [Frame].
   pub fn decode(mut bytes: Bytes) -> Result<Frame, (u32, Error)> {
     let header = FrameHeader::from_bytes(bytes.split_to(Frame::LEN_HEADER));
     let stream_id = header.stream_id();
@@ -395,6 +420,7 @@ impl Frame {
   }
 
   #[must_use]
+  /// Encode the [Frame] into a byte buffer.
   pub fn encode(self) -> Bytes {
     match self {
       Frame::PayloadFrame(f) => f.encode(),
@@ -408,6 +434,7 @@ impl Frame {
     }
   }
 
+  /// Create a new [ErrorFrame].
   pub fn new_error(stream_id: u32, code: u32, data: impl AsRef<str>) -> Frame {
     Frame::ErrorFrame(ErrorFrame {
       stream_id,
@@ -416,42 +443,49 @@ impl Frame {
     })
   }
 
+  /// Create a new [Cancel] frame.
   pub fn new_cancel(stream_id: u32) -> Frame {
     Frame::Cancel(Cancel { stream_id })
   }
 
+  /// Create a new [RequestN] frame.
   pub fn new_request_n(stream_id: u32, n: u32, _flags: FrameFlags) -> Frame {
     Frame::RequestN(RequestN { stream_id, n })
   }
 
+  /// Create a new [RequestResponse] frame.
   pub fn new_request_response(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
     Frame::RequestResponse(RequestResponse::from_payload(stream_id, payload, flags, 0))
   }
 
+  /// Create a new [RequestStream] frame.
   pub fn new_request_stream(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
     Frame::RequestStream(RequestStream::from_payload(stream_id, payload, flags, 0))
   }
 
+  /// Create a new [RequestChannel] frame.
   pub fn new_request_channel(stream_id: u32, payload: Payload, flags: FrameFlags, initial_n: u32) -> Frame {
     Frame::RequestChannel(RequestChannel::from_payload(stream_id, payload, flags, initial_n))
   }
 
+  /// Create a new [RequestFnF] (Fire & Forget) frame
   pub fn new_request_fnf(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
     Frame::RequestFnF(RequestFnF::from_payload(stream_id, payload, flags, 0))
   }
 
+  /// Create a new [PayloadFrame].
   pub fn new_payload(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
     Frame::PayloadFrame(PayloadFrame::from_payload(stream_id, payload, flags))
   }
 }
 
-pub trait RSocketFrame<T> {
+trait RSocketFrame<T> {
   const FRAME_TYPE: FrameType;
   fn check_type(header: &FrameHeader) -> Result<(), Error> {
     if header.frame_type() == Self::FRAME_TYPE {
       Ok(())
     } else {
-      Err(Error::WrongType)
+      Err(crate::Error::WrongType)
     }
   }
   fn kind(&self) -> FrameType {

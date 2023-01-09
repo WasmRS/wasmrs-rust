@@ -1,6 +1,6 @@
 use bytes::{BufMut, Bytes, BytesMut};
 
-use super::{request_payload::RequestPayload, Error, FrameFlags, FrameHeader, FrameType, RSocketFlags, RSocketFrame};
+use super::{Error, FrameFlags, FrameHeader, FrameType, RSocketFlags, RSocketFrame};
 use crate::util::{from_u24_bytes, to_u24_bytes};
 use crate::{Frame, Payload};
 

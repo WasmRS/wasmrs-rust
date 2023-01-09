@@ -1,6 +1,6 @@
 use bytes::Bytes;
 
-use super::{request_payload::RequestPayload, Error, FrameFlags, FrameHeader, FrameType, RSocketFlags, RSocketFrame};
+use super::{request_payload::RequestPayload, Error, FrameFlags, FrameHeader, FrameType, RSocketFrame};
 use crate::{Frame, Payload};
 
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]

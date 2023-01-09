@@ -14,12 +14,6 @@ wasmrs-wasmtime = { path = "../../crates/wasmrs-wasmtime", version = "0.1.0" }
 wasmrs-host = { path = "../../crates/wasmrs-host", version = "0.1.0" }
 env_logger = { workspace = true }
 tokio = { version = "1", features = ["macros"] }
-test-log = "0.2.10"
-tracing-subscriber = { version = "0.3", default-features = false, features = [
-  "env-filter",
-  "fmt",
-] }
 futures = { workspace = true }
 anyhow = { version = "1.0" }
 clap = { version = "4.0.9", features = ["derive"] }
-serde_json = "1.0.85"

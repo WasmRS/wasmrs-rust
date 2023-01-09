@@ -1,6 +1,6 @@
 use bytes::{BufMut, Bytes, BytesMut};
 
-use super::{Error, FrameFlags, FrameHeader, FrameType, RSocketFlags};
+use super::{FrameFlags, FrameHeader, FrameType};
 use crate::util::from_u16_bytes;
 use crate::Frame;
 

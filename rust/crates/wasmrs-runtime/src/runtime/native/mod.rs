@@ -1,3 +1,5 @@
+//! Native implementations of wasmrs-runtime functions and structs.
+#![allow(missing_docs)]
 use std::future::Future;
 use std::sync::Arc;
 
@@ -10,7 +12,9 @@ pub type TaskHandle = JoinHandle<()>;
 pub type BoxFuture<Output> = std::pin::Pin<Box<dyn Future<Output = Output> + Send + Sync + 'static>>;
 
 pub fn spawn<F>(task: F) -> TaskHandle
-where F: Future<Output = ()> + ConditionallySafe + 'static {
+where
+  F: Future<Output = ()> + ConditionallySafe + 'static,
+{
   tokio::spawn(task)
 }
 
@@ -48,7 +52,9 @@ where
   }
 
   pub fn cloned(&self, key: &K) -> Option<V>
-  where V: Clone {
+  where
+    V: Clone,
+  {
     self.0.get(key).map(|v| v.clone())
   }
 
@@ -97,24 +103,27 @@ where
 }
 
 #[allow(missing_debug_implementations)]
-pub(crate) struct OptionalMut<T>(Arc<Mutex<Option<T>>>);
+pub struct OptionalMut<T>(Arc<Mutex<Option<T>>>);
 
 impl<T> OptionalMut<T>
-where T: Send
+where
+  T: Send,
 {
-  pub(crate) fn new(item: T) -> Self {
+  pub fn new(item: T) -> Self {
     Self(Arc::new(Mutex::new(Some(item))))
   }
 
-  pub(crate) fn none() -> Self {
+  #[must_use]
+  pub fn none() -> Self {
     Self(Arc::new(Mutex::new(None)))
   }
 
-  pub(crate) fn take(&self) -> Option<T> {
+  #[must_use]
+  pub fn take(&self) -> Option<T> {
     self.0.lock().take()
   }
 
-  pub(crate) fn insert(&self, item: T) {
+  pub fn insert(&self, item: T) {
     let _ = self.0.lock().insert(item);
   }
 }

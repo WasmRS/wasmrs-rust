@@ -34,7 +34,7 @@ impl RSocketFrame<ErrorFrame> for ErrorFrame {
     Ok(ErrorFrame {
       stream_id: header.stream_id(),
       code: from_u32_bytes(&buffer.split_to(4)),
-      data: String::from_utf8(buffer.to_vec()).map_err(|_| super::Error::StringConversion)?,
+      data: String::from_utf8(buffer.to_vec()).map_err(|_| crate::Error::StringConversion)?,
     })
   }
 

@@ -19,7 +19,6 @@ extern "C" fn __wasmrs_init(guest_buffer_size: u32, host_buffer_size: u32, max_h
   init_imports();
   wasmrs_guest::init(guest_buffer_size, host_buffer_size, max_host_frame_len);
 }
-
 pub(crate) struct TestComponent();
 
 impl TestComponent {
@@ -30,7 +29,7 @@ impl TestComponent {
     let task = TestComponent::test(input)
       .map(|result| {
         let output = result?;
-        Ok(serialize(&output).map(|bytes| Payload::new_optional(None, Some(bytes.into())))?)
+        Ok(serialize(&output).map(|bytes| Payload::new_data(None, Some(bytes.into())))?)
       })
       .map(|output| tx.send(output).unwrap());
 
@@ -46,7 +45,7 @@ impl TestComponent {
     let task = TestComponent::echo(input)
       .map(|result| {
         let output = result?;
-        Ok(serialize(&output).map(|bytes| Payload::new_optional(None, Some(bytes.into())))?)
+        Ok(serialize(&output).map(|bytes| Payload::new_data(None, Some(bytes.into())))?)
       })
       .map(|output| tx.send(output).unwrap());
 
@@ -62,7 +61,7 @@ impl TestComponent {
     let task = TestComponent::reverse(input)
       .map(|result| {
         let output = result?;
-        Ok(serialize(&output).map(|bytes| Payload::new_optional(None, Some(bytes.into())))?)
+        Ok(serialize(&output).map(|bytes| Payload::new_data(None, Some(bytes.into())))?)
       })
       .map(|output| tx.send(output).unwrap());
 
@@ -114,9 +113,11 @@ impl TestService for TestComponent {
 }
 
 pub mod test_service {
+  #[allow(unused_imports)]
   use super::*;
 
   pub mod test {
+    #[allow(unused_imports)]
     use super::*;
     #[derive(serde::Deserialize, Debug)]
     pub(crate) struct Inputs {}
@@ -125,6 +126,7 @@ pub mod test_service {
   }
 
   pub mod echo {
+    #[allow(unused_imports)]
     use super::*;
     #[derive(serde::Deserialize, Debug)]
     pub(crate) struct Inputs {
@@ -136,6 +138,7 @@ pub mod test_service {
   }
 
   pub mod reverse {
+    #[allow(unused_imports)]
     use super::*;
     #[derive(serde::Deserialize, Debug)]
     pub(crate) struct Inputs {

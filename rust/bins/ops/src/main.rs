@@ -1,7 +1,4 @@
 use clap::Parser;
-use futures::StreamExt;
-use wasmrs::{Metadata, Payload, RSocket};
-use wasmrs_codec::messagepack::*;
 use wasmrs_host::WasiParams;
 use wasmrs_wasmtime::WasmtimeBuilder;
 

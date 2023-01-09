@@ -2,12 +2,10 @@ use std::io::BufRead;
 
 use clap::Parser;
 use futures::StreamExt;
-use wasmrs::{
-  flux::{Flux, Observer},
-  Metadata, Payload, RSocket,
-};
+use wasmrs::{Metadata, Payload, RSocket};
 use wasmrs_codec::messagepack::*;
 use wasmrs_host::WasiParams;
+use wasmrs_rx::*;
 use wasmrs_wasmtime::WasmtimeBuilder;
 
 #[derive(Parser, Debug)]
@@ -56,7 +54,7 @@ async fn main() -> anyhow::Result<()> {
 
   if args.channel {
     let stdin = std::io::stdin();
-    let (tx, rx) = Flux::new_parts();
+    let (tx, rx) = Flux::new_channels();
 
     let task = tokio::spawn(async move {
       let mut response = context.request_channel(rx);

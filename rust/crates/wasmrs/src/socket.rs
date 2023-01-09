@@ -1,15 +1,13 @@
 #![allow(missing_debug_implementations)]
-use crate::flux::*;
 use crate::frames::{ErrorCode, FrameFlags, RSocketFlags};
-use crate::runtime::{self, unbounded_channel, Entry, SafeMap, UnboundedReceiver, UnboundedSender};
-use crate::{Frame, Mono, PayloadError, RSocket};
+use crate::{Frame, PayloadError, RSocket};
+use wasmrs_runtime::{self as runtime, unbounded_channel, Entry, SafeMap, UnboundedReceiver, UnboundedSender};
+use wasmrs_rx::*;
 mod buffer;
 
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 
-use bytes::Bytes;
 use futures::stream::{AbortHandle, Abortable};
 use futures::{StreamExt, TryFutureExt};
 mod responder;
@@ -25,8 +23,11 @@ pub enum Handler {
 }
 
 #[derive(Clone, Copy, Debug)]
+/// Specify the socket side (only used for debugging).
 pub enum SocketSide {
+  /// A guest-side socket.
   Guest,
+  /// A host-side socket.
   Host,
 }
 
@@ -41,6 +42,7 @@ impl std::fmt::Display for SocketSide {
 
 #[derive()]
 #[must_use]
+/// A socket that can be used to communicate between a host & guest via the wasmRS protocol.
 pub struct WasmSocket {
   side: SocketSide,
   pub(super) handlers: Arc<SafeMap<u32, Handler>>,
@@ -62,6 +64,7 @@ impl std::fmt::Debug for WasmSocket {
 }
 
 impl WasmSocket {
+  /// Create a new [WasmSocket] with the passed implementation of [RSocket].
   pub fn new(rsocket: impl RSocket + 'static, side: SocketSide) -> WasmSocket {
     let first_stream_id = match side {
       SocketSide::Guest => 2,
@@ -85,32 +88,37 @@ impl WasmSocket {
     }
   }
 
+  /// Take the receiver for this [WasmSocket].
   pub fn take_rx(&mut self) -> Result<UnboundedReceiver<Frame>, Error> {
-    self.rx.take().ok_or(Error::ReceiverAlreadyGone)
+    self.rx.take().ok_or(crate::Error::ReceiverAlreadyGone)
   }
 
   pub(crate) fn next_stream_id(&self) -> u32 {
     self.stream_index.fetch_add(2, Ordering::SeqCst)
   }
 
+  /// Register a handler for a stream.
   pub fn register_handler(&self, stream_id: u32, handler: Handler) {
     self.handlers.insert(stream_id, handler);
   }
 
+  /// Register a channel/stream for a stream_id.
   pub fn register_channel(&self, stream_id: u32) -> UnboundedReceiver<u32> {
     let (tx, rx) = unbounded_channel();
     self.channels.insert(stream_id, tx);
     rx
   }
 
-  pub fn decode_frame(&self, bytes: Vec<u8>) -> Result<Frame, (u32, Error)> {
-    Frame::decode(bytes.into())
-  }
+  // pub fn decode_frame(&self, bytes: Vec<u8>) -> Result<Frame, (u32, Error)> {
+  //   Frame::decode(bytes.into())
+  // }
 
+  /// Send a frame.
   pub fn send(&self, frame: Frame) {
     send(&self.tx, frame);
   }
 
+  /// Process a frame.
   pub fn process_once(&self, frame: Frame) -> Result<(), Error> {
     let stream_id = frame.stream_id();
     trace!(stream_id, side = %self.side, kind = %frame.frame_type(), "process_once");
@@ -195,7 +203,7 @@ impl WasmSocket {
     let responder = self.responder.clone();
 
     let tx = self.tx.clone();
-    let (handler_tx, handler_rx) = Flux::new_parts();
+    let (handler_tx, handler_rx) = Flux::new_channels();
 
     handler_tx.send(first).unwrap();
     self.register_handler(sid, Handler::ReqRC(handler_tx));
@@ -357,12 +365,12 @@ impl RSocket for WasmSocket {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_response");
 
-    let (tx, mut rx) = tokio::sync::oneshot::channel();
+    let (tx, rx) = tokio::sync::oneshot::channel();
 
     self.register_handler(sid, Handler::ReqRR(tx));
 
     send(&self.tx, Frame::new_request_response(sid, payload, 0));
-    let fut = rx.map_err(|e| PayloadError::application_error("Request-response channel failed"));
+    let fut = rx.map_err(|_e| PayloadError::application_error("Request-response channel failed"));
 
     Mono::<Payload, PayloadError>::from_future(async move { fut.await? })
   }
@@ -371,7 +379,7 @@ impl RSocket for WasmSocket {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_stream");
 
-    let (flux, output) = Flux::new_parts();
+    let (flux, output) = Flux::new_channels();
 
     self.register_handler(sid, Handler::ReqRS(flux));
 
@@ -385,7 +393,7 @@ impl RSocket for WasmSocket {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_channel");
 
-    let (flux, output) = Flux::new_parts();
+    let (flux, output) = Flux::new_channels();
 
     self.register_handler(sid, Handler::ReqRC(flux));
     let mut reqn_rx = self.register_channel(sid);
@@ -478,7 +486,7 @@ mod test {
 
     fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
       info!("{:?}", payload);
-      let (tx, rx) = Flux::new_parts();
+      let (tx, rx) = Flux::new_channels();
       tx.send(payload.clone()).unwrap();
       tx.send(payload).unwrap();
       tx.complete();
@@ -486,7 +494,7 @@ mod test {
     }
 
     fn request_channel(&self, mut stream: FluxReceiver<Payload, PayloadError>) -> FluxReceiver<Payload, PayloadError> {
-      let (tx, rx) = Flux::new_parts();
+      let (tx, rx) = Flux::new_channels();
       runtime::spawn(async move {
         while let Some(next) = stream.next().await {
           tx.send_result(next).unwrap();
@@ -539,7 +547,7 @@ mod test {
   async fn test_reqres() -> Result<()> {
     let (guest, _host) = make_echo();
 
-    let mut output = guest.request_response(Payload::new(Bytes::from_static(b""), Bytes::from_static(b"REQRES")));
+    let output = guest.request_response(Payload::new(Bytes::from_static(b""), Bytes::from_static(b"REQRES")));
     let once = output.await.unwrap();
     assert_eq!(once.data, Some(Bytes::from_static(b"REQRES")));
     Ok(())
@@ -560,7 +568,7 @@ mod test {
   #[test_log::test(tokio::test)]
   async fn test_reqchannel() -> Result<()> {
     let (guest, _host) = make_echo();
-    let (tx, rx) = Flux::new_parts();
+    let (tx, rx) = Flux::new_channels();
 
     let mut output = guest.request_channel(rx);
     tx.send(Payload::new(

@@ -4,11 +4,12 @@ use std::task::Poll;
 use futures::Stream;
 
 use super::{signal_into_result, FutureResult, Signal};
-use crate::runtime::{ConditionallySafe, OptionalMut, UnboundedReceiver};
 use crate::{Error, Observable};
+use wasmrs_runtime::{ConditionallySafe, OptionalMut, UnboundedReceiver};
 
 #[must_use]
 #[allow(missing_debug_implementations)]
+/// The receving end-only of a [crate::Flux]
 pub struct FluxReceiver<Item, Err>
 where
   Item: ConditionallySafe,
@@ -22,12 +23,14 @@ where
   Item: ConditionallySafe,
   Err: ConditionallySafe,
 {
+  /// Create a new [FluxReceiver].
   pub fn new(rx: UnboundedReceiver<Signal<Item, Err>>) -> Self {
     Self {
       rx: OptionalMut::new(rx),
     }
   }
 
+  /// Create a new [FluxReceiver] that is immediately closed.
   pub fn none() -> Self {
     Self {
       rx: OptionalMut::none(),
@@ -58,6 +61,7 @@ where
   Err: ConditionallySafe,
 {
   #[must_use]
+  /// Receive the next value from the [FluxReceiver].
   pub fn recv(&self) -> FutureResult<Item, Err>
   where
     Err: ConditionallySafe,
@@ -77,6 +81,7 @@ where
     })
   }
 
+  /// Poll the [FluxReceiver] to see if there is a value available.
   pub fn poll_recv(&self, cx: &mut std::task::Context<'_>) -> Poll<Option<Result<Item, Err>>> {
     let opt = self.rx.take();
     opt.map_or(std::task::Poll::Ready(None), |mut rx| {
@@ -93,6 +98,7 @@ where
   }
 
   #[must_use]
+  /// Remove the inner channel from the [FluxReceiver]
   pub fn eject(&self) -> Option<Self> {
     self.rx.take().map(|inner| Self {
       rx: OptionalMut::new(inner),

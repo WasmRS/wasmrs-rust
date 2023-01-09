@@ -3,8 +3,11 @@ use std::sync::atomic::AtomicBool;
 use std::task::Poll;
 
 use futures::{Future, FutureExt, Stream};
+use wasmrs_runtime::unbounded_channel;
+use wasmrs_runtime::BoxFuture;
+use wasmrs_runtime::ConditionallySafe;
+use wasmrs_runtime::UnboundedSender;
 
-use crate::runtime::*;
 use crate::Error;
 
 mod ops;
@@ -20,19 +23,21 @@ pub use observable::*;
 
 type FutureResult<Item, Err> = BoxFuture<Result<Option<Result<Item, Err>>, Error>>;
 
+/// A pinned, boxed [Flux].
 pub type FluxBox<Item, Err> = Pin<Box<dyn Observable<Item, Err>>>;
 
+/// A [Future] that wraps a [Result] and can be used as a [Mono].
 pub trait MonoFuture<Item, Err>: Future<Output = Result<Item, Err>> + ConditionallySafe {}
 
 #[allow(missing_debug_implementations)]
 #[must_use]
+/// An implementation of the `Mono` as seen in RSocket and reactive streams. It is similar to a [Future<Output = Result<Item, Err>>] that can be pushed to after instantiation.
 pub struct Mono<Item, Err>
 where
   Item: ConditionallySafe,
   Err: ConditionallySafe + Sync,
 {
   inner: Option<Pin<Box<dyn MonoFuture<Item, Err>>>>,
-  is_complete: bool,
 }
 
 impl<Item, Err> Mono<Item, Err>
@@ -40,42 +45,42 @@ where
   Item: ConditionallySafe,
   Err: ConditionallySafe + Sync,
 {
+  /// Create a new [Mono].
   pub fn new() -> Self {
-    Self {
-      inner: None,
-      is_complete: false,
-    }
+    Self { inner: None }
   }
 
+  /// Create a [Mono] from a [Future].
   pub fn from_future<Fut>(fut: Fut) -> Self
   where
     Fut: MonoFuture<Item, Err>,
   {
     Self {
       inner: Some(Box::pin(fut)),
-      is_complete: false,
     }
   }
 
+  /// Create a new [Mono] that holds an [Err] value.
   pub fn new_error(err: Err) -> Self {
     Self {
       inner: Some(Box::pin(futures::future::ready(Err(err)))),
-      is_complete: true,
     }
   }
 
+  /// Create a new [Mono] that holds an [Item].
   pub fn new_success(ok: Item) -> Self {
     Self {
       inner: Some(Box::pin(futures::future::ready(Ok(ok)))),
-      is_complete: true,
     }
   }
 
+  /// Push an `Item` to the [Mono]
   pub fn success(&mut self, ok: Item) {
     assert!(self.inner.is_none(), "Can not push more than one value to a Mono");
     self.inner = Some(Box::pin(futures::future::ready(Ok(ok))));
   }
 
+  /// Push an `Error` to the [Mono]
   pub fn error(&mut self, error: Err) {
     assert!(self.inner.is_none(), "Can not push more than one value to a Mono");
     self.inner = Some(Box::pin(futures::future::ready(Err(error))));
@@ -109,7 +114,7 @@ where
 
   fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
     match self.get_mut().inner.as_mut() {
-      Some(mut inner_future) => inner_future.poll_unpin(cx),
+      Some(inner_future) => inner_future.poll_unpin(cx),
       None => {
         cx.waker().wake_by_ref();
         Poll::Pending
@@ -120,6 +125,7 @@ where
 
 #[must_use]
 #[allow(missing_debug_implementations)]
+/// An implementation of the `Flux` as seen in RSocket and reactive streams. It is similar to a [Stream<Item = Result<Item, Err>>] or an unbounded channel.
 pub struct Flux<Item, Err>
 where
   Item: ConditionallySafe,
@@ -135,6 +141,7 @@ where
   Item: ConditionallySafe,
   Err: ConditionallySafe,
 {
+  /// Create a new [Flux]
   pub fn new() -> Self {
     let (tx, rx) = unbounded_channel();
 
@@ -145,7 +152,8 @@ where
     }
   }
 
-  pub fn new_parts() -> (Self, FluxReceiver<Item, Err>) {
+  /// Create a new [Flux] and return the parts, pre-separated.
+  pub fn new_channels() -> (Self, FluxReceiver<Item, Err>) {
     let (tx, rx) = unbounded_channel();
 
     (
@@ -159,11 +167,13 @@ where
   }
 
   #[must_use]
+  /// Check if the [Flux] is complete.
   pub fn is_closed(&self) -> bool {
     self.tx.is_closed()
   }
 
   #[must_use]
+  /// Await the next value in the [Flux].
   pub fn recv(&self) -> FutureResult<Item, Err>
   where
     Err: 'static,
@@ -173,7 +183,8 @@ where
     Box::pin(async move { val.await })
   }
 
-  pub fn split_receiver(&self) -> Result<FluxReceiver<Item, Err>, Error> {
+  /// Return and remove the receiving channel from this [Flux].
+  pub fn take_rx(&self) -> Result<FluxReceiver<Item, Err>, Error> {
     self.rx.eject().ok_or(Error::ReceiverAlreadyGone)
   }
 }
@@ -205,7 +216,7 @@ where
   Err: ConditionallySafe,
 {
   fn send_signal(&self, signal: Signal<Item, Err>) -> Result<(), Error> {
-    self.tx.send(signal)
+    Ok(self.tx.send(signal)?)
   }
 
   fn is_complete(&self) -> bool {
@@ -267,12 +278,12 @@ mod test {
     flux.send(1)?;
     let value = flux.next().await;
     assert_eq!(value, Some(Ok(1)));
-    let stream = flux.split_receiver().unwrap();
+    let stream = flux.take_rx().unwrap();
 
     flux.send(2)?;
     let value = stream.recv().await?;
     assert_eq!(value, Some(Ok(2)));
-    let stream = flux.split_receiver();
+    let stream = flux.take_rx();
     assert!(stream.is_err());
     Ok(())
   }
@@ -285,24 +296,4 @@ mod test {
     assert_eq!(value, Ok("Hello".to_owned()));
     Ok(())
   }
-
-  // #[tokio::test]
-  // async fn test_from_receiver() -> Result<()> {
-  //     let mut flux = Flux::<u32, u32>::new();
-  //     flux.send(1)?;
-  //     let stream = flux.split_receiver().unwrap();
-  //     flux.send(2)?;
-  //     let flux2 = Flux::from(stream);
-  //     flux.send(3)?;
-  //     flux2.send(4)?;
-  //     let value = flux2.recv().await?;
-  //     assert_eq!(value, Some(Ok(1)));
-  //     let value = flux2.recv().await?;
-  //     assert_eq!(value, Some(Ok(2)));
-  //     let value = flux2.recv().await?;
-  //     assert_eq!(value, Some(Ok(3)));
-  //     let value = flux2.recv().await?;
-  //     assert_eq!(value, Some(Ok(4)));
-  //     Ok(())
-  // }
 }

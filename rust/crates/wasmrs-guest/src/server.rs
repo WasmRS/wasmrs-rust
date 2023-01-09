@@ -2,11 +2,43 @@ use std::cell::UnsafeCell;
 use std::rc::Rc;
 
 use futures_util::StreamExt;
-use wasmrs::flux::*;
-use wasmrs::{flux_try, mono_try, runtime, Payload, PayloadError, RSocket};
+use wasmrs::{Payload, PayloadError, RSocket};
+use wasmrs_runtime as runtime;
+use wasmrs_rx::*;
 
 use crate::error::Error;
 use crate::{OperationMap, ParsedPayload};
+
+macro_rules! flux_try {
+  ($expr:expr) => {{
+    match $expr {
+      Ok(v) => v,
+      Err(e) => {
+        let flux = Flux::new();
+        let _ = flux.error(PayloadError::application_error(e.to_string()));
+        return flux.take_rx().unwrap();
+      }
+    }
+  }};
+  ($tx:ident, $expr:expr) => {{
+    match $expr {
+      Ok(v) => v,
+      Err(e) => {
+        let _ = $tx.error(PayloadError::application_error(e.to_string()));
+        return;
+      }
+    }
+  }};
+}
+
+macro_rules! mono_try {
+  ($expr:expr) => {{
+    match $expr {
+      Ok(v) => v,
+      Err(e) => return Mono::new_error(PayloadError::application_error(e.to_string())),
+    }
+  }};
+}
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub(crate) struct WasmServer {}
@@ -37,9 +69,7 @@ impl RSocket for WasmServer {
 
     let parsed: ParsedPayload = mono_try!(payload.try_into());
 
-    let outgoing = mono_try!(handler(Mono::new_success(parsed)).map_err(|e| Error::HandlerFail(e.to_string())));
-
-    outgoing
+    mono_try!(handler(Mono::new_success(parsed)).map_err(|e| Error::HandlerFail(e.to_string())))
   }
 
   fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
@@ -53,16 +83,14 @@ impl RSocket for WasmServer {
     let parsed: ParsedPayload = flux_try!(payload.try_into());
     let mono = Mono::new_success(parsed);
 
-    let outgoing = flux_try!(handler(mono).map_err(|e| Error::HandlerFail(e.to_string())));
-
-    outgoing
+    flux_try!(handler(mono).map_err(|e| Error::HandlerFail(e.to_string())))
   }
 
   fn request_channel(&self, mut stream: FluxReceiver<Payload, PayloadError>) -> FluxReceiver<Payload, PayloadError> {
-    let (tx, rx) = Flux::new_parts();
+    let (tx, rx) = Flux::new_channels();
 
     runtime::spawn(async move {
-      let (handler_input, handler_stream) = Flux::new_parts();
+      let (handler_input, handler_stream) = Flux::new_channels();
       let mut handler_out = if let Some(result) = stream.next().await {
         let payload = flux_try!(tx, result);
 

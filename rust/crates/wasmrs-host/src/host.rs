@@ -1,9 +1,9 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
-use wasmrs::flux::*;
-use wasmrs::runtime::{spawn, UnboundedReceiver};
 use wasmrs::{Frame, Payload, PayloadError, RSocket, WasmSocket};
+use wasmrs_runtime::{spawn, UnboundedReceiver};
+use wasmrs_rx::*;
 
 use crate::context::{EngineProvider, SharedContext};
 
@@ -11,12 +11,14 @@ type Result<T> = std::result::Result<T, crate::errors::Error>;
 
 #[must_use]
 #[allow(missing_debug_implementations)]
+/// A wasmRS native Host.
 pub struct Host {
   engine: RefCell<Box<dyn EngineProvider>>,
   mtu: usize,
 }
 
 impl Host {
+  /// Create a new [Host] with an [EngineProvider] implementation.
   pub fn new<T: EngineProvider + 'static>(engine: T) -> Result<Self> {
     let host = Host {
       engine: RefCell::new(Box::new(engine)),
@@ -28,6 +30,7 @@ impl Host {
     Ok(host)
   }
 
+  /// Create a new [CallContext], a way to bucket calls together with the same memory and configuration.
   pub fn new_context(&self) -> Result<CallContext> {
     let mut socket = WasmSocket::new(HostServer {}, wasmrs::SocketSide::Host);
     let rx = socket.take_rx().unwrap();
@@ -69,6 +72,7 @@ impl RSocket for HostServer {
   }
 }
 
+/// A [CallContext] is a way to bucket calls together with the same memory and configuration.
 pub struct CallContext {
   socket: Arc<WasmSocket>,
   context: SharedContext,
@@ -87,14 +91,17 @@ impl CallContext {
     Ok(Self { socket, context })
   }
 
+  /// Get the import id for a given namespace and operation.
   pub fn get_import(&self, namespace: &str, operation: &str) -> Result<u32> {
     self.context.get_import(namespace, operation)
   }
 
+  /// Get the export id for a given namespace and operation.
   pub fn get_export(&self, namespace: &str, operation: &str) -> Result<u32> {
     self.context.get_export(namespace, operation)
   }
 
+  /// A utility function to dump the operation list.
   pub fn dump_operations(&self) {
     println!("{:#?}", self.context.get_operation_list());
   }

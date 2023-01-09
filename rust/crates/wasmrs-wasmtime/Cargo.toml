@@ -31,10 +31,6 @@ env_logger = { workspace = true }
 wasmrs-codec = { path = "../wasmrs-codec", version = "0.1.0" }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 test-log = "0.2.10"
-tracing-subscriber = { version = "0.3", default-features = false, features = [
-  "env-filter",
-  "fmt",
-] }
 serde = { workspace = true }
 clap = { version = "4.0.9", features = ["derive"] }
 serde_json = "1.0.85"

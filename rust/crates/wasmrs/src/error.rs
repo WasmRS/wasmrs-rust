@@ -6,15 +6,18 @@ use crate::frames::ErrorCode;
 #[allow(missing_copy_implementations)]
 #[derive(Debug, Clone)]
 pub enum Error {
+  /// An error associated with OperationList methods.
   OpList(String),
+  /// A generic RSocket error.
   RSocket(u32),
-  SendFailed(u8),
-  RecvFailed(u8),
+  /// Used when the receiver for a [crate::WasmSocket] has already been taken.
   ReceiverAlreadyGone,
+  /// Variant used when a frame is treated as the wrong type.
   WrongType,
+  /// Could not convert string from passed bytes.
   StringConversion,
+  /// [crate::Metadata] not found in [crate::Payload]
   MetadataNotFound,
-  RequestCancelled(String),
 }
 
 impl std::error::Error for Error {}
@@ -23,25 +26,26 @@ impl std::fmt::Display for Error {
     match self {
       Error::RSocket(code) => f.write_str((Into::<u32>::into(*code)).to_string().as_str()),
       Error::OpList(msg) => f.write_str(msg),
-      Error::SendFailed(_) => f.write_str("Send failed"),
-      Error::RecvFailed(_) => f.write_str("Receive failed"),
       Error::ReceiverAlreadyGone => f.write_str("Received already taken"),
       Error::WrongType => f.write_str("Tried to decode frame with wrong frame decoder"),
       Error::StringConversion => f.write_str("Could not read string bytes"),
       Error::MetadataNotFound => f.write_str("No metadata found"),
-      Error::RequestCancelled(msg) => f.write_str(msg),
     }
   }
 }
 
 #[derive(Debug)]
 #[must_use]
+/// The error type used for all [wasmrs_rx::Mono]/[wasmrs_rx::Flux] payloads.
 pub struct PayloadError {
+  /// The error code.
   pub code: u32,
+  /// The error message.
   pub msg: String,
 }
 
 impl PayloadError {
+  /// Create a new [PayloadError] with the passed code and message.
   pub fn new(code: u32, msg: impl AsRef<str>) -> Self {
     Self {
       code,
@@ -49,6 +53,7 @@ impl PayloadError {
     }
   }
 
+  /// Create a new [PayloadError] with the [ErrorCode::ApplicationError] code.
   pub fn application_error(msg: impl AsRef<str>) -> Self {
     Self {
       code: ErrorCode::ApplicationError.into(),
@@ -65,6 +70,12 @@ impl std::fmt::Display for PayloadError {
 
 impl From<wasmrs_codec::error::Error> for PayloadError {
   fn from(e: wasmrs_codec::error::Error) -> Self {
+    app_err(&e)
+  }
+}
+
+impl From<wasmrs_runtime::Error> for PayloadError {
+  fn from(e: wasmrs_runtime::Error) -> Self {
     app_err(&e)
   }
 }

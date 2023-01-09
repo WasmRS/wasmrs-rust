@@ -3,17 +3,6 @@
 version = 3
 
 [[package]]
-name = "async-trait"
-version = "0.1.60"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "677d1d8ab452a3936018a687b20e6f7cf5363d713b732b8884001317b0e48aa3"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -421,7 +410,6 @@ dependencies = [
 name = "wasmrs"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "bytes",
  "crossbeam-channel",
  "dashmap",
@@ -433,6 +421,8 @@ dependencies = [
  "tokio",
  "tracing",
  "wasmrs-codec",
+ "wasmrs-runtime",
+ "wasmrs-rx",
 ]
 
 [[package]]
@@ -454,6 +444,39 @@ dependencies = [
  "tracing",
  "wasmrs",
  "wasmrs-codec",
+ "wasmrs-runtime",
+ "wasmrs-rx",
+]
+
+[[package]]
+name = "wasmrs-runtime"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "crossbeam-channel",
+ "dashmap",
+ "futures",
+ "futures-executor",
+ "futures-util",
+ "parking_lot",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
+name = "wasmrs-rx"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "crossbeam-channel",
+ "dashmap",
+ "futures",
+ "futures-executor",
+ "futures-util",
+ "parking_lot",
+ "pin-project-lite",
+ "tracing",
+ "wasmrs-runtime",
 ]
 
 [[package]]

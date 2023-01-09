@@ -3,20 +3,27 @@ use std::io::{Cursor, Write};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-pub use wasmrs::flux::*;
-pub use wasmrs::runtime::spawn;
-use wasmrs::runtime::{exhaust_pool, UnboundedReceiver};
 use wasmrs::util::to_u24_bytes;
 use wasmrs::SocketSide;
 pub use wasmrs::{Frame, Metadata, OperationList, OperationType, Payload, PayloadError, RSocket};
+pub use wasmrs_runtime::spawn;
+use wasmrs_runtime::{exhaust_pool, UnboundedReceiver};
+pub use wasmrs_rx::*;
 
+/// An alias to [Box<dyn std::error::Error + Send + Sync + 'static>]
 pub type GenericError = Box<dyn std::error::Error + Send + Sync + 'static>;
+/// An alias for a [Vec<(String, String, Rc<T>)>]
 pub type OperationMap<T> = Vec<(String, String, Rc<T>)>;
+/// An alias for the function that creates the output for a task.
 pub type ProcessFactory<I, O> = fn(I) -> Result<O, GenericError>;
 
+/// An alias for [Mono<ParsedPayload, PayloadError>]
 pub type IncomingMono = Mono<ParsedPayload, PayloadError>;
+/// An alias for [Mono<Payload, PayloadError>]
 pub type OutgoingMono = Mono<Payload, PayloadError>;
+/// An alias for [FluxReceiver<ParsedPayload, PayloadError>]
 pub type IncomingStream = FluxReceiver<ParsedPayload, PayloadError>;
+/// An alias for [FluxReceiver<Payload, PayloadError>]
 pub type OutgoingStream = FluxReceiver<Payload, PayloadError>;
 
 pub use bytes::Bytes;
@@ -43,6 +50,7 @@ thread_local! {
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 #[derive(Default)]
+/// The Host inside a WebAssembly module that implements [RSocket]
 pub struct Host();
 
 impl RSocket for Host {
@@ -81,8 +89,11 @@ impl RSocket for Host {
 
 #[allow(missing_debug_implementations)]
 #[derive(Debug)]
+/// A [Payload] with pre-parsed [Metadata].
 pub struct ParsedPayload {
+  /// The parsed [Metadata].
   pub metadata: Metadata,
+  /// The raw data bytes.
   pub data: Bytes,
 }
 
@@ -97,6 +108,7 @@ impl TryFrom<Payload> for ParsedPayload {
   }
 }
 
+/// This is called as part of the module initialization for wasmRS.
 pub fn init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u32) {
   tracing::trace!(
     "guest::init({}, {}, {}) called",
@@ -212,6 +224,7 @@ fn add_export(index: u32, kind: OperationType, namespace: impl AsRef<str>, opera
   });
 }
 
+/// Add an imported wasmRS method for the module.
 pub fn add_import(index: u32, kind: OperationType, namespace: impl AsRef<str>, operation: impl AsRef<str>) {
   OP_LIST.with(|op_list| {
     #[allow(unsafe_code)]
@@ -246,19 +259,24 @@ fn send_host_frame(mut payloads: Vec<Bytes>) -> Vec<Bytes> {
   payloads
 }
 
+#[allow(missing_docs)]
 pub trait RequestFnF {
   fn fire_and_forget_wrapper(input: IncomingMono) -> Result<(), GenericError>;
 }
+#[allow(missing_docs)]
 pub trait RequestResponse {
   fn request_response_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError>;
 }
+#[allow(missing_docs)]
 pub trait RequestStream {
   fn request_stream_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError>;
 }
+#[allow(missing_docs)]
 pub trait RequestChannel {
   fn request_channel_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError>;
 }
 
+#[allow(missing_docs)]
 pub type ProcessReturnValue = Result<OutgoingStream, GenericError>;
 
 fn register_handler<T>(
@@ -275,6 +293,7 @@ fn register_handler<T>(
   })
 }
 
+/// Register a request/response handler under the specified namespace and operation.
 pub fn register_request_response(
   ns: impl AsRef<str>,
   op: impl AsRef<str>,
@@ -284,6 +303,7 @@ pub fn register_request_response(
   add_export(index, OperationType::RequestResponse, ns, op);
 }
 
+/// Register a request/stream handler under the specified namespace and operation.
 pub fn register_request_stream(
   ns: impl AsRef<str>,
   op: impl AsRef<str>,
@@ -293,6 +313,7 @@ pub fn register_request_stream(
   add_export(index, OperationType::RequestStream, ns, op);
 }
 
+/// Register a request/channel handler under the specified namespace and operation.
 pub fn register_request_channel(
   ns: impl AsRef<str>,
   op: impl AsRef<str>,
@@ -302,6 +323,7 @@ pub fn register_request_channel(
   add_export(index, OperationType::RequestChannel, ns, op);
 }
 
+/// Register a fire & forget handler under the specified namespace and operation.
 pub fn register_fire_and_forget(ns: impl AsRef<str>, op: impl AsRef<str>, handler: ProcessFactory<IncomingMono, ()>) {
   let index = register_handler(&REQUEST_FNF_HANDLERS, &ns, &op, handler);
   add_export(index, OperationType::RequestFnF, ns, op);

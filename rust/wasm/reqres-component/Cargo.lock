@@ -462,7 +462,6 @@ dependencies = [
 name = "wasmrs"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "bytes",
  "crossbeam-channel",
  "dashmap",
@@ -474,6 +473,8 @@ dependencies = [
  "tokio",
  "tracing",
  "wasmrs-codec",
+ "wasmrs-runtime",
+ "wasmrs-rx",
 ]
 
 [[package]]
@@ -495,6 +496,39 @@ dependencies = [
  "tracing",
  "wasmrs",
  "wasmrs-codec",
+ "wasmrs-runtime",
+ "wasmrs-rx",
+]
+
+[[package]]
+name = "wasmrs-runtime"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "crossbeam-channel",
+ "dashmap",
+ "futures",
+ "futures-executor",
+ "futures-util",
+ "parking_lot",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
+name = "wasmrs-rx"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "crossbeam-channel",
+ "dashmap",
+ "futures",
+ "futures-executor",
+ "futures-util",
+ "parking_lot",
+ "pin-project-lite",
+ "tracing",
+ "wasmrs-runtime",
 ]
 
 [[package]]

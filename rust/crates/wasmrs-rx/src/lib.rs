@@ -77,19 +77,15 @@
   missing_docs
 )]
 #![doc = include_str!("../README.md")]
+// TODO REMOVE
 #![allow(clippy::needless_pass_by_value)]
 
-mod guest;
-pub use futures_util::FutureExt;
-pub use guest::*;
-pub use wasmrs_runtime as runtime;
+mod error;
+mod flux;
 
-mod exports;
-mod imports;
-mod server;
+pub use flux::*;
 
-/// The wasmRS-guest error module.
-pub mod error;
+// #[macro_use]
+// mod macros;
 
-pub use futures_util::Stream;
-pub use wasmrs_codec::messagepack::Timestamp;
+pub use error::Error;

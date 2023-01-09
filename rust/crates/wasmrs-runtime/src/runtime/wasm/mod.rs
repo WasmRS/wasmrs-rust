@@ -1,3 +1,6 @@
+//! WebAssembly implementations of wasmrs-runtime functions and structs.
+#![allow(missing_docs)]
+
 use std::cell::{RefCell, UnsafeCell};
 use std::sync::Arc;
 
@@ -14,7 +17,9 @@ thread_local! {
 }
 
 pub fn spawn<Fut>(future: Fut)
-where Fut: Future<Output = ()> + ConditionallySafe + 'static {
+where
+  Fut: Future<Output = ()> + ConditionallySafe + 'static,
+{
   SPAWNER.with(|spawner| {
     #[allow(unsafe_code)]
     let spawner = unsafe { &mut *spawner.get() };
@@ -89,7 +94,9 @@ where
   }
 
   pub fn cloned(&self, key: &K) -> Option<V>
-  where V: Clone {
+  where
+    V: Clone,
+  {
     #[allow(unsafe_code)]
     unsafe { &mut *self.0.get() }.get(key).map(|v| v.clone())
   }
@@ -143,24 +150,25 @@ where
 }
 
 #[allow(missing_debug_implementations)]
-pub(crate) struct OptionalMut<T>(Arc<RefCell<Option<T>>>);
+pub struct OptionalMut<T>(Arc<RefCell<Option<T>>>);
 
 impl<T> OptionalMut<T>
-where T: ConditionallySafe
+where
+  T: ConditionallySafe,
 {
-  pub(crate) fn new(item: T) -> Self {
+  pub fn new(item: T) -> Self {
     Self(Arc::new(RefCell::new(Some(item))))
   }
 
-  pub(crate) fn none() -> Self {
+  pub fn none() -> Self {
     Self(Arc::new(RefCell::new(None)))
   }
 
-  pub(crate) fn take(&self) -> Option<T> {
+  pub fn take(&self) -> Option<T> {
     self.0.borrow_mut().take()
   }
 
-  pub(crate) fn insert(&self, item: T) {
+  pub fn insert(&self, item: T) {
     let _ = self.0.borrow_mut().insert(item);
   }
 }

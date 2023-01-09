@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use parking_lot::RwLock;
+use wasmrs_rx::*;
 
-use crate::flux::*;
 use crate::{Mono, Payload, PayloadError, RSocket};
 
 #[derive(Clone)]
@@ -55,12 +55,12 @@ impl RSocket for EmptyRSocket {
   fn request_stream(&self, _req: Payload) -> FluxReceiver<Payload, PayloadError> {
     let channel = Flux::<Payload, PayloadError>::new();
     let _ = channel.error(PayloadError::application_error("Unimplemented"));
-    channel.split_receiver().unwrap()
+    channel.take_rx().unwrap()
   }
 
   fn request_channel(&self, _reqs: FluxReceiver<Payload, PayloadError>) -> FluxReceiver<Payload, PayloadError> {
     let channel = Flux::<Payload, PayloadError>::new();
     let _ = channel.error(PayloadError::application_error("Unimplemented"));
-    channel.split_receiver().unwrap()
+    channel.take_rx().unwrap()
   }
 }

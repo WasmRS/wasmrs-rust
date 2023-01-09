@@ -74,37 +74,37 @@
   unused_parens,
   unused_qualifications,
   while_true,
-  // missing_docs
+  missing_docs
 )]
 #![doc = include_str!("../README.md")]
 // TODO REMOVE
-#![allow(unused, clippy::needless_pass_by_value)]
+#![allow(clippy::needless_pass_by_value)]
 
 mod error;
-pub mod flux;
+/// RSocket Frame implementations.
 pub mod frames;
 mod operations;
-pub mod runtime;
 mod socket;
+/// Utility functions related to frames.
 pub mod util;
-
-use flux::*;
 
 #[macro_use]
 extern crate tracing;
 
-#[macro_use]
-mod macros;
+// #[macro_use]
+// mod macros;
 
 pub use error::{Error, PayloadError};
 pub use frames::{ErrorCode, Frame, Metadata, Payload};
 pub use operations::{Operation, OperationList, OperationType};
 pub use socket::{BufferState, SocketSide, WasmSocket};
 
-use self::runtime::ConditionallySafe;
+use wasmrs_runtime::ConditionallySafe;
+use wasmrs_rx::*;
 
 type Result<T> = std::result::Result<T, Error>;
 
+/// A trait that defines the interface for a wasmRS module host.
 pub trait ModuleHost: Sync + Send {
   /// Write a frame to a wasmRS module's memory buffer.
   fn write_frame(&mut self, frame: Frame) -> Result<()>;
@@ -119,6 +119,7 @@ pub trait ModuleHost: Sync + Send {
   fn get_operation_list(&mut self) -> OperationList;
 }
 
+/// A trait for an RSocket client/server (host/guest).
 pub trait RSocket: ConditionallySafe {
   /// Fire and Forget interaction model of RSocket.
   fn fire_and_forget(&self, payload: Payload) -> Mono<(), PayloadError>;

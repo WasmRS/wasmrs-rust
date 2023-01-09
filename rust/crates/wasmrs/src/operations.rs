@@ -37,10 +37,15 @@ Operation (u8[]): The Operation String as UTF-8 bytes
 static WASMRS_MAGIC: [u8; 4] = [0x00, 0x77, 0x72, 0x73];
 
 #[derive(Debug, Copy, Clone)]
+/// The types of RSocket operations supported by wasmRS.
 pub enum OperationType {
+  /// A request-response operation.
   RequestResponse,
+  /// A fire-and-forget operation.
   RequestFnF,
+  /// A request -> stream operation
   RequestStream,
+  /// A stream -> stream operation
   RequestChannel,
 }
 
@@ -91,6 +96,7 @@ impl From<std::string::FromUtf8Error> for Error {
 }
 
 #[derive(Debug, Clone)]
+/// An operation record.
 pub struct Operation {
   index: u32,
   kind: OperationType,
@@ -99,6 +105,7 @@ pub struct Operation {
 }
 
 #[derive(Debug, Default, Clone)]
+/// A list of imports/exports for a wasmRS module.
 pub struct OperationList {
   imports: Vec<Operation>,
   exports: Vec<Operation>,
@@ -106,11 +113,13 @@ pub struct OperationList {
 
 impl OperationList {
   #[must_use]
+  /// Get the index for the imported namespace/operation.
   pub fn get_import(&self, namespace: &str, operation: &str) -> Option<u32> {
     Self::get_op(&self.imports, namespace, operation)
   }
 
   #[must_use]
+  /// Get the index for the exported namespace/operation.
   pub fn get_export(&self, namespace: &str, operation: &str) -> Option<u32> {
     Self::get_op(&self.exports, namespace, operation)
   }
@@ -122,6 +131,7 @@ impl OperationList {
       .map(|op| op.index)
   }
 
+  /// Add an exported operation.
   pub fn add_export(
     &mut self,
     index: u32,
@@ -131,6 +141,8 @@ impl OperationList {
   ) {
     Self::add_op(&mut self.exports, index, kind, namespace, operation);
   }
+
+  /// Add an imported operation.
   pub fn add_import(
     &mut self,
     index: u32,
@@ -140,7 +152,8 @@ impl OperationList {
   ) {
     Self::add_op(&mut self.imports, index, kind, namespace, operation);
   }
-  pub fn add_op(
+
+  fn add_op(
     list: &mut Vec<Operation>,
     index: u32,
     kind: OperationType,
@@ -156,6 +169,7 @@ impl OperationList {
   }
 
   #[must_use]
+  /// Encode the operation list into a byte buffer.
   pub fn encode(&self) -> Bytes {
     let mut buff = BytesMut::new();
     let num_ops: u32 = (self.imports.len() + self.exports.len()) as u32;
@@ -187,6 +201,7 @@ impl OperationList {
     buff.freeze()
   }
 
+  /// Decode bytes into an Operation List.
   pub fn decode(mut buf: Bytes) -> Result<Self, Error> {
     let magic = buf.split_to(4);
     if magic != WASMRS_MAGIC.as_slice() {
@@ -212,7 +227,7 @@ impl OperationList {
       let namespace = String::from_utf8(buf.split_to(ns_len as _).to_vec())?;
       let op_len = from_u16_bytes(&buf.split_to(2));
       let operation = String::from_utf8(buf.split_to(op_len as _).to_vec())?;
-      let reserved_len = from_u16_bytes(&buf.split_to(2));
+      let _reserved_len = from_u16_bytes(&buf.split_to(2));
       let op = Operation {
         index,
         kind,

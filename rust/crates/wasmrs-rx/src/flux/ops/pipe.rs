@@ -5,9 +5,10 @@ use futures::{Stream, TryStreamExt};
 use pin_project_lite::pin_project;
 
 use crate::flux::Flux;
-use crate::runtime::ConditionallySafe;
+use wasmrs_runtime::ConditionallySafe;
 
 pin_project! {
+/// A [FluxPipe] is the result of piping one [Flux] into another.
 pub struct FluxPipe<Item, Err, From>
 where
     Item: ConditionallySafe,
@@ -24,6 +25,7 @@ where
   Item: ConditionallySafe,
   Err: ConditionallySafe,
 {
+  /// Create a new [FluxPipe]
   pub fn new(from: From, to: Flux<Item, Err>) -> Self {
     Self { from, to }
   }
@@ -61,7 +63,7 @@ mod test {
 
   #[tokio::test]
   async fn test_pipes() -> Result<()> {
-    let (flux, observer) = Flux::new_parts();
+    let (flux, observer) = Flux::new_channels();
 
     flux.send("First".to_owned())?;
 

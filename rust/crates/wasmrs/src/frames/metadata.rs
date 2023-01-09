@@ -3,11 +3,13 @@ use bytes::{BufMut, Bytes, BytesMut};
 use super::Metadata;
 
 impl Metadata {
+  /// Create a new [Metadata] object for the specified stream_id.
   pub fn new(index: u32) -> Metadata {
     Metadata { index }
   }
 
   #[must_use]
+  /// Encode the [Metadata] object into bytes for sending in a [crate::Frame].
   pub fn encode(self) -> Bytes {
     let len = 8;
     let mut bytes = BytesMut::with_capacity(len);
