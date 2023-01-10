@@ -1,5 +1,5 @@
 [package]
-name = "request"
+name = "wasmrs-request"
 version = "0.1.0"
 edition = "2021"
 description = "Make a request to a wasmRS .wasm file."

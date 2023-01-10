@@ -1,5 +1,5 @@
 [package]
-name = "ops"
+name = "wasmrs-ops"
 version = "0.1.0"
 edition = "2021"
 description = "Print wasmRS operations from a .wasm file."
