@@ -1,6 +1,6 @@
 [package]
 name = "wasmrs"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "Base host and client implementations of the wasmRS RSocket protocol."
@@ -8,9 +8,9 @@ repository = "https://github.com/nanobus/iota"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-wasmrs-codec = { path = "../wasmrs-codec", version = "0.2.0" }
-wasmrs-runtime = { path = "../wasmrs-runtime", version = "0.2.0" }
-wasmrs-rx = { path = "../wasmrs-rx", version = "0.2.0" }
+wasmrs-codec = { path = "../wasmrs-codec", version = "0.2.1" }
+wasmrs-runtime = { path = "../wasmrs-runtime", version = "0.2.1" }
+wasmrs-rx = { path = "../wasmrs-rx", version = "0.2.1" }
 futures = { workspace = true, default-features = false }
 bytes = { workspace = true, default-features = false }
 parking_lot = { workspace = true, default-features = false }

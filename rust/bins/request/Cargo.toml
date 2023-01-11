@@ -1,6 +1,6 @@
 [package]
 name = "wasmrs-request"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Make a request to a wasmRS .wasm file."
 license = "Apache-2.0"
@@ -8,11 +8,11 @@ repository = "https://github.com/nanobus/iota"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-wasmrs = { path = "../../crates/wasmrs", version = "0.2.0" }
-wasmrs-rx = { path = "../../crates/wasmrs-rx", version = "0.2.0" }
-wasmrs-codec = { path = "../../crates/wasmrs-codec", version = "0.2.0" }
-wasmrs-wasmtime = { path = "../../crates/wasmrs-wasmtime", version = "0.2.0" }
-wasmrs-host = { path = "../../crates/wasmrs-host", version = "0.2.0" }
+wasmrs = { path = "../../crates/wasmrs", version = "0.2.1" }
+wasmrs-rx = { path = "../../crates/wasmrs-rx", version = "0.2.1" }
+wasmrs-codec = { path = "../../crates/wasmrs-codec", version = "0.2.1" }
+wasmrs-wasmtime = { path = "../../crates/wasmrs-wasmtime", version = "0.2.1" }
+wasmrs-host = { path = "../../crates/wasmrs-host", version = "0.2.1" }
 env_logger = { workspace = true }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 futures = { workspace = true }

@@ -1,6 +1,6 @@
 [package]
 name = "wasmrs-runtime"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "Base host and client implementations of the wasmRS RSocket protocol."
