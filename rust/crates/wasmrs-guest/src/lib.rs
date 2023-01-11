@@ -83,6 +83,7 @@ mod guest;
 pub use futures_util::FutureExt;
 pub use guest::*;
 pub use wasmrs_runtime as runtime;
+pub use wasmrs_rx::*;
 
 mod exports;
 mod imports;

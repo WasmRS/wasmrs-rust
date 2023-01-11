@@ -6,13 +6,15 @@ namespace "suite"
 
 "Test interface"
 interface test @service {
-  "Returns 'test'"
+  "Returns 'test'."
   test(): string
 
-  "Returns what is sent"
-  echo(input: string): string
+  "Returns what is sent."
+  echo(message: string): string
 
-  "Returns the input string reversed"
-  reverse(input: string): string
+  "Returns a stream of a string's characters."
+  chars(input: string): stream string
 
+  "Returns each string in the input stream, reversed."
+  reverse(input: stream string): stream string
 }

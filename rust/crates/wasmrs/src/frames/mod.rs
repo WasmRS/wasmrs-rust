@@ -414,7 +414,7 @@ impl Frame {
       FrameType::Payload => Frame::PayloadFrame(f_payload::PayloadFrame::decode_frame(&header, buffer)?),
       FrameType::Err => Frame::ErrorFrame(f_error::ErrorFrame::decode_frame(&header, buffer)?),
       FrameType::Ext => todo!(),
-      _ => unreachable!(), // Maybe not todo?,
+      _ => unreachable!(),
     };
     Ok(frame)
   }

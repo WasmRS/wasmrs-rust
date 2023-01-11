@@ -12,7 +12,7 @@ default = ['std']
 std = ['wasm-msgpack/std', 'serde/std']
 
 [dependencies]
-wasm-msgpack = { version = "0.2", default-features = false, features = [
+wasm-msgpack = { version = "0.3", default-features = false, features = [
   "alloc",
   "timestamp",
   "i64",
@@ -23,6 +23,7 @@ wasm-msgpack = { version = "0.2", default-features = false, features = [
   "str32",
   "fixext",
   "ext",
+  "custom-error-messages",
   "ext8",
   "ext16",
   "ext32",

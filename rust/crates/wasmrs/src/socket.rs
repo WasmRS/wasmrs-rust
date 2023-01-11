@@ -148,7 +148,16 @@ impl WasmSocket {
         self.on_cancel(stream_id, flag);
       }
       Frame::ErrorFrame(f) => {
-        self.on_error(stream_id, flag, f.code, f.data);
+        self.on_error(
+          stream_id,
+          flag,
+          f.code,
+          if f.data.len() == 0 {
+            "Error frame with no data".to_owned()
+          } else {
+            f.data
+          },
+        );
       }
       Frame::RequestN(f) => {
         self.on_request_n(stream_id, f.n);
@@ -460,7 +469,7 @@ fn send_complete(tx: &UnboundedSender<Frame>, stream_id: u32, flag: FrameFlags) 
 }
 
 fn send_app_error(tx: &UnboundedSender<Frame>, sid: u32, msg: impl AsRef<str>) {
-  let error = Frame::new_error(sid, ErrorCode::ApplicationError.into(), msg);
+  let error = Frame::new_error(sid, ErrorCode::ApplicationError.into(), msg.as_ref());
   send(tx, error);
 }
 

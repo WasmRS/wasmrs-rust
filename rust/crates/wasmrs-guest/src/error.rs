@@ -36,7 +36,14 @@ impl From<wasmrs_runtime::Error> for Error {
 impl std::error::Error for Error {}
 impl std::fmt::Display for Error {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.write_str("Error")
+    match self {
+      Error::NoHandler => f.write_str("No handler found"),
+      Error::HandlerFail(msg) => f.write_str(msg),
+      Error::BufferRead => f.write_str("Error reading buffer"),
+      Error::Internal(e) => f.write_str(&e.to_string()),
+      Error::Codec(e) => f.write_str(e),
+      Error::Runtime(e) => f.write_str(e),
+    }
   }
 }
 impl From<std::io::Error> for Error {

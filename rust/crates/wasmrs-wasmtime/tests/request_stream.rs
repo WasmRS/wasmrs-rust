@@ -1,3 +1,6 @@
+use std::collections::VecDeque;
+
+use futures::StreamExt;
 use wasmrs::{Metadata, Payload, RSocket};
 use wasmrs_codec::messagepack::*;
 use wasmrs_host::WasiParams;
@@ -12,7 +15,7 @@ async fn test_iota_wasm() -> anyhow::Result<()> {
     .build()?;
   let host = wasmrs_host::Host::new(engine)?;
   let context = host.new_context()?;
-  let op = context.get_export("suite.test", "reverse")?;
+  let op = context.get_export("suite.test", "chars")?;
 
   let mbytes = Metadata::new(op).encode();
 
@@ -28,18 +31,23 @@ async fn test_iota_wasm() -> anyhow::Result<()> {
 
   let payload = Payload::new(mbytes, bytes.into());
 
-  let response = context.request_response(payload.clone());
-  match response.await {
-    Ok(v) => {
-      let bytes = v.data.unwrap();
-      let val: String = deserialize(&bytes).unwrap();
-      println!("{}", val);
-      assert_eq!(val, "DLROW OLLEH");
-    }
-    Err(e) => {
-      panic!("Error: {}", e);
+  let mut response = context.request_stream(payload.clone());
+  let mut outputs: VecDeque<String> = input.input.chars().map(|i| i.to_string()).collect();
+  while let Some(response) = response.next().await {
+    match response {
+      Ok(v) => {
+        let bytes = v.data.unwrap();
+        let val: String = deserialize(&bytes).unwrap();
+        println!("{}", val);
+        let next = outputs.pop_front().unwrap();
+        assert_eq!(val, next);
+      }
+      Err(e) => {
+        panic!("Error: {:?}", e);
+      }
     }
   }
+  assert!(outputs.is_empty());
 
   Ok(())
 }
