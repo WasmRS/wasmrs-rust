@@ -20,13 +20,7 @@ async fn test_iota_wasm() -> anyhow::Result<()> {
 
   let mbytes = Metadata::new(op).encode();
 
-  #[derive(serde::Serialize)]
-  struct Input {
-    input: String,
-  }
-  let input = Input {
-    input: "HELLO WORLD".to_owned(),
-  };
+  let input = "HELLO WORLD".to_owned();
 
   let bytes = serialize(&input).unwrap();
 

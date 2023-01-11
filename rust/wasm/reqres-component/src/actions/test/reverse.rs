@@ -7,7 +7,7 @@ pub(crate) async fn task(
   while let Some(c) = input.next().await {
     match c {
       Ok(c) => {
-        outputs.send(c.input.chars().rev().collect()).unwrap();
+        outputs.send(c.chars().rev().collect()).unwrap();
       }
       Err(e) => outputs.error(PayloadError::application_error(e.to_string())).unwrap(),
     }

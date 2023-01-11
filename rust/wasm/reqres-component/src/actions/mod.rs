@@ -1,4 +1,3 @@
-
 pub(crate) mod test {
   pub(crate) use super::*;
   pub(crate) mod chars;
@@ -239,11 +238,8 @@ pub mod test_service {
   pub mod reverse {
     #[allow(unused_imports)]
     pub(crate) use super::*;
-    #[derive(serde::Deserialize)]
-    pub(crate) struct Inputs {
-      #[serde(rename = "input")]
-      pub(crate) input: String,
-    }
+
+    pub(crate) type Inputs = String;
 
     pub(crate) type Outputs = String;
   }

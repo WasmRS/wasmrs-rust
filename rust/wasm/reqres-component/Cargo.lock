@@ -528,7 +528,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "bytes",
  "crossbeam-channel",
@@ -547,7 +547,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-codec"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde",
  "wasm-msgpack",
@@ -555,7 +555,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-guest"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "bytes",
  "futures-executor",
@@ -570,7 +570,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-runtime"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "bytes",
  "crossbeam-channel",
@@ -585,7 +585,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-rx"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "bytes",
  "crossbeam-channel",
