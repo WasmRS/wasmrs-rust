@@ -45,6 +45,9 @@ name = "bytes"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec8a7b6a70fde80372154c65702f00a0f56f3e1c36abbc6c440484be248856db"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "cfg-if"
@@ -209,6 +212,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "itoa"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fad582f4b9e86b6caa621cabeb0963332d92eea04729ab12892c2533951e6440"
+
+[[package]]
 name = "libc"
 version = "0.2.133"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -253,6 +262,15 @@ name = "once_cell"
 version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f7254b99e31cad77da24b08ebf628882739a608578bb1bcdfc1f9c21260d7c0"
+
+[[package]]
+name = "ordered-float"
+version = "2.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7940cf2ca942593318d07fcf2596cdca60a85c9e7fab408a5e21a4f9dcd40d87"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "parking_lot"
@@ -342,6 +360,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ryu"
+version = "1.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b4b9743ed687d4b4bcedf9ff5eaa7398495ae14e61cba0a295704edbc7decde"
+
+[[package]]
 name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -363,10 +387,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_bytes"
-version = "0.11.7"
+name = "serde-value"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfc50e8183eeeb6178dcb167ae34a8051d63535023ae38b5d8d12beae193d37b"
+checksum = "f3a1a3341211875ef120e117ea7fd5228530ae7e7036a779fdc9117be6b3282c"
+dependencies = [
+ "ordered-float",
+ "serde",
+]
+
+[[package]]
+name = "serde_bytes"
+version = "0.11.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "718dc5fff5b36f99093fc49b280cfc96ce6fc824317783bff5a1fed0c7a64819"
 dependencies = [
  "serde",
 ]
@@ -380,6 +414,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serde_json"
+version = "1.0.91"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "877c235533714907a8c2464236f5c4b2a17262ef1bd71f38f35ea592c8da6883"
+dependencies = [
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]
@@ -421,18 +466,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "synstructure"
-version = "0.12.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f36bdaa60a83aca3921b5259d5400cbf5e90fc51931376a9bd4a0eb79aa7210f"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "unicode-xid",
 ]
 
 [[package]]
@@ -506,16 +539,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcc811dc4066ac62f84f11307873c4850cb653bfa9b1719cee2bd2204a4bc5dd"
 
 [[package]]
-name = "unicode-xid"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f962df74c8c05a667b5ee8bcf162993134c104e96440b663c8daa176dc772d8c"
-
-[[package]]
 name = "wasm-msgpack"
-version = "0.3.1"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dfeaf0aa60e169539c8ca58a4f0ecdcd17cb423ce59257454b2888884f2dba1"
+checksum = "4b349e5d6d85a74f7c2bc11ed7950677a8f189e3abb3809deb2ecd2dfc0fc200"
 dependencies = [
  "byteorder",
  "heapless",
@@ -558,9 +585,12 @@ name = "wasmrs-guest"
 version = "0.2.1"
 dependencies = [
  "bytes",
+ "cfg-if",
  "futures-executor",
  "futures-util",
  "serde",
+ "serde-value",
+ "serde_json",
  "tracing",
  "wasmrs",
  "wasmrs-codec",
@@ -654,11 +684,11 @@ dependencies = [
 
 [[package]]
 name = "zerocopy-derive"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0fbc82b82efe24da867ee52e015e58178684bd9dd64c34e66bdf21da2582a9f"
+checksum = "6505e6815af7de1746a08f69c69606bb45695a17149517680f3b2149713b19a3"
 dependencies = [
  "proc-macro2",
+ "quote",
  "syn",
- "synstructure",
 ]

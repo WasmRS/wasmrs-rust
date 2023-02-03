@@ -5,4 +5,4 @@ debug: codegen
     cargo build --target=wasm32-wasi
     cp ./target/wasm32-wasi/debug/reqres_component.wasm ../../build/
 codegen:
-  apex generate
+  apex generate -r

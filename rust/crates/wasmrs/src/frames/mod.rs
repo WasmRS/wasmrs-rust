@@ -126,25 +126,26 @@ impl TryFrom<u8> for FrameType {
     }
   }
 }
-impl Into<u32> for FrameType {
-  fn into(self) -> u32 {
-    match self {
-      Self::Reserved => unreachable!(),
-      Self::Setup => 1,
-      Self::Lease => 2,
-      Self::Keepalive => 3,
-      Self::RequestResponse => 4,
-      Self::RequestFnf => 5,
-      Self::RequestStream => 6,
-      Self::RequestChannel => 7,
-      Self::RequestN => 8,
-      Self::Cancel => 9,
-      Self::Payload => 10,
-      Self::Err => 11,
-      Self::MetadataPush => 12,
-      Self::Resume => 13,
-      Self::ResumeOk => 14,
-      Self::Ext => 63,
+
+impl From<FrameType> for u32 {
+  fn from(value: FrameType) -> Self {
+    match value {
+      FrameType::Reserved => unreachable!(),
+      FrameType::Setup => 1,
+      FrameType::Lease => 2,
+      FrameType::Keepalive => 3,
+      FrameType::RequestResponse => 4,
+      FrameType::RequestFnf => 5,
+      FrameType::RequestStream => 6,
+      FrameType::RequestChannel => 7,
+      FrameType::RequestN => 8,
+      FrameType::Cancel => 9,
+      FrameType::Payload => 10,
+      FrameType::Err => 11,
+      FrameType::MetadataPush => 12,
+      FrameType::Resume => 13,
+      FrameType::ResumeOk => 14,
+      FrameType::Ext => 63,
     }
   }
 }
@@ -189,14 +190,15 @@ impl TryFrom<u32> for FrameFlag {
     }
   }
 }
-impl Into<u32> for FrameFlag {
-  fn into(self) -> u32 {
-    match self {
-      Self::Metadata => unreachable!(),
-      Self::Follows => 1,
-      Self::Complete => 2,
-      Self::Next => 3,
-      Self::Ignore => 4,
+
+impl From<FrameFlag> for u32 {
+  fn from(value: FrameFlag) -> Self {
+    match value {
+      FrameFlag::Metadata => 0,
+      FrameFlag::Follows => 1,
+      FrameFlag::Complete => 2,
+      FrameFlag::Next => 3,
+      FrameFlag::Ignore => 4,
     }
   }
 }
@@ -239,20 +241,21 @@ impl TryFrom<u32> for ErrorCode {
     }
   }
 }
-impl Into<u32> for ErrorCode {
-  fn into(self) -> u32 {
-    match self {
-      Self::InvalidSetup => 1,
-      Self::UnsupportedSetup => 2,
-      Self::RejectedSetup => 3,
-      Self::RejectedResume => 4,
-      Self::ConnectionError => 257,
-      Self::ConnectionClose => 258,
-      Self::ApplicationError => 513,
-      Self::Rejected => 514,
-      Self::Canceled => 515,
-      Self::Invalid => 516,
-      Self::Reserved => 4294967295,
+
+impl From<ErrorCode> for u32 {
+  fn from(value: ErrorCode) -> Self {
+    match value {
+      ErrorCode::InvalidSetup => 1,
+      ErrorCode::UnsupportedSetup => 2,
+      ErrorCode::RejectedSetup => 3,
+      ErrorCode::RejectedResume => 4,
+      ErrorCode::ConnectionError => 257,
+      ErrorCode::ConnectionClose => 258,
+      ErrorCode::ApplicationError => 513,
+      ErrorCode::Rejected => 514,
+      ErrorCode::Canceled => 515,
+      ErrorCode::Invalid => 516,
+      ErrorCode::Reserved => 4294967295,
     }
   }
 }

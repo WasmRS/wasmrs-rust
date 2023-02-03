@@ -7,9 +7,9 @@ This crate provides the WebAssembly-side logic for wasmRS modules using the wasm
 
 This is a basic implementation of a WebAssembly module that exports three operations:
 
-- `greeting::sayHello(input: string) -> string` - returns a greeting i.e. a `Hello World!'
+- `greeting::sayHello(input: string) -> string` - returns a greeting, e.g. `Hello World!'
 - `echo::chars(input: string) -> stream string` - returns a stream of `string` representing each character in the input string
-- `echo::reverse(input: stream string) -> stream string` - reverse each `string` from the input stream and outputs it on a stream.
+- `echo::reverse(input: stream string) -> stream string` - reverses each `string` from the input stream and outputs it on a stream.
 
 ```rs
 use guest::*;
@@ -74,7 +74,7 @@ fn request_channel(
 
 ## Apex Code generators
 
-NanoBus iota code generators use the wasmRS protocol so you can build `wasmRS` modules from those templates using the [`https://github.com/apexlang/apex`](apex) CLI.
+NanoBus iota code generators use the wasmRS protocol. You can build `wasmRS` modules from those templates using the [`https://github.com/apexlang/apex`](apex) CLI.
 
 Run the following command to get started:
 
@@ -86,7 +86,7 @@ From there, edit the `apex.axdl` interface definition to match your needs and ru
 
 ## More Information
 
-WasmRS makes heavy use of generated code from `apex` specs and generators to automate all of the boilerplate. See the [getting-started](https://github.com/nanobus/nanobus/blob/main/docs/getting-started.md) for nanobus for up-to-date usage.
+WasmRS makes heavy use of generated code from `apex` specs and generators to automate all of the boilerplate. See the [getting-started](https://github.com/nanobus/nanobus/blob/main/docs/getting-started.md) for NanoBus for up-to-date usage.
 
 For more information on wasmRS, see the core [wasmrs](https://github.com/nanobus/iota/blob/main/rust/crates/wasmrs/README.md) crate.
 

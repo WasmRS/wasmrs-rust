@@ -1,7 +1,9 @@
+use std::io::Write;
 use std::pin::Pin;
 use std::sync::atomic::AtomicBool;
 use std::task::Poll;
 
+use futures::AsyncRead;
 use futures::{Future, FutureExt, Stream};
 use wasmrs_runtime::unbounded_channel;
 use wasmrs_runtime::BoxFuture;
@@ -199,6 +201,28 @@ where
       complete: AtomicBool::new(self.complete.load(std::sync::atomic::Ordering::SeqCst)),
       tx: self.tx.clone(),
       rx: self.rx.clone(),
+    }
+  }
+}
+
+impl<Err> AsyncRead for Flux<Vec<u8>, Err>
+where
+  Err: ConditionallySafe,
+{
+  fn poll_read(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &mut [u8]) -> Poll<std::io::Result<usize>> {
+    match Pin::new(&mut self.get_mut().rx).poll_next(cx) {
+      Poll::Ready(Some(Ok(item))) => {
+        let len = item.len();
+        let mut buf = std::io::Cursor::new(buf);
+        buf.write_all(&item).unwrap();
+        Poll::Ready(Ok(len))
+      }
+      Poll::Ready(Some(Err(_err))) => Poll::Ready(Err(std::io::Error::new(
+        std::io::ErrorKind::Other,
+        crate::Error::RecvFailed(98),
+      ))),
+      Poll::Ready(None) => Poll::Ready(Ok(0)),
+      Poll::Pending => Poll::Pending,
     }
   }
 }

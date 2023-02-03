@@ -6,13 +6,17 @@ license = "Apache-2.0"
 description = "wasmRS guest implementation of the RSocket protocol for reactive streams in WebAssembly."
 repository = "https://github.com/nanobus/iota"
 
+[features]
+default = []
+logging = ["env_logger", "log"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 wasmrs-runtime = { path = "../wasmrs-runtime", version = "0.2.1" }
 wasmrs-rx = { path = "../wasmrs-rx", version = "0.2.1" }
 wasmrs-codec = { path = "../wasmrs-codec", version = "0.2.1" }
 wasmrs = { path = "../wasmrs", version = "0.2.1" }
-bytes = { workspace = true, default-features = false }
+bytes = { workspace = true, default-features = false, features = ["serde"] }
 futures-executor = { workspace = true, default-features = false, features = [
   "std",
 ] }
@@ -24,3 +28,11 @@ serde = { workspace = true, features = [
   "alloc",
 ], default-features = false }
 tracing = { workspace = true, features = ["log", "release_max_level_off"] }
+serde-value = "0.7"
+serde_json = "1.0"
+env_logger = { workspace = true, optional = true }
+log = { version = "0.4", optional = true }
+cfg-if = "1.0"
+
+[dev-dependencies]
+anyhow = { workspace = true }

@@ -5,7 +5,7 @@ import * from "@apexlang/openapi"
 namespace "suite"
 
 "Test interface"
-interface test @service {
+interface test @service @uses([imported]) {
   "Returns 'test'."
   test(): string
 
@@ -17,4 +17,7 @@ interface test @service {
 
   "Returns each string in the input stream, reversed."
   reverse(input: stream string): stream string
+
+  "Wrap each string in the input stream with the given left and right strings."
+  wrap(left:string, right:string, input: stream string): stream string
 }

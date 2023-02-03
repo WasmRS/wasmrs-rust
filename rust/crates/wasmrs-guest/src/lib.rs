@@ -44,7 +44,6 @@
   clippy::equatable_if_let,
   bad_style,
   clashing_extern_declarations,
-  const_err,
   dead_code,
   deprecated,
   explicit_outlives_requirements,
@@ -93,4 +92,58 @@ mod server;
 pub mod error;
 
 pub use futures_util::Stream;
-pub use wasmrs_codec::messagepack::Timestamp;
+pub use serde_json::Value;
+// pub use wasmrs_codec::messagepack::Timestamp;
+
+/// Deserialize a generic [Value] from MessagePack bytes.
+pub fn deserialize_generic(buf: &[u8]) -> Result<std::collections::BTreeMap<String, Value>, Error> {
+  deserialize(buf).map_err(|e| Error::Decode(e.to_string()))
+}
+
+cfg_if::cfg_if!(
+  if #[cfg(all(feature = "logging", target_os = "wasi"))] {
+    /// Turn on logging for the guest (WASI only).
+    pub fn init_logging() {
+      env_logger::builder()
+        .filter_level(log::LevelFilter::Trace)
+        .parse_env("wasmrs")
+        .init();
+    }
+  } else {
+    /// Turn on logging for the guest (WASI only).
+    pub fn init_logging() {}
+  }
+);
+
+#[cfg(test)]
+mod test {
+
+  use super::*;
+  use anyhow::Result;
+  #[test]
+  fn test_basic() -> Result<()> {
+    #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq)]
+    struct Input {
+      input: String,
+      num: u32,
+    }
+    let input = Input {
+      input: "HELLO WORLD".to_owned(),
+      num: 32,
+    };
+    let bytes = serialize(&input)?;
+    let input2: Input = deserialize(&bytes)?;
+    assert_eq!(input.input, input2.input);
+    assert_eq!(input.num, input2.num);
+    println!("{:?}", bytes);
+    let map: Value = deserialize(&bytes)?;
+    println!("{:?}", map);
+    if let Value::Object(map) = map {
+      assert_eq!(map.get("input"), Some(&Value::String("HELLO WORLD".to_owned())));
+    } else {
+      panic!("expected map");
+    }
+
+    Ok(())
+  }
+}

@@ -13,7 +13,7 @@ wasmrs-codec = { path = "../../crates/wasmrs-codec", version = "0.2.1" }
 wasmrs-wasmtime = { path = "../../crates/wasmrs-wasmtime", version = "0.2.1" }
 wasmrs-host = { path = "../../crates/wasmrs-host", version = "0.2.1" }
 env_logger = { workspace = true }
-tokio = { version = "1", features = ["macros"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 futures = { workspace = true }
 anyhow = { version = "1.0" }
 clap = { version = "4.0.9", features = ["derive"] }

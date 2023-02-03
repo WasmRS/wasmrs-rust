@@ -161,9 +161,10 @@ pub(crate) fn op_list_request() {
 
 #[allow(unsafe_code)]
 pub(crate) fn send_frame(read_until: u32) {
-  tracing::trace!("__wasmrs_send() called");
+  tracing::trace!(read_until, "__wasmrs_send() called");
   let read_result = read_frames(read_until);
   if read_result.is_err() {
+    tracing::error!("could not read local buffer");
     send_error_frame(0, 0, "Could not read local buffer");
     return;
   }
@@ -254,6 +255,7 @@ fn send_host_frame(mut payloads: Vec<Bytes>) -> Vec<Bytes> {
   });
   #[allow(unsafe_code)]
   unsafe {
+    tracing::trace!(size, "sending frame to host");
     _host_wasmrs_send(size);
   }
   payloads

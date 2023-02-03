@@ -67,8 +67,8 @@ impl WasmSocket {
   /// Create a new [WasmSocket] with the passed implementation of [RSocket].
   pub fn new(rsocket: impl RSocket + 'static, side: SocketSide) -> WasmSocket {
     let first_stream_id = match side {
-      SocketSide::Guest => 2,
-      SocketSide::Host => 1,
+      SocketSide::Guest => 1,
+      SocketSide::Host => 2,
     };
 
     let (snd_tx, snd_rx) = unbounded_channel::<Frame>();
@@ -152,7 +152,7 @@ impl WasmSocket {
           stream_id,
           flag,
           f.code,
-          if f.data.len() == 0 {
+          if f.data.is_empty() {
             "Error frame with no data".to_owned()
           } else {
             f.data
@@ -196,6 +196,7 @@ impl WasmSocket {
       let (abort_handle, abort_registration) = AbortHandle::new_pair();
       abort_handles.insert(sid, abort_handle);
       let mut payloads = Abortable::new(responder.request_stream(input), abort_registration);
+
       while let Some(next) = payloads.next().await {
         match next {
           Ok(it) => send_payload(&tx, sid, it, Frame::FLAG_NEXT),

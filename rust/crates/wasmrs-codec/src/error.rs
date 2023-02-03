@@ -4,7 +4,7 @@ pub enum Error {
   MsgPackEncode(wasm_msgpack::encode::Error),
 }
 
-#[cfg(feature = "std")]
+// #[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl core::fmt::Display for Error {

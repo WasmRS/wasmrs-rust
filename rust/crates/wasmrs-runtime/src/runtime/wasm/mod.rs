@@ -40,6 +40,28 @@ where
   });
 }
 
+#[allow(missing_copy_implementations, missing_debug_implementations)]
+pub struct PendingOnce {
+  is_ready: bool,
+}
+
+impl Future for PendingOnce {
+  type Output = ();
+  fn poll(mut self: std::pin::Pin<&mut Self>, ctx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+    ctx.waker().wake_by_ref();
+    if self.is_ready {
+      std::task::Poll::Ready(())
+    } else {
+      self.is_ready = true;
+      std::task::Poll::Pending
+    }
+  }
+}
+
+pub async fn yield_now() {
+  PendingOnce { is_ready: false }.await
+}
+
 fn is_running() -> bool {
   IS_RUNNING.with(|cell| cell.load(std::sync::atomic::Ordering::SeqCst))
 }
