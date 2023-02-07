@@ -4,9 +4,8 @@ use super::{request_payload::RequestPayload, Error, FrameFlags, FrameHeader, Fra
 use crate::{Frame, Payload};
 
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
-#[cfg_attr(feature = "serde", derive(Clone))]
 #[must_use]
-#[derive()]
+#[derive(Clone)]
 pub struct RequestStream(pub RequestPayload);
 
 impl RequestStream {

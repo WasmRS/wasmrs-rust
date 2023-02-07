@@ -3,9 +3,8 @@ use bytes::Bytes;
 use super::{Error, FrameHeader, FrameType, RSocketFrame};
 use crate::Frame;
 
-#[derive()]
+#[derive(Clone)]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
-#[cfg_attr(feature = "serde", derive(Clone))]
 #[must_use]
 pub struct Cancel {
   /// The stream ID this frame belongs to.

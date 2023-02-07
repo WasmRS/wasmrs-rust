@@ -4,9 +4,8 @@ use super::{Error, FrameFlags, FrameHeader, FrameType, RSocketFlags};
 use crate::util::{from_u24_bytes, from_u32_bytes, to_u24_bytes};
 use crate::{Frame, Payload};
 
-#[derive()]
+#[derive(Clone)]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
-#[cfg_attr(feature = "serde", derive(Clone))]
 #[must_use]
 pub struct RequestPayload {
   /// The type of Request this payload creates.

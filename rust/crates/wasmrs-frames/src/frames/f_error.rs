@@ -4,9 +4,8 @@ use super::{Error, FrameHeader, FrameType, RSocketFrame};
 use crate::util::from_u32_bytes;
 use crate::Frame;
 
-#[derive()]
+#[derive(Clone)]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
-#[cfg_attr(feature = "serde", derive(Clone))]
 #[must_use]
 pub struct ErrorFrame {
   /// The stream ID this frame belongs to.
