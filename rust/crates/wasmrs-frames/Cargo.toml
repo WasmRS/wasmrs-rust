@@ -2,6 +2,9 @@
 name = "wasmrs-frames"
 version = "0.2.1"
 edition = "2021"
+description = "WasmRS RSocket frame decoding, encoding, and data structures"
+license = "Apache-2.0"
+repository = "https://github.com/nanobus/iota"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
