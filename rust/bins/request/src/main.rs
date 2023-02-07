@@ -1,4 +1,4 @@
-use std::io::BufRead;
+use std::io::{BufRead, Write};
 
 use clap::Parser;
 use futures::StreamExt;
@@ -26,6 +26,10 @@ struct Args {
   /// Data to send
   #[arg(default_value = "\"\"")]
   data: String,
+
+  /// The file path to store the frames in a replay file
+  #[arg(long = "replay", short = 'r')]
+  replay: Option<String>,
 
   /// Treat request as request_stream
   #[arg(long = "stream", short = 's')]
@@ -95,6 +99,14 @@ async fn main() -> anyhow::Result<()> {
           println!("Error: {}", e)
         }
       }
+    }
+  }
+
+  if let Some(replay) = args.replay {
+    let mut file = std::fs::File::create(replay)?;
+    let frames = wasmrs::get_records();
+    for frame in frames {
+      file.write_fmt(format_args!("{}\n", serde_json::to_string(&frame)?))?;
     }
   }
 

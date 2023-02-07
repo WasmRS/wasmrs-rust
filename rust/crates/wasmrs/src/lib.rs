@@ -96,7 +96,7 @@ pub use wasmrs_frames::{ErrorCode, Frame, Metadata, Payload};
 #[cfg(feature = "record-frames")]
 mod record;
 #[cfg(feature = "record-frames")]
-pub use record::{FrameRecord, FRAME_RECORDS};
+pub use record::{get_records, FrameRecord, FRAME_RECORDS};
 
 use wasmrs_runtime::ConditionallySafe;
 use wasmrs_rx::*;

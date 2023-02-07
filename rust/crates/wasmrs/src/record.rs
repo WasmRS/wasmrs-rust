@@ -168,6 +168,11 @@ fn dump_record(record: FrameRecord, i: usize, dir: &Path) -> Result<(), crate::E
   Ok(())
 }
 
+/// Get the recorded frames.
+pub fn get_records() -> Vec<FrameRecord> {
+  FRAME_RECORDS.lock().frames.drain(..).collect()
+}
+
 fn print_record(record: FrameRecord, i: usize) {
   #[cfg(feature = "print-frames")]
   {

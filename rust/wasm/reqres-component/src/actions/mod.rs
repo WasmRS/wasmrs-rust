@@ -4,15 +4,12 @@
  * See https://apexlang.io for more information *
  ***********************************************/
 pub(crate) mod test {
-  pub(crate) use super::*;
   pub(crate) mod chars;
   pub(crate) mod echo;
   pub(crate) mod reverse;
   pub(crate) mod test;
   pub(crate) mod wrap;
 }
-
-use wasmrs_guest::FutureExt;
 
 use wasmrs_guest::*;
 
@@ -55,7 +52,8 @@ impl TestComponent {
           return;
         }
       };
-      use wasmrs_guest::Value;
+
+      #[allow(unused)]
       fn des(mut map: std::collections::BTreeMap<String, Value>) -> Result<test_service::test::Inputs, Error> {
         Ok(test_service::test::Inputs {})
       }
@@ -68,10 +66,12 @@ impl TestComponent {
         }
       };
 
-      TestComponent::test(input)
+      let _ = TestComponent::test(input)
         .await
         .map(|result| Ok(serialize(&result).map(|bytes| Payload::new_data(None, Some(bytes.into())))?))
-        .map(|output| tx.send(output).unwrap());
+        .map(|output| {
+          let _ = tx.send(output);
+        });
     };
 
     spawn(task);
@@ -92,7 +92,8 @@ impl TestComponent {
           return;
         }
       };
-      use wasmrs_guest::Value;
+
+      #[allow(unused)]
       fn des(mut map: std::collections::BTreeMap<String, Value>) -> Result<test_service::echo::Inputs, Error> {
         Ok(test_service::echo::Inputs {
           message: <String as serde::Deserialize>::deserialize(
@@ -112,10 +113,12 @@ impl TestComponent {
         }
       };
 
-      TestComponent::echo(input)
+      let _ = TestComponent::echo(input)
         .await
         .map(|result| Ok(serialize(&result).map(|bytes| Payload::new_data(None, Some(bytes.into())))?))
-        .map(|output| tx.send(output).unwrap());
+        .map(|output| {
+          let _ = tx.send(output);
+        });
     };
 
     spawn(task);
@@ -138,7 +141,7 @@ impl TestComponent {
           return;
         }
       };
-      use wasmrs_guest::Value;
+
       fn des(mut map: std::collections::BTreeMap<String, Value>) -> Result<test_service::chars::Inputs, Error> {
         Ok(test_service::chars::Inputs {
           input: <String as serde::Deserialize>::deserialize(
@@ -182,8 +185,7 @@ impl TestComponent {
   }
 
   fn reverse_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    // generated
-    let (inputs_tx, inputs_rx) = Flux::<test_service::reverse::Inputs, PayloadError>::new_channels();
+    // let (inputs_tx, inputs_rx) = Flux::<test_service::reverse::Inputs, PayloadError>::new_channels();
 
     let (real_input_tx, real_input_rx) = Flux::new_channels();
 
@@ -192,7 +194,6 @@ impl TestComponent {
     let input_inner_tx = real_input_tx.clone();
     spawn(async move {
       let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
-        use wasmrs_guest::Value;
         let des = move |payload: ParsedPayload| -> Result<test_service::reverse::Inputs, Error> {
           println!("deserializing {:2x?}", payload.data);
           let mut map = deserialize_generic(&payload.data)?;
@@ -200,8 +201,7 @@ impl TestComponent {
           println!("map: {:?}", map);
 
           if let Some(v) = map.remove("input") {
-            println!("value: {:?}", v);
-            input_inner_tx.send_result(
+            let _ = input_inner_tx.send_result(
               <String as serde::Deserialize>::deserialize(v)
                 .map_err(|e| PayloadError::application_error(e.to_string())),
             );
@@ -213,7 +213,7 @@ impl TestComponent {
           while let Ok(Some(Ok(payload))) = input.recv().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("input") {
-                real_input_tx.send_result(
+                let _ = real_input_tx.send_result(
                   <String as serde::Deserialize>::deserialize(a)
                     .map_err(|e| PayloadError::application_error(e.to_string())),
                 );
@@ -236,7 +236,7 @@ impl TestComponent {
       };
       let result = TestComponent::reverse(input_map).await;
       if let Err(e) = result {
-        real_out_tx.error(PayloadError::application_error(e.to_string()));
+        let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
       } else {
         let mut result = result.unwrap();
         while let Some(result) = result.next().await {
@@ -260,8 +260,7 @@ impl TestComponent {
   }
 
   fn wrap_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    // generated
-    let (inputs_tx, inputs_rx) = Flux::<test_service::wrap::Inputs, PayloadError>::new_channels();
+    // let (inputs_tx, inputs_rx) = Flux::<test_service::wrap::Inputs, PayloadError>::new_channels();
 
     let (real_input_tx, real_input_rx) = Flux::new_channels();
 
@@ -270,7 +269,6 @@ impl TestComponent {
     let input_inner_tx = real_input_tx.clone();
     spawn(async move {
       let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
-        use wasmrs_guest::Value;
         let des = move |payload: ParsedPayload| -> Result<test_service::wrap::Inputs, Error> {
           println!("deserializing {:2x?}", payload.data);
           let mut map = deserialize_generic(&payload.data)?;
@@ -292,8 +290,7 @@ impl TestComponent {
           println!("map: {:?}", map);
 
           if let Some(v) = map.remove("input") {
-            println!("value: {:?}", v);
-            input_inner_tx.send_result(
+            let _ = input_inner_tx.send_result(
               <String as serde::Deserialize>::deserialize(v)
                 .map_err(|e| PayloadError::application_error(e.to_string())),
             );
@@ -305,7 +302,7 @@ impl TestComponent {
           while let Ok(Some(Ok(payload))) = input.recv().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("input") {
-                real_input_tx.send_result(
+                let _ = real_input_tx.send_result(
                   <String as serde::Deserialize>::deserialize(a)
                     .map_err(|e| PayloadError::application_error(e.to_string())),
                 );
@@ -328,7 +325,7 @@ impl TestComponent {
       };
       let result = TestComponent::wrap(input_map).await;
       if let Err(e) = result {
-        real_out_tx.error(PayloadError::application_error(e.to_string()));
+        let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
       } else {
         let mut result = result.unwrap();
         while let Some(result) = result.next().await {
