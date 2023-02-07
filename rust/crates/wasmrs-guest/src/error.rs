@@ -51,3 +51,9 @@ impl From<std::io::Error> for Error {
     Error::BufferRead
   }
 }
+
+impl From<wasmrs_frames::Error> for Error {
+  fn from(value: wasmrs_frames::Error) -> Self {
+    Error::Internal(value.into())
+  }
+}

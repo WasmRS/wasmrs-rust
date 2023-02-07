@@ -56,6 +56,7 @@ pub struct Metadata {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Frame types from https://rsocket.io/about/protocol
 #[allow(missing_docs)]
 pub enum FrameType {
@@ -262,6 +263,7 @@ impl From<ErrorCode> for u32 {
 
 #[derive()]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[cfg_attr(feature = "serde", derive(Clone))]
 #[must_use]
 /// An enum that can hold any time of wasmrs frame.
 #[allow(missing_docs)]
@@ -327,24 +329,18 @@ impl From<Frame> for Result<Option<Payload>, crate::PayloadError> {
 
 impl Frame {
   pub(crate) const LEN_HEADER: usize = 6;
-  pub(crate) const FLAG_IGNORE: FrameFlags = 1 << 4;
-  pub(crate) const FLAG_NEXT: FrameFlags = 1 << 5;
-  pub(crate) const FLAG_COMPLETE: FrameFlags = 1 << 6;
-  pub(crate) const FLAG_FOLLOW: FrameFlags = 1 << 7;
-  pub(crate) const FLAG_METADATA: FrameFlags = 1 << 8;
+  /// The IGNORE bit
+  pub const FLAG_IGNORE: FrameFlags = 1 << 4;
+  /// The NEXT bit
+  pub const FLAG_NEXT: FrameFlags = 1 << 5;
+  /// The COMPLETE bit
+  pub const FLAG_COMPLETE: FrameFlags = 1 << 6;
+  /// The FOLLOW bit
+  pub const FLAG_FOLLOW: FrameFlags = 1 << 7;
+  /// The METADATA bit
+  pub const FLAG_METADATA: FrameFlags = 1 << 8;
   /// The maximum number of N for RequestN
   pub const REQUEST_MAX: u32 = 0x7FFF_FFFF; // 2147483647
-
-  // pub fn is_followable_or_payload(&self) -> (bool, bool) {
-  //   match &self {
-  //     Frame::RequestFnF(_) => (true, false),
-  //     Frame::RequestResponse(_) => (true, false),
-  //     Frame::RequestStream(_) => (true, false),
-  //     Frame::RequestChannel(_) => (true, false),
-  //     Frame::PayloadFrame(_) => (true, true),
-  //     _ => (false, false),
-  //   }
-  // }
 
   #[must_use]
   /// Get the stream id for the frame.
@@ -504,11 +500,17 @@ trait RSocketFrame<T> {
   }
 }
 
-pub(crate) trait RSocketFlags {
+/// Utility trait to check the flags of a frame.
+pub trait RSocketFlags {
+  /// Check if the next flag is set.
   fn flag_next(&self) -> bool;
+  /// Check if the metadata flag is set.
   fn flag_metadata(&self) -> bool;
+  /// Check if the complete flag is set.
   fn flag_complete(&self) -> bool;
+  /// Check if the follow flag is set.
   fn flag_follows(&self) -> bool;
+  /// Check if the ignore flag is set.
   fn flag_ignore(&self) -> bool;
 }
 

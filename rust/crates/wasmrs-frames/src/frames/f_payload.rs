@@ -7,6 +7,7 @@ use crate::{Frame, Payload};
 /// A Payload frame.
 #[derive()]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[cfg_attr(feature = "serde", derive(Clone))]
 #[must_use]
 pub struct PayloadFrame {
   /// The stream ID this frame belongs to.

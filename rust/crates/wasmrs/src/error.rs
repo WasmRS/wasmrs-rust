@@ -1,7 +1,5 @@
 //! Library-specific error types and utility functions
 
-use crate::frames::ErrorCode;
-
 /// Error type for wasmRS RSocket errors.
 #[allow(missing_copy_implementations)]
 #[derive(Debug, Clone)]
@@ -18,6 +16,10 @@ pub enum Error {
   StringConversion,
   /// [crate::Metadata] not found in [crate::Payload]
   MetadataNotFound,
+  /// Error encoding or decoding an RSocket frame
+  Frame(wasmrs_frames::Error),
+  /// Error associate with recording frames during debug
+  Record(String),
 }
 
 impl std::error::Error for Error {}
@@ -30,80 +32,14 @@ impl std::fmt::Display for Error {
       Error::WrongType => f.write_str("Tried to decode frame with wrong frame decoder"),
       Error::StringConversion => f.write_str("Could not read string bytes"),
       Error::MetadataNotFound => f.write_str("No metadata found"),
+      Error::Frame(e) => f.write_str(e.to_string().as_str()),
+      Error::Record(e) => f.write_str(e.as_str()),
     }
   }
 }
 
-#[derive(Debug)]
-#[must_use]
-/// The error type used for all [wasmrs_rx::Mono]/[wasmrs_rx::Flux] payloads.
-pub struct PayloadError {
-  /// The error code.
-  pub code: u32,
-  /// The error message.
-  pub msg: String,
-}
-
-impl PayloadError {
-  /// Create a new [PayloadError] with the passed code and message.
-  pub fn new(code: u32, msg: impl AsRef<str>) -> Self {
-    Self {
-      code,
-      msg: msg.as_ref().to_owned(),
-    }
+impl From<wasmrs_frames::Error> for Error {
+  fn from(value: wasmrs_frames::Error) -> Self {
+    Error::Frame(value)
   }
-
-  /// Create a new [PayloadError] with the [ErrorCode::ApplicationError] code.
-  pub fn application_error(msg: impl AsRef<str>) -> Self {
-    Self {
-      code: ErrorCode::ApplicationError.into(),
-      msg: msg.as_ref().to_owned(),
-    }
-  }
-}
-impl std::error::Error for PayloadError {}
-impl std::fmt::Display for PayloadError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.write_str(&self.msg)
-  }
-}
-
-impl From<wasmrs_codec::error::Error> for PayloadError {
-  fn from(e: wasmrs_codec::error::Error) -> Self {
-    app_err(&e)
-  }
-}
-
-impl From<wasmrs_runtime::Error> for PayloadError {
-  fn from(e: wasmrs_runtime::Error) -> Self {
-    app_err(&e)
-  }
-}
-
-impl From<tokio::sync::oneshot::error::RecvError> for PayloadError {
-  fn from(e: tokio::sync::oneshot::error::RecvError) -> Self {
-    app_err(&e)
-  }
-}
-
-impl From<Error> for PayloadError {
-  fn from(e: Error) -> Self {
-    app_err(&e)
-  }
-}
-
-impl From<Box<dyn std::error::Error>> for PayloadError {
-  fn from(e: Box<dyn std::error::Error>) -> Self {
-    app_err(e.as_ref())
-  }
-}
-
-impl From<Box<dyn std::error::Error + Send + Sync>> for PayloadError {
-  fn from(e: Box<dyn std::error::Error + Send + Sync>) -> Self {
-    app_err(e.as_ref())
-  }
-}
-
-fn app_err(e: &dyn std::error::Error) -> PayloadError {
-  PayloadError::application_error(e.to_string())
 }

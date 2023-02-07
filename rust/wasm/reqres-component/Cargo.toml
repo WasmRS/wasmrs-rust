@@ -16,7 +16,10 @@ panic = "abort"
 crate-type = ["cdylib"]
 
 [dependencies]
-wasmrs-guest = { path = "../../crates/wasmrs-guest" }
+wasmrs-guest = { path = "../../crates/wasmrs-guest", features = [
+  "record-frames",
+  "logging"
+] }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1.0"
 async-trait = "0.1"

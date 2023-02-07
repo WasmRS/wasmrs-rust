@@ -1,0 +1,26 @@
+[package]
+name = "wasmrs-replay"
+version = "0.1.1"
+edition = "2021"
+description = "Make a request to a wasmRS .wasm file."
+license = "Apache-2.0"
+repository = "https://github.com/nanobus/iota"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+wasmrs = { path = "../../crates/wasmrs", version = "0.2.1", features = [
+  "record-frames"
+] }
+wasmrs-frames = { path = "../../crates/wasmrs-frames", version = "0.2.1" }
+wasmrs-rx = { path = "../../crates/wasmrs-rx", version = "0.2.1" }
+wasmrs-codec = { path = "../../crates/wasmrs-codec", version = "0.2.1" }
+wasmrs-testhost = { path = "../../crates/wasmrs-testhost", version = "0.2.1" }
+wasmrs-host = { path = "../../crates/wasmrs-host", version = "0.2.1" }
+env_logger = { workspace = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+futures = { workspace = true }
+anyhow = { version = "1.0" }
+clap = { version = "4.0.9", features = ["derive"] }
+serde_json = "1.0.85"
+base64 = "0.21"
+tracing = { workspace = true }

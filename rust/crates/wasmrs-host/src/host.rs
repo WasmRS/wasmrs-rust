@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
-use wasmrs::{Frame, Payload, PayloadError, RSocket, WasmSocket};
+use wasmrs::{Frame, Payload, RSocket, WasmSocket};
+use wasmrs_frames::PayloadError;
 use wasmrs_runtime::{spawn, UnboundedReceiver};
 use wasmrs_rx::*;
 

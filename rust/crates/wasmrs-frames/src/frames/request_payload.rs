@@ -6,6 +6,7 @@ use crate::{Frame, Payload};
 
 #[derive()]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[cfg_attr(feature = "serde", derive(Clone))]
 #[must_use]
 pub struct RequestPayload {
   /// The type of Request this payload creates.

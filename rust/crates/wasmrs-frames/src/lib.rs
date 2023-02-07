@@ -49,7 +49,6 @@
   explicit_outlives_requirements,
   improper_ctypes,
   invalid_value,
-  missing_copy_implementations,
   missing_debug_implementations,
   mutable_transmutes,
   no_mangle_generic_items,
@@ -79,9 +78,11 @@
 // TODO REMOVE
 #![allow(clippy::needless_pass_by_value)]
 
+mod frames;
+pub use frames::*;
+
 mod error;
-mod flux;
-
-pub use flux::*;
-
 pub use error::Error;
+pub use error::PayloadError;
+
+pub(crate) mod util;

@@ -80,8 +80,6 @@
 #![allow(clippy::needless_pass_by_value)]
 
 mod error;
-/// RSocket Frame implementations.
-pub mod frames;
 mod operations;
 mod socket;
 /// Utility functions related to frames.
@@ -90,18 +88,22 @@ pub mod util;
 #[macro_use]
 extern crate tracing;
 
-// #[macro_use]
-// mod macros;
-
-pub use error::{Error, PayloadError};
-pub use frames::{ErrorCode, Frame, Metadata, Payload};
+pub use error::Error;
 pub use operations::{Operation, OperationList, OperationType};
 pub use socket::{BufferState, SocketSide, WasmSocket};
+pub use wasmrs_frames::{ErrorCode, Frame, Metadata, Payload};
+
+#[cfg(feature = "record-frames")]
+mod record;
+#[cfg(feature = "record-frames")]
+pub use record::{FrameRecord, FRAME_RECORDS};
 
 use wasmrs_runtime::ConditionallySafe;
 use wasmrs_rx::*;
 
 type Result<T> = std::result::Result<T, Error>;
+
+use wasmrs_frames::PayloadError;
 
 /// A trait that defines the interface for a wasmRS module host.
 pub trait ModuleHost: Sync + Send {

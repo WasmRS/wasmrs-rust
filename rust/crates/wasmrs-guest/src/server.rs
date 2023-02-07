@@ -2,7 +2,8 @@ use std::cell::UnsafeCell;
 use std::rc::Rc;
 
 use futures_util::StreamExt;
-use wasmrs::{Payload, PayloadError, RSocket};
+use wasmrs::{Payload, RSocket};
+use wasmrs_frames::PayloadError;
 use wasmrs_runtime as runtime;
 use wasmrs_rx::*;
 

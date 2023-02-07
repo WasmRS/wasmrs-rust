@@ -21,7 +21,7 @@ pub enum Error {
 
   /// Guest send response to a stream that doesn't exist.
   #[error(transparent)]
-  PayloadError(#[from] wasmrs::PayloadError),
+  PayloadError(#[from] wasmrs_frames::PayloadError),
 
   /// Querying Operation List failed.
   #[error("Failed to query or decode operation list")]

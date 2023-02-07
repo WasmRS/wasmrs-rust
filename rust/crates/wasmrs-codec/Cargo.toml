@@ -10,6 +10,7 @@ repository = "https://github.com/nanobus/iota"
 [features]
 
 [dependencies]
+wasmrs-frames = { path = "../wasmrs-frames", version = "0.2.1" }
 wasm-msgpack = { version = "0.3.2", default-features = false, features = [
   "std",
   "alloc",

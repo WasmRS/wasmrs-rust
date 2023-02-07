@@ -5,7 +5,8 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use wasmrs::util::to_u24_bytes;
 use wasmrs::SocketSide;
-pub use wasmrs::{Frame, Metadata, OperationList, OperationType, Payload, PayloadError, RSocket};
+pub use wasmrs::{Frame, Metadata, OperationList, OperationType, Payload, RSocket};
+pub use wasmrs_frames::PayloadError;
 pub use wasmrs_runtime::spawn;
 use wasmrs_runtime::{exhaust_pool, UnboundedReceiver};
 pub use wasmrs_rx::*;

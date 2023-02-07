@@ -1,5 +1,7 @@
 [workspace]
 members = [
+  "crates/wasmrs-testhost",
+  "crates/wasmrs-frames",
   "crates/wasmrs-codec",
   "crates/wasmrs",
   "crates/wasmrs-runtime",

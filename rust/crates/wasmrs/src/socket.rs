@@ -1,6 +1,6 @@
 #![allow(missing_debug_implementations)]
-use crate::frames::{ErrorCode, FrameFlags, RSocketFlags};
 use crate::{Frame, PayloadError, RSocket};
+use wasmrs_frames::{ErrorCode, FrameFlags, RSocketFlags};
 use wasmrs_runtime::{self as runtime, unbounded_channel, Entry, SafeMap, UnboundedReceiver, UnboundedSender};
 use wasmrs_rx::*;
 mod buffer;
@@ -23,6 +23,7 @@ pub enum Handler {
 }
 
 #[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Specify the socket side (only used for debugging).
 pub enum SocketSide {
   /// A guest-side socket.
@@ -109,17 +110,15 @@ impl WasmSocket {
     rx
   }
 
-  // pub fn decode_frame(&self, bytes: Vec<u8>) -> Result<Frame, (u32, Error)> {
-  //   Frame::decode(bytes.into())
-  // }
-
   /// Send a frame.
   pub fn send(&self, frame: Frame) {
-    send(&self.tx, frame);
+    send(&self.tx, self.side, frame);
   }
 
   /// Process a frame.
   pub fn process_once(&self, frame: Frame) -> Result<(), Error> {
+    #[cfg(feature = "record-frames")]
+    crate::record::write_incoming_record(self.side, &frame);
     let stream_id = frame.stream_id();
     trace!(stream_id, side = %self.side, kind = %frame.frame_type(), "process_once");
     let flag = frame.get_flag();
@@ -167,22 +166,23 @@ impl WasmSocket {
     Ok(())
   }
 
-  fn on_request_response(&self, stream_id: u32, input: Payload) {
+  fn on_request_response(&self, sid: u32, input: Payload) {
     trace!(
-        stream_id,
+        sid,
         side = %self.side,
         "on_request_response"
     );
     let responder = self.responder.clone();
     let tx = self.tx.clone();
     let result = responder.request_response(input);
+    let side = self.side;
 
     runtime::spawn(async move {
       match result.await {
         Ok(res) => {
-          send_payload(&tx, stream_id, res, Frame::FLAG_NEXT | Frame::FLAG_COMPLETE);
+          send_payload(&tx, sid, side, res, Frame::FLAG_NEXT | Frame::FLAG_COMPLETE);
         }
-        Err(e) => send_app_error(&tx, stream_id, e.to_string()),
+        Err(e) => send_app_error(&tx, sid, side, e.to_string()),
       };
     });
   }
@@ -192,6 +192,8 @@ impl WasmSocket {
     let responder = self.responder.clone();
     let tx = self.tx.clone();
     let abort_handles = self.abort_handles.clone();
+    let side = self.side;
+
     runtime::spawn(async move {
       let (abort_handle, abort_registration) = AbortHandle::new_pair();
       abort_handles.insert(sid, abort_handle);
@@ -199,12 +201,12 @@ impl WasmSocket {
 
       while let Some(next) = payloads.next().await {
         match next {
-          Ok(it) => send_payload(&tx, sid, it, Frame::FLAG_NEXT),
-          Err(e) => send_app_error(&tx, sid, e.to_string()),
+          Ok(it) => send_payload(&tx, sid, side, it, Frame::FLAG_NEXT),
+          Err(e) => send_app_error(&tx, sid, side, e.to_string()),
         };
       }
       abort_handles.remove(&sid);
-      send_complete(&tx, sid, Frame::FLAG_COMPLETE);
+      send_complete(&tx, sid, side, Frame::FLAG_COMPLETE);
     });
   }
 
@@ -218,6 +220,8 @@ impl WasmSocket {
     handler_tx.send(first).unwrap();
     self.register_handler(sid, Handler::ReqRC(handler_tx));
     let abort_handles = self.abort_handles.clone();
+    let side = self.side;
+
     runtime::spawn(async move {
       let outputs = responder.request_channel(handler_rx);
       let (abort_handle, abort_registration) = AbortHandle::new_pair();
@@ -227,18 +231,18 @@ impl WasmSocket {
       // TODO: support custom RequestN.
       let request_n = Frame::new_request_n(sid, Frame::REQUEST_MAX, 0);
 
-      send(&tx, request_n);
+      send(&tx, side, request_n);
 
       while let Some(next) = outputs.next().await {
         let sending = match next {
           Ok(payload) => Frame::new_payload(sid, payload, Frame::FLAG_NEXT),
           Err(e) => Frame::new_error(sid, ErrorCode::ApplicationError.into(), e.to_string()),
         };
-        send(&tx, sending);
+        send(&tx, side, sending);
       }
       abort_handles.remove(&sid);
       let complete = Frame::new_payload(sid, Payload::empty(), Frame::FLAG_COMPLETE);
-      send(&tx, complete);
+      send(&tx, side, complete);
     });
   }
 
@@ -249,9 +253,10 @@ impl WasmSocket {
     let tx = self.tx.clone();
     let result = responder.fire_and_forget(input);
 
+    let side = self.side;
     runtime::spawn(async move {
       if let Err(e) = result.await {
-        send_app_error(&tx, sid, e.msg);
+        send_app_error(&tx, sid, side, e.msg);
       }
     });
   }
@@ -260,18 +265,18 @@ impl WasmSocket {
     trace!(sid, side = %self.side, "on_request_n");
     let tx = self.tx.clone();
     if n == 0 {
-      send_app_error(&tx, sid, "Invalid RequestN (n=0)");
+      send_app_error(&tx, sid, self.side, "Invalid RequestN (n=0)");
       return;
     }
     #[allow(clippy::option_if_let_else)]
     match self.channels.cloned(&sid) {
       Some(reqn_tx) => {
         if reqn_tx.send(n).is_err() {
-          send_app_error(&tx, sid, "RequestN channel closed");
+          send_app_error(&tx, sid, self.side, "RequestN channel closed");
         };
       }
       None => {
-        send_app_error(&tx, sid, "RequestN called for missing Stream ID");
+        send_app_error(&tx, sid, self.side, "RequestN called for missing Stream ID");
       }
     }
   }
@@ -284,7 +289,7 @@ impl WasmSocket {
         Handler::ReqRR(_) => match o.remove() {
           Handler::ReqRR(sender) => {
             if flag.flag_next() && sender.send(Ok(input)).is_err() {
-              println!("response successful payload for REQUEST_RESPONSE failed: sid={}", sid);
+              error!(sid, side = %self.side, "response successful payload for REQUEST_RESPONSE failed");
             }
           }
           _ => unreachable!(),
@@ -292,10 +297,10 @@ impl WasmSocket {
         Handler::ReqRS(sender) => {
           if flag.flag_next() {
             if sender.is_closed() {
-              send_cancel(&tx, sid);
+              send_cancel(&tx, sid, self.side);
             } else if let Err(_e) = sender.send(input) {
-              println!("response successful payload for REQUEST_STREAM failed: sid={}", sid);
-              send_cancel(&tx, sid);
+              error!(sid, side = %self.side, "response successful payload for REQUEST_STREAM failed");
+              send_cancel(&tx, sid, self.side);
             }
           }
           if flag.flag_complete() {
@@ -306,10 +311,10 @@ impl WasmSocket {
         Handler::ReqRC(sender) => {
           if flag.flag_next() {
             if sender.is_closed() {
-              send_cancel(&tx, sid);
+              send_cancel(&tx, sid, self.side);
             } else if (sender.send(input)).is_err() {
-              println!("response successful payload for REQUEST_CHANNEL failed: sid={}", sid);
-              send_cancel(&tx, sid);
+              error!(sid, side = %self.side, "response successful payload for REQUEST_CHANNEL failed");
+              send_cancel(&tx, sid, self.side);
             }
           }
           if flag.flag_complete() {
@@ -319,7 +324,7 @@ impl WasmSocket {
         }
       },
       Entry::Vacant(_) => {
-        println!("invalid payload id {}: no such request!", sid);
+        warn!(sid, side = %self.side, "response successful payload for REQUEST_CHANNEL failed");
       }
     }
   }
@@ -366,7 +371,9 @@ impl RSocket for WasmSocket {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_response");
 
-    send(&self.tx, Frame::new_request_fnf(sid, payload, 0));
+    let frame = Frame::new_request_fnf(sid, payload, 0);
+
+    send(&self.tx, self.side, frame);
 
     Mono::new_success(())
   }
@@ -378,8 +385,9 @@ impl RSocket for WasmSocket {
     let (tx, rx) = tokio::sync::oneshot::channel();
 
     self.register_handler(sid, Handler::ReqRR(tx));
+    let frame = Frame::new_request_response(sid, payload, 0);
 
-    send(&self.tx, Frame::new_request_response(sid, payload, 0));
+    send(&self.tx, self.side, frame);
     let fut = rx.map_err(|_e| PayloadError::application_error("Request-response channel failed"));
 
     Mono::<Payload, PayloadError>::from_future(async move { fut.await? })
@@ -393,8 +401,9 @@ impl RSocket for WasmSocket {
 
     self.register_handler(sid, Handler::ReqRS(flux));
 
-    let sending = Frame::new_request_stream(sid, payload, 0);
-    send(&self.tx, sending);
+    let frame = Frame::new_request_stream(sid, payload, 0);
+
+    send(&self.tx, self.side, frame);
 
     output
   }
@@ -410,6 +419,7 @@ impl RSocket for WasmSocket {
     let tx = self.tx.clone();
     let channels = self.channels.clone();
 
+    let side = self.side;
     runtime::spawn(async move {
       let mut first = true;
       let mut n = 1;
@@ -419,13 +429,13 @@ impl RSocket for WasmSocket {
           Ok(payload) => {
             if first {
               first = false;
-              send_channel(&tx, sid, payload, Frame::FLAG_NEXT);
+              send_channel(&tx, sid, side, payload, Frame::FLAG_NEXT);
             } else {
-              send_payload(&tx, sid, payload, Frame::FLAG_NEXT);
+              send_payload(&tx, sid, side, payload, Frame::FLAG_NEXT);
             }
           }
           Err(_e) => {
-            send_app_error(&tx, sid, "REQUEST_CHANNEL failed");
+            send_app_error(&tx, sid, side, "REQUEST_CHANNEL failed");
           }
         }
         // If we've exhausted our requested n, wait for the next RequestN frame
@@ -438,40 +448,44 @@ impl RSocket for WasmSocket {
         }
       }
       channels.remove(&sid);
-      send_complete(&tx, sid, Frame::FLAG_COMPLETE);
+      send_complete(&tx, sid, side, Frame::FLAG_COMPLETE);
     });
 
     output
   }
 }
 
-fn send(tx: &UnboundedSender<Frame>, frame: Frame) {
+fn send(tx: &UnboundedSender<Frame>, _side: SocketSide, frame: Frame) {
   trace!("sending frame to socket writer: {:?}", frame);
+  #[cfg(feature = "record-frames")]
+  crate::record::write_outgoing_record(_side, &frame);
+
   tx.send(frame).unwrap();
 }
 
-fn send_payload(tx: &UnboundedSender<Frame>, stream_id: u32, payload: Payload, flag: FrameFlags) {
-  send(tx, Frame::new_payload(stream_id, payload, flag));
+fn send_payload(tx: &UnboundedSender<Frame>, sid: u32, side: SocketSide, payload: Payload, flag: FrameFlags) {
+  send(tx, side, Frame::new_payload(sid, payload, flag));
 }
 
-fn send_channel(tx: &UnboundedSender<Frame>, stream_id: u32, payload: Payload, flag: FrameFlags) {
+fn send_channel(tx: &UnboundedSender<Frame>, sid: u32, side: SocketSide, payload: Payload, flag: FrameFlags) {
   send(
     tx,
-    Frame::new_request_channel(stream_id, payload, flag, Frame::REQUEST_MAX),
+    side,
+    Frame::new_request_channel(sid, payload, flag, Frame::REQUEST_MAX),
   );
 }
 
-fn send_cancel(tx: &UnboundedSender<Frame>, stream_id: u32) {
-  send(tx, Frame::new_cancel(stream_id));
+fn send_cancel(tx: &UnboundedSender<Frame>, sid: u32, side: SocketSide) {
+  send(tx, side, Frame::new_cancel(sid));
 }
 
-fn send_complete(tx: &UnboundedSender<Frame>, stream_id: u32, flag: FrameFlags) {
-  send(tx, Frame::new_payload(stream_id, Payload::empty(), flag));
+fn send_complete(tx: &UnboundedSender<Frame>, sid: u32, side: SocketSide, flag: FrameFlags) {
+  send(tx, side, Frame::new_payload(sid, Payload::empty(), flag));
 }
 
-fn send_app_error(tx: &UnboundedSender<Frame>, sid: u32, msg: impl AsRef<str>) {
+fn send_app_error(tx: &UnboundedSender<Frame>, sid: u32, side: SocketSide, msg: impl AsRef<str>) {
   let error = Frame::new_error(sid, ErrorCode::ApplicationError.into(), msg.as_ref());
-  send(tx, error);
+  send(tx, side, error);
 }
 
 #[cfg(test)]

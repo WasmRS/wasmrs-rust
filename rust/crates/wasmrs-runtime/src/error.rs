@@ -19,3 +19,9 @@ impl std::fmt::Display for Error {
     }
   }
 }
+
+impl From<Error> for wasmrs_frames::PayloadError {
+  fn from(val: Error) -> Self {
+    wasmrs_frames::PayloadError::new(0, val.to_string())
+  }
+}

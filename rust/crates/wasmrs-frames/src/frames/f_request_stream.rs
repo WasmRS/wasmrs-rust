@@ -4,11 +4,12 @@ use super::{request_payload::RequestPayload, Error, FrameFlags, FrameHeader, Fra
 use crate::{Frame, Payload};
 
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[cfg_attr(feature = "serde", derive(Clone))]
 #[must_use]
 #[derive()]
-pub struct RequestChannel(pub RequestPayload);
+pub struct RequestStream(pub RequestPayload);
 
-impl RequestChannel {
+impl RequestStream {
   pub(crate) fn from_payload(stream_id: u32, payload: Payload, flags: FrameFlags, initial_n: u32) -> Self {
     Self(RequestPayload::from_payload(
       stream_id,
@@ -20,8 +21,8 @@ impl RequestChannel {
   }
 }
 
-impl RSocketFrame<RequestChannel> for RequestChannel {
-  const FRAME_TYPE: FrameType = FrameType::RequestChannel;
+impl RSocketFrame<RequestStream> for RequestStream {
+  const FRAME_TYPE: FrameType = FrameType::RequestStream;
 
   fn stream_id(&self) -> u32 {
     self.0.stream_id
@@ -50,8 +51,8 @@ impl RSocketFrame<RequestChannel> for RequestChannel {
   }
 }
 
-impl From<RequestChannel> for Payload {
-  fn from(req: RequestChannel) -> Self {
+impl From<RequestStream> for Payload {
+  fn from(req: RequestStream) -> Self {
     req.0.into()
   }
 }
@@ -61,13 +62,14 @@ mod test {
   use anyhow::Result;
 
   use super::*;
+  use crate::frames::RSocketFrame;
 
-  static BYTES: &[u8] = include_bytes!("../../testdata/frame.request_channel.bin");
+  static BYTES: &[u8] = include_bytes!("../../testdata/frame.request_stream.bin");
 
   #[test]
   fn test_decode() -> Result<()> {
     println!("RAW: {:?}", BYTES);
-    let p = RequestChannel::decode_all(BYTES.into())?;
+    let p = RequestStream::decode_all(BYTES.into())?;
     assert_eq!(p.0.stream_id, 1234);
     Ok(())
   }
@@ -75,7 +77,7 @@ mod test {
   #[test]
   fn test_encode() -> Result<()> {
     let payload = RequestPayload {
-      frame_type: FrameType::RequestChannel,
+      frame_type: FrameType::RequestStream,
       stream_id: 1234,
       metadata: Bytes::from("hello"),
       data: Bytes::from("hello"),
@@ -83,7 +85,7 @@ mod test {
       complete: true,
       initial_n: 0,
     };
-    let this = RequestChannel(payload);
+    let this = RequestStream(payload);
     let encoded = this.encode();
     assert_eq!(encoded, Bytes::from(BYTES));
     Ok(())

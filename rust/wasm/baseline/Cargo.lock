@@ -529,11 +529,13 @@ dependencies = [
  "futures",
  "futures-executor",
  "futures-util",
+ "once_cell",
  "parking_lot",
  "pin-project-lite",
  "tokio",
  "tracing",
  "wasmrs-codec",
+ "wasmrs-frames",
  "wasmrs-runtime",
  "wasmrs-rx",
 ]
@@ -544,6 +546,14 @@ version = "0.2.1"
 dependencies = [
  "serde",
  "wasm-msgpack",
+ "wasmrs-frames",
+]
+
+[[package]]
+name = "wasmrs-frames"
+version = "0.2.1"
+dependencies = [
+ "bytes",
 ]
 
 [[package]]
@@ -560,6 +570,7 @@ dependencies = [
  "tracing",
  "wasmrs",
  "wasmrs-codec",
+ "wasmrs-frames",
  "wasmrs-runtime",
  "wasmrs-rx",
 ]
@@ -577,6 +588,7 @@ dependencies = [
  "parking_lot",
  "pin-project-lite",
  "tokio",
+ "wasmrs-frames",
 ]
 
 [[package]]

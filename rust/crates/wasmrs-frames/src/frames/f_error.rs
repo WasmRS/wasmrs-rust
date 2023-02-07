@@ -6,6 +6,7 @@ use crate::Frame;
 
 #[derive()]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[cfg_attr(feature = "serde", derive(Clone))]
 #[must_use]
 pub struct ErrorFrame {
   /// The stream ID this frame belongs to.

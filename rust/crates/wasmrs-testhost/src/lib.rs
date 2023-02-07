@@ -76,12 +76,21 @@
   missing_docs
 )]
 #![doc = include_str!("../README.md")]
-// TODO REMOVE
-#![allow(clippy::needless_pass_by_value)]
+#![allow(unused_attributes)]
+mod builder;
+mod memory;
+mod wasi;
+mod wasmrs_wasmtime;
 
-mod error;
-mod flux;
+mod engine_provider;
+/// The crate's error module
+pub mod errors;
+mod store;
 
-pub use flux::*;
+pub use builder::WasmtimeBuilder;
+pub use engine_provider::{WasmtimeCallContext, WasmtimeEngineProvider};
 
-pub use error::Error;
+#[macro_use]
+extern crate tracing;
+
+type Result<T> = std::result::Result<T, errors::Error>;
