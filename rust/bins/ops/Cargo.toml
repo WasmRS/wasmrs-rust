@@ -1,6 +1,6 @@
 [package]
 name = "wasmrs-ops"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 description = "Print wasmRS operations from a .wasm file."
 license = "Apache-2.0"
@@ -8,10 +8,10 @@ repository = "https://github.com/nanobus/iota"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-wasmrs = { path = "../../crates/wasmrs", version = "0.2.1" }
-wasmrs-codec = { path = "../../crates/wasmrs-codec", version = "0.2.1" }
-wasmrs-wasmtime = { path = "../../crates/wasmrs-wasmtime", version = "0.2.1" }
-wasmrs-host = { path = "../../crates/wasmrs-host", version = "0.2.1" }
+wasmrs = { path = "../../crates/wasmrs", version = "0.3.0" }
+wasmrs-codec = { path = "../../crates/wasmrs-codec", version = "0.3.0" }
+wasmrs-wasmtime = { path = "../../crates/wasmrs-wasmtime", version = "0.3.0" }
+wasmrs-host = { path = "../../crates/wasmrs-host", version = "0.3.0" }
 env_logger = { workspace = true }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 futures = { workspace = true }
