@@ -123,21 +123,21 @@ impl std::fmt::Display for FrameRecord {
 pub static FRAME_RECORDS: once_cell::sync::Lazy<parking_lot::Mutex<FrameRecords>> =
   once_cell::sync::Lazy::new(|| parking_lot::Mutex::new(FrameRecords::default()));
 
-pub(crate) fn write_outgoing_record(side: SocketSide, frame: &Frame) {
+pub(crate) fn write_outgoing_record(side: SocketSide, frame: Frame) {
   use base64::Engine;
   FRAME_RECORDS.lock().push(FrameRecord::Outgoing {
     side,
     stream_id: frame.stream_id(),
-    frame: base64::engine::general_purpose::STANDARD.encode(frame.clone().encode()),
+    frame: base64::engine::general_purpose::STANDARD.encode(frame.encode()),
   });
 }
 
-pub(crate) fn write_incoming_record(side: SocketSide, frame: &Frame) {
+pub(crate) fn write_incoming_record(side: SocketSide, frame: Frame) {
   use base64::Engine;
   FRAME_RECORDS.lock().push(FrameRecord::Incoming {
     side,
     stream_id: frame.stream_id(),
-    frame: base64::engine::general_purpose::STANDARD.encode(frame.clone().encode()),
+    frame: base64::engine::general_purpose::STANDARD.encode(frame.encode()),
   });
 }
 

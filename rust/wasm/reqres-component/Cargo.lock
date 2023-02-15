@@ -359,15 +359,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f7254b99e31cad77da24b08ebf628882739a608578bb1bcdfc1f9c21260d7c0"
 
 [[package]]
-name = "ordered-float"
-version = "2.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7940cf2ca942593318d07fcf2596cdca60a85c9e7fab408a5e21a4f9dcd40d87"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "parking_lot"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -510,16 +501,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f747710de3dcd43b88c9168773254e809d8ddbdf9653b84e2554ab219f17860"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-value"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3a1a3341211875ef120e117ea7fd5228530ae7e7036a779fdc9117be6b3282c"
-dependencies = [
- "ordered-float",
- "serde",
 ]
 
 [[package]]
@@ -675,9 +656,9 @@ checksum = "dcc811dc4066ac62f84f11307873c4850cb653bfa9b1719cee2bd2204a4bc5dd"
 
 [[package]]
 name = "wasm-msgpack"
-version = "0.3.3"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b349e5d6d85a74f7c2bc11ed7950677a8f189e3abb3809deb2ecd2dfc0fc200"
+checksum = "1c941b159bac04e6c53096043d6da93f4ead1e0ad959ddad2b2eecf9708fc596"
 dependencies = [
  "byteorder",
  "heapless",
@@ -690,7 +671,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "base64",
  "bytes",
@@ -714,8 +695,9 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-codec"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
+ "heapless",
  "serde",
  "wasm-msgpack",
  "wasmrs-frames",
@@ -723,7 +705,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-frames"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "bytes",
  "serde",
@@ -731,7 +713,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-guest"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "bytes",
  "cfg-if",
@@ -740,7 +722,6 @@ dependencies = [
  "futures-util",
  "log",
  "serde",
- "serde-value",
  "serde_json",
  "tracing",
  "wasmrs",
@@ -752,7 +733,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-runtime"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "bytes",
  "crossbeam-channel",
@@ -768,8 +749,9 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-rx"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
+ "async-trait",
  "bytes",
  "crossbeam-channel",
  "dashmap",

@@ -1,6 +1,6 @@
 use std::io::Write;
 use std::pin::Pin;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::task::Poll;
 
 use futures::AsyncRead;
@@ -40,6 +40,7 @@ where
   Err: ConditionallySafe + Sync,
 {
   inner: Option<Pin<Box<dyn MonoFuture<Item, Err>>>>,
+  done: AtomicBool,
 }
 
 impl<Item, Err> Mono<Item, Err>
@@ -49,7 +50,10 @@ where
 {
   /// Create a new [Mono].
   pub fn new() -> Self {
-    Self { inner: None }
+    Self {
+      inner: None,
+      done: AtomicBool::new(false),
+    }
   }
 
   /// Create a [Mono] from a [Future].
@@ -59,6 +63,7 @@ where
   {
     Self {
       inner: Some(Box::pin(fut)),
+      done: AtomicBool::new(false),
     }
   }
 
@@ -66,6 +71,7 @@ where
   pub fn new_error(err: Err) -> Self {
     Self {
       inner: Some(Box::pin(futures::future::ready(Err(err)))),
+      done: AtomicBool::new(false),
     }
   }
 
@@ -73,6 +79,7 @@ where
   pub fn new_success(ok: Item) -> Self {
     Self {
       inner: Some(Box::pin(futures::future::ready(Ok(ok)))),
+      done: AtomicBool::new(false),
     }
   }
 
@@ -96,6 +103,34 @@ where
 {
   fn default() -> Self {
     Self::new()
+  }
+}
+
+impl<Item, Err> Stream for Mono<Item, Err>
+where
+  Item: ConditionallySafe,
+  Err: ConditionallySafe + Sync,
+{
+  type Item = Result<Item, Err>;
+
+  fn poll_next(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
+    if self.done.load(Ordering::SeqCst) {
+      return Poll::Ready(None);
+    }
+    let s = self.get_mut();
+    match s.inner.as_mut() {
+      Some(inner_future) => match inner_future.poll_unpin(cx) {
+        Poll::Ready(v) => {
+          s.done.store(true, Ordering::SeqCst);
+          Poll::Ready(Some(v))
+        }
+        Poll::Pending => Poll::Pending,
+      },
+      None => {
+        cx.waker().wake_by_ref();
+        Poll::Pending
+      }
+    }
   }
 }
 

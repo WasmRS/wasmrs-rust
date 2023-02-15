@@ -3,6 +3,17 @@
 version = 3
 
 [[package]]
+name = "async-trait"
+version = "0.1.64"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cd7fce9ba8c3c042128ce72d8b2ddbf3a05747efb67ea0313c635e10bda47a2"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "atomic-polyfill"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -260,15 +271,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
 
 [[package]]
-name = "ordered-float"
-version = "2.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7940cf2ca942593318d07fcf2596cdca60a85c9e7fab408a5e21a4f9dcd40d87"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "parking_lot"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -373,16 +375,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde-value"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3a1a3341211875ef120e117ea7fd5228530ae7e7036a779fdc9117be6b3282c"
-dependencies = [
- "ordered-float",
- "serde",
-]
-
-[[package]]
 name = "serde_bytes"
 version = "0.11.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -404,9 +396,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.91"
+version = "1.0.93"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "877c235533714907a8c2464236f5c4b2a17262ef1bd71f38f35ea592c8da6883"
+checksum = "cad406b69c91885b5107daf2c29572f6c8cdb3c66826821e286c533490c0bc76"
 dependencies = [
  "itoa",
  "ryu",
@@ -506,9 +498,9 @@ checksum = "84a22b9f218b40614adcb3f4ff08b703773ad44fa9423e4e0d346d5db86e4ebc"
 
 [[package]]
 name = "wasm-msgpack"
-version = "0.3.3"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b349e5d6d85a74f7c2bc11ed7950677a8f189e3abb3809deb2ecd2dfc0fc200"
+checksum = "1c941b159bac04e6c53096043d6da93f4ead1e0ad959ddad2b2eecf9708fc596"
 dependencies = [
  "byteorder",
  "heapless",
@@ -521,7 +513,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "bytes",
  "crossbeam-channel",
@@ -529,7 +521,6 @@ dependencies = [
  "futures",
  "futures-executor",
  "futures-util",
- "once_cell",
  "parking_lot",
  "pin-project-lite",
  "tokio",
@@ -542,8 +533,9 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-codec"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
+ "heapless",
  "serde",
  "wasm-msgpack",
  "wasmrs-frames",
@@ -551,21 +543,20 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-frames"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "bytes",
 ]
 
 [[package]]
 name = "wasmrs-guest"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "bytes",
  "cfg-if",
  "futures-executor",
  "futures-util",
  "serde",
- "serde-value",
  "serde_json",
  "tracing",
  "wasmrs",
@@ -577,7 +568,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-runtime"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "bytes",
  "crossbeam-channel",
@@ -593,8 +584,9 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-rx"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
+ "async-trait",
  "bytes",
  "crossbeam-channel",
  "dashmap",

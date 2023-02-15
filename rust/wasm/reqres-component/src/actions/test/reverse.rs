@@ -1,6 +1,6 @@
 use crate::actions::test_service::reverse::*;
 
-pub(crate) async fn task(mut input: Inputs) -> Result<Outputs, crate::Error> {
+pub(crate) async fn task(mut input: Input) -> Result<Output, crate::Error> {
   println!("starting task");
   let (tx, rx) = Flux::new_channels();
   spawn(async move {

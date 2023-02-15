@@ -9,9 +9,11 @@ members = [
   "crates/wasmrs-rx",
   "crates/wasmrs-host",
   "crates/wasmrs-wasmtime",
-  "bins/*"
+  "bins/ops",
+  "bins/wasmrs-replay",
+  "bins/request",
 ]
-exclude = ["wasm/reqres-component", "wasm/baseline"]
+exclude = ["wasm/reqres-component", "wasm/baseline", "wasm/grabbag"]
 
 [workspace.dependencies]
 env_logger = "0.10.0"

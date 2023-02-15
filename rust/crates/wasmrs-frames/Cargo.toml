@@ -6,10 +6,15 @@ description = "WasmRS RSocket frame decoding, encoding, and data structures"
 license = "Apache-2.0"
 repository = "https://github.com/nanobus/iota"
 
+[features]
+default = []
+derive_serde = ["serde/derive"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 bytes = { workspace = true }
-serde = { workspace = true, features = ["derive"], optional = true }
+serde = { workspace = true, features = [
+], default-features = false, optional = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }

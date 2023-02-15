@@ -14,6 +14,7 @@ bytes = { workspace = true, default-features = false }
 parking_lot = { workspace = true, default-features = false }
 tracing = { workspace = true, features = ["release_max_level_off"] }
 pin-project-lite = "0.2"
+async-trait = { workspace = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 dashmap = "5.4"
@@ -29,4 +30,9 @@ futures-util = { workspace = true, default-features = false, features = [
 
 [dev-dependencies]
 anyhow = { version = "1.0" }
-tokio = { workspace = true, features = ["rt", "time", "macros"] }
+tokio = { workspace = true, features = [
+  "rt",
+  "rt-multi-thread",
+  "time",
+  "macros"
+] }

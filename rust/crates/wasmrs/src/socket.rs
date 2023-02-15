@@ -118,7 +118,7 @@ impl WasmSocket {
   /// Process a frame.
   pub fn process_once(&self, frame: Frame) -> Result<(), Error> {
     #[cfg(feature = "record-frames")]
-    crate::record::write_incoming_record(self.side, &frame);
+    crate::record::write_incoming_record(self.side, frame.clone());
     let stream_id = frame.stream_id();
     trace!(stream_id, side = %self.side, kind = %frame.frame_type(), "process_once");
     let flag = frame.get_flag();
@@ -458,7 +458,7 @@ impl RSocket for WasmSocket {
 fn send(tx: &UnboundedSender<Frame>, _side: SocketSide, frame: Frame) {
   trace!("sending frame to socket writer: {:?}", frame);
   #[cfg(feature = "record-frames")]
-  crate::record::write_outgoing_record(_side, &frame);
+  crate::record::write_outgoing_record(_side, frame.clone());
 
   tx.send(frame).unwrap();
 }

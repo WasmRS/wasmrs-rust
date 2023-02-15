@@ -1,0 +1,206 @@
+import * from "@apexlang/core"
+
+namespace "iota.testing"
+
+# UUID is an alias that is mapped to a custom data type
+alias UUID = string
+alias MyAlias = string
+
+# func someCalc(rhs: i64, lhs: i64): i64
+
+interface MyStreamer @service {
+  requestStreamI64(): stream i64
+  requestStreamF64(): stream f64
+  requestStreamType(): stream MyType
+  requestStreamEnum(): stream MyEnum
+  requestStreamUUID(): stream UUID
+  requestStreamAlias(): stream MyAlias
+  requestStreamString(): stream string
+  requestStreamBool(): stream bool
+  requestStreamDatetime(): stream datetime
+  requestStreamList(): stream [string]
+  requestStreamMap(): stream { string : string }
+  requestStreamArgsI64(value: i64): stream i64
+  requestStreamArgsF64(value: f64): stream f64
+  requestStreamArgsType(value: MyType): stream MyType
+  requestStreamArgsEnum(value: MyEnum): stream MyEnum
+  requestStreamArgsUUID(value: UUID): stream UUID
+  requestStreamArgsAlias(value: MyAlias): stream MyAlias
+  requestStreamArgsString(value: string): stream string
+  requestStreamArgsBool(value: bool): stream bool
+  requestStreamArgsDatetime(value: datetime): stream datetime
+  requestStreamArgsList(value: [string]): stream [string]
+  requestStreamArgsMap(value: { string : string }): stream { string : string }
+
+  requestChannelI64(in: stream i64): stream i64
+  requestChannelF64(in: stream f64): stream f64
+  requestChannelType(in: stream MyType): stream MyType
+  requestChannelEnum(in: stream MyEnum): stream MyEnum
+  requestChannelAlias(in: stream UUID): stream UUID
+  requestChannelString(in: stream string): stream string
+  requestChannelBool(in: stream bool): stream bool
+  requestChannelDatetime(in: stream datetime): stream datetime
+  requestChannelList(in: stream [string]): stream [string]
+  requestChannelMap(in: stream { string : string }): stream { string : string }
+  requestChannelArgsI64(value: i64, in: stream i64): stream i64
+  requestChannelArgsF64(value: f64, in: stream f64): stream f64
+  requestChannelArgsType(value: MyType, in: stream MyType): stream MyType
+  requestChannelArgsEnum(value: MyEnum, in: stream MyEnum): stream MyEnum
+  requestChannelArgsAlias(value: UUID, in: stream UUID): stream UUID
+  requestChannelArgsString(value: string, in: stream string): stream string
+  requestChannelArgsBool(value: bool, in: stream bool): stream bool
+  requestChannelArgsDatetime(value: datetime, in: stream datetime): stream datetime
+  requestChannelArgsList(value: [string], in: stream [string]): stream [string]
+  requestChannelArgsMap(value: { string : string }, in: stream { string : string }): stream { string : string }
+
+  # Supporting non-stream output for request channel
+  requestChannelVoid(in: stream i64): void
+  requestChannelNonStreamOutput(in: stream i64): string
+}
+
+interface MyService @service @uses(["Repository"]) {
+  emptyVoid(): void
+  unaryType[value: MyType]: MyType
+  unaryEnum[value : MyEnum]: MyEnum
+  unaryUUID[value : UUID]: UUID
+  unaryAlias[value : MyAlias]: MyAlias
+  unaryString[value : string]: string
+  unaryI64[value : i64]: i64
+  unaryI32[value : i32]: i32
+  unaryI16[value : i16]: i16
+  unaryI8[value : i8]: i8
+  unaryU64[value : u64]: u64
+  unaryU32[value : u32]: u32
+  unaryU16[value : u16]: u16
+  unaryU8[value : u8]: u8
+  unaryF64[value : f64]: f64
+  unaryF32[value : f32]: f32
+  unaryBytes[value : bytes]: bytes
+  unaryDatetime[value : datetime]: datetime
+  unaryList[value: [string]]: [string]
+  unaryMap[value: { string : string }]: { string : string }
+
+  funcType(value: MyType, optional: MyType?): MyType
+  funcEnum(value: MyEnum, optional: MyEnum?): MyEnum
+  funcUUID(value: UUID, optional: UUID?): UUID
+  funcAlias(value: MyAlias, optional: MyAlias?): MyAlias
+  funcString(value: string, optional: string?): string
+  funcI64(value: i64, optional: i64?): i64
+  funcI32(value: i32, optional: i32?): i32
+  funcI16(value: i16, optional: i16?): i16
+  funcI8(value: i8, optional: i8?): i8
+  funcU64(value: u64, optional: u64?): u64
+  funcU32(value: u32, optional: u32?): u32
+  funcU16(value: u16, optional: u16?): u16
+  funcU8(value: u8, optional: u8?): u8
+  funcF64(value: f64, optional: f64?): f64
+  funcF32(value: f32, optional: f32?): f32
+  funcBytes(value: bytes, optional: bytes?): bytes
+  funcDatetime(value: datetime, optional: datetime?): datetime
+  funcList(value: [string], optional: [string]?): [string]
+  funcMap(value: { string : string }, optional: { string : string }?): { string : string }
+}
+
+
+interface Repository @dependency {
+  getData(): MyType
+}
+
+union MyUnion = MyType | MyEnum | string
+
+"MyType is a class"
+type MyType {
+  "same type value"
+  sameValue: MyType?
+  "type value"
+  typeValue: MyOtherType
+  "string value"
+  stringValue: string
+  "string option"
+  stringOption: string?
+  "i64 value"
+  i64Value: i64
+  "i64 option"
+  i64Option: i64?
+  "i32 value"
+  i32Value: i32
+  "i32 option"
+  i32Option: i32?
+  "i16 value"
+  i16Value: i16
+  "i16 option"
+  i16Option: i16? @n(10)
+  "i8 value"
+  i8Value: i8 @n(11)
+  "i8 option"
+  i8Option: i8? @n(12)
+  "u64 value"
+  u64Value: u64 @n(13)
+  "u64 option"
+  u64Option: u64? @n(14)
+  "u32 value"
+  u32Value: u32 @n(15)
+  "u32 option"
+  u32Option: u32? @n(16)
+  "u16 value"
+  u16Value: u16 @n(17)
+  "u16 option"
+  u16Option: u16? @n(18)
+  "u8 value"
+  u8Value: u8 @n(19)
+  "u8 option"
+  u8Option: u8? @n(20)
+  "f64 value"
+  f64Value: f64 @n(21)
+  "f64 option"
+  f64Option: f64? @n(22)
+  "f32 value"
+  f32Value: f32 @n(23)
+  "f32 option"
+  f32Option: f32? @n(24)
+  "datetime value"
+  datetimeValue: datetime @n(25)
+  "datetime option"
+  datetimeOption: datetime? @n(26)
+  "bytes value"
+  bytesValue: bytes @n(27)
+  "bytes option"
+  bytesOption: bytes? @n(28)
+  "map value"
+  mapValue: { string: i64 } @n(29)
+  "map of types"
+  mapOfTypes: { string: MyType } @n(30)
+  "array value"
+  arrayValue: [string] @n(31)
+  "array of types"
+  arrayOfTypes: [MyType] @n(32)
+  "union value"
+  unionValue: MyUnion @n(33)
+  "union option"
+  unionOption: MyUnion? @n(34)
+  "enum value"
+  enumValue: MyEnum @n(35)
+  "enum option"
+  enumOption: MyEnum? @n(36)
+  "enum value"
+  aliasValue: UUID @n(37)
+  "enum option"
+  aliasOption: UUID? @n(38)
+  # "any value"
+  # anyValue: any @n(999)
+}
+
+type MyOtherType {
+  foo: string
+  bar: string
+}
+
+"MyEnum is an emuneration"
+enum MyEnum {
+  "ONE value"
+  ONE = 0 as "one"
+  "TWO value"
+  TWO = 1
+  "THREE value"
+  THREE = 2 as "three"
+}

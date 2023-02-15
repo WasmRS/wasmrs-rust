@@ -56,7 +56,7 @@ pub struct Metadata {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "derive_serde", derive(serde::Serialize, serde::Deserialize))]
 /// Frame types from https://rsocket.io/about/protocol
 #[allow(missing_docs)]
 pub enum FrameType {
@@ -261,9 +261,8 @@ impl From<ErrorCode> for u32 {
   }
 }
 
-#[derive()]
+#[derive(Clone)]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
-#[cfg_attr(feature = "serde", derive(Clone))]
 #[must_use]
 /// An enum that can hold any time of wasmrs frame.
 #[allow(missing_docs)]

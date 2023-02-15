@@ -93,7 +93,7 @@ pub mod error;
 
 pub use futures_util::Stream;
 pub use serde_json::Value;
-// pub use wasmrs_codec::messagepack::Timestamp;
+pub use wasmrs_codec::Timestamp;
 
 /// Deserialize a generic [Value] from MessagePack bytes.
 pub fn deserialize_generic(buf: &[u8]) -> Result<std::collections::BTreeMap<String, Value>, Error> {
@@ -119,9 +119,8 @@ cfg_if::cfg_if!(
 mod test {
 
   use super::*;
-  use anyhow::Result;
   #[test]
-  fn test_basic() -> Result<()> {
+  fn test_basic() {
     #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq)]
     struct Input {
       input: String,
@@ -131,19 +130,17 @@ mod test {
       input: "HELLO WORLD".to_owned(),
       num: 32,
     };
-    let bytes = serialize(&input)?;
-    let input2: Input = deserialize(&bytes)?;
+    let bytes = serialize(&input).unwrap();
+    let input2: Input = deserialize(&bytes).unwrap();
     assert_eq!(input.input, input2.input);
     assert_eq!(input.num, input2.num);
     println!("{:?}", bytes);
-    let map: Value = deserialize(&bytes)?;
+    let map: Value = deserialize(&bytes).unwrap();
     println!("{:?}", map);
     if let Value::Object(map) = map {
       assert_eq!(map.get("input"), Some(&Value::String("HELLO WORLD".to_owned())));
     } else {
       panic!("expected map");
     }
-
-    Ok(())
   }
 }

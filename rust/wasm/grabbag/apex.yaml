@@ -1,0 +1,5 @@
+spec: ./apex.axdl
+config:
+  name: 'reqres-component'
+plugins:
+  - '../../../codegen/src/rust/plugin.ts'

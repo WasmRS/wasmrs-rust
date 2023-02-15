@@ -6,3 +6,5 @@ debug: codegen
     cp ./target/wasm32-wasi/debug/reqres_component.wasm ../../build/
 codegen:
   apex generate
+clean:
+  cargo clean

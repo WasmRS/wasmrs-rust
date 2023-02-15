@@ -77,7 +77,7 @@
 )]
 #![doc = include_str!("../README.md")]
 // TODO REMOVE
-#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::needless_pass_by_value, unused)]
 
 mod error;
 mod flux;
@@ -85,3 +85,43 @@ mod flux;
 pub use flux::*;
 
 pub use error::Error;
+use futures::Stream;
+
+/// A generic trait to wrap over Flux, Mono, and supporting types.
+pub trait FluxLike<I, E>: Stream<Item = Result<I, E>> + Unpin + Send {}
+
+impl<I, E, T> FluxLike<I, E> for T where T: Stream<Item = Result<I, E>> + Unpin + Send {}
+
+#[cfg(test)]
+mod test {
+  use super::*;
+  use anyhow::Result;
+  use futures::{Stream, StreamExt};
+
+  #[tokio::test]
+  async fn test_basic() -> Result<()> {
+    async fn takes_any(mut stream: impl FluxLike<u32, u32>) -> Vec<u32> {
+      let mut acc = vec![];
+      while let Some(Ok(v)) = stream.next().await {
+        acc.push(v);
+      }
+      acc
+    }
+    let flux = Flux::<u32, u32>::new();
+    flux.send(1)?;
+    flux.send(2)?;
+    flux.send(3)?;
+    flux.send(4)?;
+    flux.complete();
+
+    println!("waiting for flux results");
+    let results = takes_any(flux).await;
+    assert_eq!(results, vec![1, 2, 3, 4]);
+
+    let mono = Mono::<u32, u32>::from_future(async move { Ok(42) });
+    println!("waiting for mono results");
+    let results = takes_any(mono).await;
+    assert_eq!(results, vec![42]);
+    Ok(())
+  }
+}

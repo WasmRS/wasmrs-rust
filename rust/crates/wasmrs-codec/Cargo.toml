@@ -11,31 +11,10 @@ repository = "https://github.com/nanobus/iota"
 
 [dependencies]
 wasmrs-frames = { path = "../wasmrs-frames", version = "0.3.0" }
-wasm-msgpack = { version = "0.3.2", default-features = false, features = [
-  "std",
-  "alloc",
-  "timestamp",
-  "i64",
-  "u64",
-  "bin32",
-  "map32",
-  "array32",
-  "str32",
-  "fixext",
-  "ext",
-  "custom-error-messages",
-  "ext8",
-  "ext16",
-  "ext32",
-  "serde",
-  "serde_bytes",
-] }
-serde = { workspace = true, features = [
-  "derive",
-  "alloc",
-], default-features = false }
+wasm-msgpack = { version = "0.4" }
+serde = { version = "1", features = [], default-features = false }
+heapless = "0.7"
 
 [dev-dependencies]
-anyhow = { workspace = true }
 bytes = { version = "1.1", features = ["serde"] }
 serde_json = { version = "1.0" }
