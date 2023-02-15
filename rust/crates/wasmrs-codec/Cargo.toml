@@ -1,6 +1,6 @@
 [package]
 name = "wasmrs-codec"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "MessagePack Codec implementation used by wasmRS iotas"
 license = "Apache-2.0"
@@ -10,7 +10,7 @@ repository = "https://github.com/nanobus/iota"
 [features]
 
 [dependencies]
-wasmrs-frames = { path = "../wasmrs-frames", version = "0.3.0" }
+wasmrs-frames = { path = "../wasmrs-frames", version = "0.4.0" }
 wasm-msgpack = { version = "0.4" }
 serde = { version = "1", features = [], default-features = false }
 heapless = "0.7"

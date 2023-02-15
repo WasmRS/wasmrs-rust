@@ -1,6 +1,6 @@
 [package]
 name = "wasmrs-wasmtime"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Wasmtime engine for wasmRS hosts"
@@ -12,8 +12,8 @@ default = []
 profiler = []
 
 [dependencies]
-wasmrs-host = { path = "../wasmrs-host", version = "0.3.0" }
-wasmrs = { path = "../wasmrs", version = "0.3.0" }
+wasmrs-host = { path = "../wasmrs-host", version = "0.4.0" }
+wasmrs = { path = "../wasmrs", version = "0.4.0" }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 parking_lot = { workspace = true }
@@ -28,8 +28,8 @@ anyhow = { version = "1.0" }
 
 [dev-dependencies]
 env_logger = { workspace = true }
-wasmrs-rx = { path = "../wasmrs-rx", version = "0.3.0" }
-wasmrs-codec = { path = "../wasmrs-codec", version = "0.3.0" }
+wasmrs-rx = { path = "../wasmrs-rx", version = "0.4.0" }
+wasmrs-codec = { path = "../wasmrs-codec", version = "0.4.0" }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 test-log = "0.2.10"
 serde = { workspace = true }

@@ -1,6 +1,6 @@
 [package]
 name = "wasmrs-frames"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "WasmRS RSocket frame decoding, encoding, and data structures"
 license = "Apache-2.0"
