@@ -12,7 +12,7 @@ wasmrs = { path = "../../crates/wasmrs", version = "0.4.0", features = [
   "record-frames"
 ] }
 wasmrs-rx = { path = "../../crates/wasmrs-rx", version = "0.4.0" }
-wasmrs-codec = { path = "../../crates/wasmrs-codec", version = "0.4.0" }
+wasmrs-codec = { path = "../../crates/wasmrs-codec", version = "0.4.1" }
 wasmrs-wasmtime = { path = "../../crates/wasmrs-wasmtime", version = "0.4.0" }
 wasmrs-host = { path = "../../crates/wasmrs-host", version = "0.4.0" }
 env_logger = { workspace = true }

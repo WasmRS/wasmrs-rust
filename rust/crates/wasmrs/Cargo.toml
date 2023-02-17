@@ -21,7 +21,7 @@ print-frames = ["record-frames"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 wasmrs-frames = { path = "../wasmrs-frames", version = "0.4.0" }
-wasmrs-codec = { path = "../wasmrs-codec", version = "0.4.0" }
+wasmrs-codec = { path = "../wasmrs-codec", version = "0.4.1" }
 wasmrs-runtime = { path = "../wasmrs-runtime", version = "0.4.0" }
 wasmrs-rx = { path = "../wasmrs-rx", version = "0.4.0" }
 futures = { workspace = true, default-features = false }
