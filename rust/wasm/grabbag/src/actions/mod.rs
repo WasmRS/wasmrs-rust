@@ -3651,6 +3651,1801 @@ pub mod my_streamer_service {
   }
 }
 
+static MY_PROVIDER_REQUEST_STREAM_I64_INDEX_BYTES: [u8; 4] = 0u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_F64_INDEX_BYTES: [u8; 4] = 1u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_TYPE_INDEX_BYTES: [u8; 4] = 2u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_ENUM_INDEX_BYTES: [u8; 4] = 3u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_UUID_INDEX_BYTES: [u8; 4] = 4u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_ALIAS_INDEX_BYTES: [u8; 4] = 5u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_STRING_INDEX_BYTES: [u8; 4] = 6u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_BOOL_INDEX_BYTES: [u8; 4] = 7u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_DATETIME_INDEX_BYTES: [u8; 4] = 8u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_LIST_INDEX_BYTES: [u8; 4] = 9u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_MAP_INDEX_BYTES: [u8; 4] = 10u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_ARGS_I64_INDEX_BYTES: [u8; 4] = 11u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_ARGS_F64_INDEX_BYTES: [u8; 4] = 12u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_ARGS_TYPE_INDEX_BYTES: [u8; 4] = 13u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_ARGS_ENUM_INDEX_BYTES: [u8; 4] = 14u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_ARGS_UUID_INDEX_BYTES: [u8; 4] = 15u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_ARGS_ALIAS_INDEX_BYTES: [u8; 4] = 16u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_ARGS_STRING_INDEX_BYTES: [u8; 4] = 17u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_ARGS_BOOL_INDEX_BYTES: [u8; 4] = 18u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_ARGS_DATETIME_INDEX_BYTES: [u8; 4] = 19u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_ARGS_LIST_INDEX_BYTES: [u8; 4] = 20u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_STREAM_ARGS_MAP_INDEX_BYTES: [u8; 4] = 21u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_I64_INDEX_BYTES: [u8; 4] = 22u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_F64_INDEX_BYTES: [u8; 4] = 23u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_TYPE_INDEX_BYTES: [u8; 4] = 24u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_ENUM_INDEX_BYTES: [u8; 4] = 25u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_ALIAS_INDEX_BYTES: [u8; 4] = 26u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_STRING_INDEX_BYTES: [u8; 4] = 27u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_BOOL_INDEX_BYTES: [u8; 4] = 28u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_DATETIME_INDEX_BYTES: [u8; 4] = 29u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_LIST_INDEX_BYTES: [u8; 4] = 30u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_MAP_INDEX_BYTES: [u8; 4] = 31u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_ARGS_I64_INDEX_BYTES: [u8; 4] = 32u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_ARGS_F64_INDEX_BYTES: [u8; 4] = 33u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_ARGS_TYPE_INDEX_BYTES: [u8; 4] = 34u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_ARGS_ENUM_INDEX_BYTES: [u8; 4] = 35u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_ARGS_ALIAS_INDEX_BYTES: [u8; 4] = 36u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_ARGS_STRING_INDEX_BYTES: [u8; 4] = 37u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_ARGS_BOOL_INDEX_BYTES: [u8; 4] = 38u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_ARGS_DATETIME_INDEX_BYTES: [u8; 4] = 39u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_ARGS_LIST_INDEX_BYTES: [u8; 4] = 40u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_ARGS_MAP_INDEX_BYTES: [u8; 4] = 41u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_VOID_INDEX_BYTES: [u8; 4] = 42u32.to_be_bytes();
+static MY_PROVIDER_REQUEST_CHANNEL_NON_STREAM_OUTPUT_INDEX_BYTES: [u8; 4] = 43u32.to_be_bytes();
+
+pub mod my_provider {
+  use super::*;
+
+  pub(crate) fn request_stream_i64(
+    input: request_stream_i64::Input,
+  ) -> impl Stream<Item = Result<request_stream_i64::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_I64_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default()
+      .request_stream(payload)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_stream_i64::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_stream_i64 {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {}
+
+    pub(crate) type Output = i64;
+  }
+
+  pub(crate) fn request_stream_f64(
+    input: request_stream_f64::Input,
+  ) -> impl Stream<Item = Result<request_stream_f64::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_F64_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default()
+      .request_stream(payload)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_stream_f64::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_stream_f64 {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {}
+
+    pub(crate) type Output = f64;
+  }
+
+  pub(crate) fn request_stream_type(
+    input: request_stream_type::Input,
+  ) -> impl Stream<Item = Result<request_stream_type::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_TYPE_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default()
+      .request_stream(payload)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_stream_type::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_stream_type {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {}
+
+    pub(crate) type Output = MyType;
+  }
+
+  pub(crate) fn request_stream_enum(
+    input: request_stream_enum::Input,
+  ) -> impl Stream<Item = Result<request_stream_enum::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ENUM_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default()
+      .request_stream(payload)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_stream_enum::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_stream_enum {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {}
+
+    pub(crate) type Output = MyEnum;
+  }
+
+  pub(crate) fn request_stream_uuid(
+    input: request_stream_uuid::Input,
+  ) -> impl Stream<Item = Result<request_stream_uuid::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_UUID_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default()
+      .request_stream(payload)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_stream_uuid::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_stream_uuid {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {}
+
+    pub(crate) type Output = Uuid;
+  }
+
+  pub(crate) fn request_stream_alias(
+    input: request_stream_alias::Input,
+  ) -> impl Stream<Item = Result<request_stream_alias::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ALIAS_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default()
+      .request_stream(payload)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_stream_alias::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_stream_alias {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {}
+
+    pub(crate) type Output = MyAlias;
+  }
+
+  pub(crate) fn request_stream_string(
+    input: request_stream_string::Input,
+  ) -> impl Stream<Item = Result<request_stream_string::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_STRING_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default()
+      .request_stream(payload)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_stream_string::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_stream_string {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {}
+
+    pub(crate) type Output = String;
+  }
+
+  pub(crate) fn request_stream_bool(
+    input: request_stream_bool::Input,
+  ) -> impl Stream<Item = Result<request_stream_bool::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_BOOL_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default()
+      .request_stream(payload)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_stream_bool::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_stream_bool {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {}
+
+    pub(crate) type Output = bool;
+  }
+
+  pub(crate) fn request_stream_datetime(
+    input: request_stream_datetime::Input,
+  ) -> impl Stream<Item = Result<request_stream_datetime::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_DATETIME_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default().request_stream(payload).map(|result| {
+      result.map(|payload| Ok(deserialize::<request_stream_datetime::Output>(&payload.data.unwrap())?))?
+    })
+  }
+
+  pub(crate) mod request_stream_datetime {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {}
+
+    pub(crate) type Output = wasmrs_guest::Timestamp;
+  }
+
+  pub(crate) fn request_stream_list(
+    input: request_stream_list::Input,
+  ) -> impl Stream<Item = Result<request_stream_list::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_LIST_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default()
+      .request_stream(payload)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_stream_list::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_stream_list {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {}
+
+    pub(crate) type Output = Vec<String>;
+  }
+
+  pub(crate) fn request_stream_map(
+    input: request_stream_map::Input,
+  ) -> impl Stream<Item = Result<request_stream_map::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_MAP_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default()
+      .request_stream(payload)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_stream_map::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_stream_map {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {}
+
+    pub(crate) type Output = std::collections::HashMap<String, String>;
+  }
+
+  pub(crate) fn request_stream_args_i64(
+    input: request_stream_args_i64::Input,
+  ) -> impl Stream<Item = Result<request_stream_args_i64::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_I64_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default().request_stream(payload).map(|result| {
+      result.map(|payload| Ok(deserialize::<request_stream_args_i64::Output>(&payload.data.unwrap())?))?
+    })
+  }
+
+  pub(crate) mod request_stream_args_i64 {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {
+      pub(crate) value: i64,
+    }
+
+    pub(crate) type Output = i64;
+  }
+
+  pub(crate) fn request_stream_args_f64(
+    input: request_stream_args_f64::Input,
+  ) -> impl Stream<Item = Result<request_stream_args_f64::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_F64_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default().request_stream(payload).map(|result| {
+      result.map(|payload| Ok(deserialize::<request_stream_args_f64::Output>(&payload.data.unwrap())?))?
+    })
+  }
+
+  pub(crate) mod request_stream_args_f64 {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {
+      pub(crate) value: f64,
+    }
+
+    pub(crate) type Output = f64;
+  }
+
+  pub(crate) fn request_stream_args_type(
+    input: request_stream_args_type::Input,
+  ) -> impl Stream<Item = Result<request_stream_args_type::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_TYPE_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default().request_stream(payload).map(|result| {
+      result.map(|payload| Ok(deserialize::<request_stream_args_type::Output>(&payload.data.unwrap())?))?
+    })
+  }
+
+  pub(crate) mod request_stream_args_type {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {
+      pub(crate) value: MyType,
+    }
+
+    pub(crate) type Output = MyType;
+  }
+
+  pub(crate) fn request_stream_args_enum(
+    input: request_stream_args_enum::Input,
+  ) -> impl Stream<Item = Result<request_stream_args_enum::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_ENUM_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default().request_stream(payload).map(|result| {
+      result.map(|payload| Ok(deserialize::<request_stream_args_enum::Output>(&payload.data.unwrap())?))?
+    })
+  }
+
+  pub(crate) mod request_stream_args_enum {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {
+      pub(crate) value: MyEnum,
+    }
+
+    pub(crate) type Output = MyEnum;
+  }
+
+  pub(crate) fn request_stream_args_uuid(
+    input: request_stream_args_uuid::Input,
+  ) -> impl Stream<Item = Result<request_stream_args_uuid::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_UUID_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default().request_stream(payload).map(|result| {
+      result.map(|payload| Ok(deserialize::<request_stream_args_uuid::Output>(&payload.data.unwrap())?))?
+    })
+  }
+
+  pub(crate) mod request_stream_args_uuid {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {
+      pub(crate) value: Uuid,
+    }
+
+    pub(crate) type Output = Uuid;
+  }
+
+  pub(crate) fn request_stream_args_alias(
+    input: request_stream_args_alias::Input,
+  ) -> impl Stream<Item = Result<request_stream_args_alias::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_ALIAS_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default().request_stream(payload).map(|result| {
+      result.map(|payload| {
+        Ok(deserialize::<request_stream_args_alias::Output>(
+          &payload.data.unwrap(),
+        )?)
+      })?
+    })
+  }
+
+  pub(crate) mod request_stream_args_alias {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {
+      pub(crate) value: MyAlias,
+    }
+
+    pub(crate) type Output = MyAlias;
+  }
+
+  pub(crate) fn request_stream_args_string(
+    input: request_stream_args_string::Input,
+  ) -> impl Stream<Item = Result<request_stream_args_string::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_STRING_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default().request_stream(payload).map(|result| {
+      result.map(|payload| {
+        Ok(deserialize::<request_stream_args_string::Output>(
+          &payload.data.unwrap(),
+        )?)
+      })?
+    })
+  }
+
+  pub(crate) mod request_stream_args_string {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {
+      pub(crate) value: String,
+    }
+
+    pub(crate) type Output = String;
+  }
+
+  pub(crate) fn request_stream_args_bool(
+    input: request_stream_args_bool::Input,
+  ) -> impl Stream<Item = Result<request_stream_args_bool::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_BOOL_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default().request_stream(payload).map(|result| {
+      result.map(|payload| Ok(deserialize::<request_stream_args_bool::Output>(&payload.data.unwrap())?))?
+    })
+  }
+
+  pub(crate) mod request_stream_args_bool {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {
+      pub(crate) value: bool,
+    }
+
+    pub(crate) type Output = bool;
+  }
+
+  pub(crate) fn request_stream_args_datetime(
+    input: request_stream_args_datetime::Input,
+  ) -> impl Stream<Item = Result<request_stream_args_datetime::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_DATETIME_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default().request_stream(payload).map(|result| {
+      result.map(|payload| {
+        Ok(deserialize::<request_stream_args_datetime::Output>(
+          &payload.data.unwrap(),
+        )?)
+      })?
+    })
+  }
+
+  pub(crate) mod request_stream_args_datetime {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {
+      pub(crate) value: wasmrs_guest::Timestamp,
+    }
+
+    pub(crate) type Output = wasmrs_guest::Timestamp;
+  }
+
+  pub(crate) fn request_stream_args_list(
+    input: request_stream_args_list::Input,
+  ) -> impl Stream<Item = Result<request_stream_args_list::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_LIST_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default().request_stream(payload).map(|result| {
+      result.map(|payload| Ok(deserialize::<request_stream_args_list::Output>(&payload.data.unwrap())?))?
+    })
+  }
+
+  pub(crate) mod request_stream_args_list {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {
+      pub(crate) value: Vec<String>,
+    }
+
+    pub(crate) type Output = Vec<String>;
+  }
+
+  pub(crate) fn request_stream_args_map(
+    input: request_stream_args_map::Input,
+  ) -> impl Stream<Item = Result<request_stream_args_map::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_MAP_INDEX_BYTES.as_slice();
+    let payload = wasmrs_guest::serialize(&input)
+      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .unwrap();
+    Host::default().request_stream(payload).map(|result| {
+      result.map(|payload| Ok(deserialize::<request_stream_args_map::Output>(&payload.data.unwrap())?))?
+    })
+  }
+
+  pub(crate) mod request_stream_args_map {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Input {
+      pub(crate) value: std::collections::HashMap<String, String>,
+    }
+
+    pub(crate) type Output = std::collections::HashMap<String, String>;
+  }
+
+  pub(crate) fn request_channel_i64(
+    mut input: request_channel_i64::Input,
+  ) -> impl Stream<Item = Result<request_channel_i64::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_I64_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_i64::InputFirst),
+      In(i64),
+    }
+    let first = OpInputs::Params(request_channel_i64::InputFirst {});
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default()
+      .request_channel(rx)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_channel_i64::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_channel_i64 {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) r#in: FluxReceiver<i64, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {}
+
+    pub(crate) type Output = i64;
+  }
+
+  pub(crate) fn request_channel_f64(
+    mut input: request_channel_f64::Input,
+  ) -> impl Stream<Item = Result<request_channel_f64::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_F64_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_f64::InputFirst),
+      In(f64),
+    }
+    let first = OpInputs::Params(request_channel_f64::InputFirst {});
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default()
+      .request_channel(rx)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_channel_f64::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_channel_f64 {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) r#in: FluxReceiver<f64, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {}
+
+    pub(crate) type Output = f64;
+  }
+
+  pub(crate) fn request_channel_type(
+    mut input: request_channel_type::Input,
+  ) -> impl Stream<Item = Result<request_channel_type::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_TYPE_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_type::InputFirst),
+      In(MyType),
+    }
+    let first = OpInputs::Params(request_channel_type::InputFirst {});
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default()
+      .request_channel(rx)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_channel_type::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_channel_type {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) r#in: FluxReceiver<MyType, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {}
+
+    pub(crate) type Output = MyType;
+  }
+
+  pub(crate) fn request_channel_enum(
+    mut input: request_channel_enum::Input,
+  ) -> impl Stream<Item = Result<request_channel_enum::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ENUM_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_enum::InputFirst),
+      In(MyEnum),
+    }
+    let first = OpInputs::Params(request_channel_enum::InputFirst {});
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default()
+      .request_channel(rx)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_channel_enum::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_channel_enum {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) r#in: FluxReceiver<MyEnum, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {}
+
+    pub(crate) type Output = MyEnum;
+  }
+
+  pub(crate) fn request_channel_alias(
+    mut input: request_channel_alias::Input,
+  ) -> impl Stream<Item = Result<request_channel_alias::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ALIAS_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_alias::InputFirst),
+      In(Uuid),
+    }
+    let first = OpInputs::Params(request_channel_alias::InputFirst {});
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default()
+      .request_channel(rx)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_channel_alias::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_channel_alias {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) r#in: FluxReceiver<Uuid, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {}
+
+    pub(crate) type Output = Uuid;
+  }
+
+  pub(crate) fn request_channel_string(
+    mut input: request_channel_string::Input,
+  ) -> impl Stream<Item = Result<request_channel_string::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_STRING_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_string::InputFirst),
+      In(String),
+    }
+    let first = OpInputs::Params(request_channel_string::InputFirst {});
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default()
+      .request_channel(rx)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_channel_string::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_channel_string {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) r#in: FluxReceiver<String, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {}
+
+    pub(crate) type Output = String;
+  }
+
+  pub(crate) fn request_channel_bool(
+    mut input: request_channel_bool::Input,
+  ) -> impl Stream<Item = Result<request_channel_bool::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_BOOL_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_bool::InputFirst),
+      In(bool),
+    }
+    let first = OpInputs::Params(request_channel_bool::InputFirst {});
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default()
+      .request_channel(rx)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_channel_bool::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_channel_bool {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) r#in: FluxReceiver<bool, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {}
+
+    pub(crate) type Output = bool;
+  }
+
+  pub(crate) fn request_channel_datetime(
+    mut input: request_channel_datetime::Input,
+  ) -> impl Stream<Item = Result<request_channel_datetime::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_DATETIME_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_datetime::InputFirst),
+      In(wasmrs_guest::Timestamp),
+    }
+    let first = OpInputs::Params(request_channel_datetime::InputFirst {});
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default().request_channel(rx).map(|result| {
+      result.map(|payload| Ok(deserialize::<request_channel_datetime::Output>(&payload.data.unwrap())?))?
+    })
+  }
+
+  pub(crate) mod request_channel_datetime {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) r#in: FluxReceiver<wasmrs_guest::Timestamp, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {}
+
+    pub(crate) type Output = wasmrs_guest::Timestamp;
+  }
+
+  pub(crate) fn request_channel_list(
+    mut input: request_channel_list::Input,
+  ) -> impl Stream<Item = Result<request_channel_list::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_LIST_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_list::InputFirst),
+      In(Vec<String>),
+    }
+    let first = OpInputs::Params(request_channel_list::InputFirst {});
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default()
+      .request_channel(rx)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_channel_list::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_channel_list {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) r#in: FluxReceiver<Vec<String>, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {}
+
+    pub(crate) type Output = Vec<String>;
+  }
+
+  pub(crate) fn request_channel_map(
+    mut input: request_channel_map::Input,
+  ) -> impl Stream<Item = Result<request_channel_map::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_MAP_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_map::InputFirst),
+      In(std::collections::HashMap<String, String>),
+    }
+    let first = OpInputs::Params(request_channel_map::InputFirst {});
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default()
+      .request_channel(rx)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_channel_map::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_channel_map {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) r#in: FluxReceiver<std::collections::HashMap<String, String>, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {}
+
+    pub(crate) type Output = std::collections::HashMap<String, String>;
+  }
+
+  pub(crate) fn request_channel_args_i64(
+    mut input: request_channel_args_i64::Input,
+  ) -> impl Stream<Item = Result<request_channel_args_i64::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_I64_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_args_i64::InputFirst),
+      In(i64),
+    }
+    let first = OpInputs::Params(request_channel_args_i64::InputFirst { value: input.value });
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default().request_channel(rx).map(|result| {
+      result.map(|payload| Ok(deserialize::<request_channel_args_i64::Output>(&payload.data.unwrap())?))?
+    })
+  }
+
+  pub(crate) mod request_channel_args_i64 {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) value: i64,
+      pub(crate) r#in: FluxReceiver<i64, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {
+      pub(crate) value: i64,
+    }
+
+    pub(crate) type Output = i64;
+  }
+
+  pub(crate) fn request_channel_args_f64(
+    mut input: request_channel_args_f64::Input,
+  ) -> impl Stream<Item = Result<request_channel_args_f64::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_F64_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_args_f64::InputFirst),
+      In(f64),
+    }
+    let first = OpInputs::Params(request_channel_args_f64::InputFirst { value: input.value });
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default().request_channel(rx).map(|result| {
+      result.map(|payload| Ok(deserialize::<request_channel_args_f64::Output>(&payload.data.unwrap())?))?
+    })
+  }
+
+  pub(crate) mod request_channel_args_f64 {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) value: f64,
+      pub(crate) r#in: FluxReceiver<f64, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {
+      pub(crate) value: f64,
+    }
+
+    pub(crate) type Output = f64;
+  }
+
+  pub(crate) fn request_channel_args_type(
+    mut input: request_channel_args_type::Input,
+  ) -> impl Stream<Item = Result<request_channel_args_type::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_TYPE_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_args_type::InputFirst),
+      In(MyType),
+    }
+    let first = OpInputs::Params(request_channel_args_type::InputFirst { value: input.value });
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default().request_channel(rx).map(|result| {
+      result.map(|payload| {
+        Ok(deserialize::<request_channel_args_type::Output>(
+          &payload.data.unwrap(),
+        )?)
+      })?
+    })
+  }
+
+  pub(crate) mod request_channel_args_type {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) value: MyType,
+      pub(crate) r#in: FluxReceiver<MyType, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {
+      pub(crate) value: MyType,
+    }
+
+    pub(crate) type Output = MyType;
+  }
+
+  pub(crate) fn request_channel_args_enum(
+    mut input: request_channel_args_enum::Input,
+  ) -> impl Stream<Item = Result<request_channel_args_enum::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_ENUM_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_args_enum::InputFirst),
+      In(MyEnum),
+    }
+    let first = OpInputs::Params(request_channel_args_enum::InputFirst { value: input.value });
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default().request_channel(rx).map(|result| {
+      result.map(|payload| {
+        Ok(deserialize::<request_channel_args_enum::Output>(
+          &payload.data.unwrap(),
+        )?)
+      })?
+    })
+  }
+
+  pub(crate) mod request_channel_args_enum {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) value: MyEnum,
+      pub(crate) r#in: FluxReceiver<MyEnum, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {
+      pub(crate) value: MyEnum,
+    }
+
+    pub(crate) type Output = MyEnum;
+  }
+
+  pub(crate) fn request_channel_args_alias(
+    mut input: request_channel_args_alias::Input,
+  ) -> impl Stream<Item = Result<request_channel_args_alias::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_ALIAS_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_args_alias::InputFirst),
+      In(Uuid),
+    }
+    let first = OpInputs::Params(request_channel_args_alias::InputFirst { value: input.value });
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default().request_channel(rx).map(|result| {
+      result.map(|payload| {
+        Ok(deserialize::<request_channel_args_alias::Output>(
+          &payload.data.unwrap(),
+        )?)
+      })?
+    })
+  }
+
+  pub(crate) mod request_channel_args_alias {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) value: Uuid,
+      pub(crate) r#in: FluxReceiver<Uuid, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {
+      pub(crate) value: Uuid,
+    }
+
+    pub(crate) type Output = Uuid;
+  }
+
+  pub(crate) fn request_channel_args_string(
+    mut input: request_channel_args_string::Input,
+  ) -> impl Stream<Item = Result<request_channel_args_string::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_STRING_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_args_string::InputFirst),
+      In(String),
+    }
+    let first = OpInputs::Params(request_channel_args_string::InputFirst { value: input.value });
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default().request_channel(rx).map(|result| {
+      result.map(|payload| {
+        Ok(deserialize::<request_channel_args_string::Output>(
+          &payload.data.unwrap(),
+        )?)
+      })?
+    })
+  }
+
+  pub(crate) mod request_channel_args_string {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) value: String,
+      pub(crate) r#in: FluxReceiver<String, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {
+      pub(crate) value: String,
+    }
+
+    pub(crate) type Output = String;
+  }
+
+  pub(crate) fn request_channel_args_bool(
+    mut input: request_channel_args_bool::Input,
+  ) -> impl Stream<Item = Result<request_channel_args_bool::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_BOOL_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_args_bool::InputFirst),
+      In(bool),
+    }
+    let first = OpInputs::Params(request_channel_args_bool::InputFirst { value: input.value });
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default().request_channel(rx).map(|result| {
+      result.map(|payload| {
+        Ok(deserialize::<request_channel_args_bool::Output>(
+          &payload.data.unwrap(),
+        )?)
+      })?
+    })
+  }
+
+  pub(crate) mod request_channel_args_bool {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) value: bool,
+      pub(crate) r#in: FluxReceiver<bool, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {
+      pub(crate) value: bool,
+    }
+
+    pub(crate) type Output = bool;
+  }
+
+  pub(crate) fn request_channel_args_datetime(
+    mut input: request_channel_args_datetime::Input,
+  ) -> impl Stream<Item = Result<request_channel_args_datetime::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_DATETIME_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_args_datetime::InputFirst),
+      In(wasmrs_guest::Timestamp),
+    }
+    let first = OpInputs::Params(request_channel_args_datetime::InputFirst { value: input.value });
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default().request_channel(rx).map(|result| {
+      result.map(|payload| {
+        Ok(deserialize::<request_channel_args_datetime::Output>(
+          &payload.data.unwrap(),
+        )?)
+      })?
+    })
+  }
+
+  pub(crate) mod request_channel_args_datetime {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) value: wasmrs_guest::Timestamp,
+      pub(crate) r#in: FluxReceiver<wasmrs_guest::Timestamp, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {
+      pub(crate) value: wasmrs_guest::Timestamp,
+    }
+
+    pub(crate) type Output = wasmrs_guest::Timestamp;
+  }
+
+  pub(crate) fn request_channel_args_list(
+    mut input: request_channel_args_list::Input,
+  ) -> impl Stream<Item = Result<request_channel_args_list::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_LIST_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_args_list::InputFirst),
+      In(Vec<String>),
+    }
+    let first = OpInputs::Params(request_channel_args_list::InputFirst { value: input.value });
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default().request_channel(rx).map(|result| {
+      result.map(|payload| {
+        Ok(deserialize::<request_channel_args_list::Output>(
+          &payload.data.unwrap(),
+        )?)
+      })?
+    })
+  }
+
+  pub(crate) mod request_channel_args_list {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) value: Vec<String>,
+      pub(crate) r#in: FluxReceiver<Vec<String>, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {
+      pub(crate) value: Vec<String>,
+    }
+
+    pub(crate) type Output = Vec<String>;
+  }
+
+  pub(crate) fn request_channel_args_map(
+    mut input: request_channel_args_map::Input,
+  ) -> impl Stream<Item = Result<request_channel_args_map::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_MAP_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_args_map::InputFirst),
+      In(std::collections::HashMap<String, String>),
+    }
+    let first = OpInputs::Params(request_channel_args_map::InputFirst { value: input.value });
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default().request_channel(rx).map(|result| {
+      result.map(|payload| Ok(deserialize::<request_channel_args_map::Output>(&payload.data.unwrap())?))?
+    })
+  }
+
+  pub(crate) mod request_channel_args_map {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) value: std::collections::HashMap<String, String>,
+      pub(crate) r#in: FluxReceiver<std::collections::HashMap<String, String>, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {
+      pub(crate) value: std::collections::HashMap<String, String>,
+    }
+
+    pub(crate) type Output = std::collections::HashMap<String, String>;
+  }
+
+  pub(crate) fn request_channel_void(
+    mut input: request_channel_void::Input,
+  ) -> impl Stream<Item = Result<request_channel_void::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_VOID_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_void::InputFirst),
+      In(i64),
+    }
+    let first = OpInputs::Params(request_channel_void::InputFirst {});
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default()
+      .request_channel(rx)
+      .map(|result| result.map(|payload| Ok(deserialize::<request_channel_void::Output>(&payload.data.unwrap())?))?)
+  }
+
+  pub(crate) mod request_channel_void {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) r#in: FluxReceiver<i64, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {}
+
+    pub(crate) type Output = ();
+  }
+
+  pub(crate) fn request_channel_non_stream_output(
+    mut input: request_channel_non_stream_output::Input,
+  ) -> impl Stream<Item = Result<request_channel_non_stream_output::Output, PayloadError>> {
+    let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_NON_STREAM_OUTPUT_INDEX_BYTES.as_slice();
+    let (tx, rx) = Flux::new_channels();
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(untagged)]
+    enum OpInputs {
+      Params(request_channel_non_stream_output::InputFirst),
+      In(i64),
+    }
+    let first = OpInputs::Params(request_channel_non_stream_output::InputFirst {});
+
+    let tx_inner = tx.clone();
+    spawn(async move {
+      while let Some(payload) = input.r#in.next().await {
+        let payload = match payload {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = tx_inner.error(e);
+            continue;
+          }
+        };
+        let message = OpInputs::In(payload);
+        let payload = wasmrs_guest::serialize(&message)
+          .map(|b| Payload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string()));
+        let _ = tx_inner.send_result(payload);
+      }
+    });
+
+    let payload = wasmrs_guest::serialize(&first)
+      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string()));
+    let _ = tx.send_result(payload);
+
+    Host::default().request_channel(rx).map(|result| {
+      result.map(|payload| {
+        Ok(deserialize::<request_channel_non_stream_output::Output>(
+          &payload.data.unwrap(),
+        )?)
+      })?
+    })
+  }
+
+  pub(crate) mod request_channel_non_stream_output {
+    use super::*;
+
+    pub struct Input {
+      pub(crate) r#in: FluxReceiver<i64, PayloadError>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct InputFirst {}
+
+    pub(crate) type Output = String;
+  }
+}
+
 pub(crate) struct MyServiceComponent();
 
 impl MyServiceComponent {
@@ -6302,7 +8097,315 @@ impl Into<u32> for MyEnum {
   }
 }
 
-pub(crate) fn init_imports() {}
+pub(crate) fn init_imports() {
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_I64_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamI64",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_F64_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamF64",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_TYPE_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamType",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_ENUM_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamEnum",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_UUID_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamUUID",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_ALIAS_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamAlias",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_STRING_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamString",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_BOOL_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamBool",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_DATETIME_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamDatetime",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_LIST_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamList",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_MAP_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamMap",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_ARGS_I64_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamArgsI64",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_ARGS_F64_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamArgsF64",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_ARGS_TYPE_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamArgsType",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_ARGS_ENUM_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamArgsEnum",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_ARGS_UUID_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamArgsUUID",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_ARGS_ALIAS_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamArgsAlias",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_ARGS_STRING_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamArgsString",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_ARGS_BOOL_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamArgsBool",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_ARGS_DATETIME_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamArgsDatetime",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_ARGS_LIST_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamArgsList",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_STREAM_ARGS_MAP_INDEX_BYTES),
+    OperationType::RequestStream,
+    "iota.testing.MyProvider",
+    "requestStreamArgsMap",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_I64_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelI64",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_F64_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelF64",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_TYPE_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelType",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_ENUM_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelEnum",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_ALIAS_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelAlias",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_STRING_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelString",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_BOOL_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelBool",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_DATETIME_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelDatetime",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_LIST_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelList",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_MAP_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelMap",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_ARGS_I64_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelArgsI64",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_ARGS_F64_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelArgsF64",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_ARGS_TYPE_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelArgsType",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_ARGS_ENUM_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelArgsEnum",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_ARGS_ALIAS_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelArgsAlias",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_ARGS_STRING_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelArgsString",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_ARGS_BOOL_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelArgsBool",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_ARGS_DATETIME_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelArgsDatetime",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_ARGS_LIST_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelArgsList",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_ARGS_MAP_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelArgsMap",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_VOID_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelVoid",
+  );
+
+  wasmrs_guest::add_import(
+    u32::from_be_bytes(MY_PROVIDER_REQUEST_CHANNEL_NON_STREAM_OUTPUT_INDEX_BYTES),
+    OperationType::RequestChannel,
+    "iota.testing.MyProvider",
+    "requestChannelNonStreamOutput",
+  );
+}
 pub(crate) fn init_exports() {
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",

@@ -5,6 +5,6 @@ debug: codegen
     cargo +nightly build --target=wasm32-wasi
     cp ./target/wasm32-wasi/debug/grabbag.wasm ../../build/
 codegen:
-  apex generate
+  apex generate -r
 clean:
   cargo clean

@@ -8,7 +8,7 @@ alias MyAlias = string
 
 # func someCalc(rhs: i64, lhs: i64): i64
 
-interface MyStreamer @service {
+interface MyStreamer @service @uses([MyProvider]) {
   requestStreamI64(): stream i64
   requestStreamF64(): stream f64
   requestStreamType(): stream MyType
@@ -57,6 +57,57 @@ interface MyStreamer @service {
   requestChannelVoid(in: stream i64): void
   requestChannelNonStreamOutput(in: stream i64): string
 }
+
+interface MyProvider @provider {
+  requestStreamI64(): stream i64
+  requestStreamF64(): stream f64
+  requestStreamType(): stream MyType
+  requestStreamEnum(): stream MyEnum
+  requestStreamUUID(): stream UUID
+  requestStreamAlias(): stream MyAlias
+  requestStreamString(): stream string
+  requestStreamBool(): stream bool
+  requestStreamDatetime(): stream datetime
+  requestStreamList(): stream [string]
+  requestStreamMap(): stream { string : string }
+  requestStreamArgsI64(value: i64): stream i64
+  requestStreamArgsF64(value: f64): stream f64
+  requestStreamArgsType(value: MyType): stream MyType
+  requestStreamArgsEnum(value: MyEnum): stream MyEnum
+  requestStreamArgsUUID(value: UUID): stream UUID
+  requestStreamArgsAlias(value: MyAlias): stream MyAlias
+  requestStreamArgsString(value: string): stream string
+  requestStreamArgsBool(value: bool): stream bool
+  requestStreamArgsDatetime(value: datetime): stream datetime
+  requestStreamArgsList(value: [string]): stream [string]
+  requestStreamArgsMap(value: { string : string }): stream { string : string }
+
+  requestChannelI64(in: stream i64): stream i64
+  requestChannelF64(in: stream f64): stream f64
+  requestChannelType(in: stream MyType): stream MyType
+  requestChannelEnum(in: stream MyEnum): stream MyEnum
+  requestChannelAlias(in: stream UUID): stream UUID
+  requestChannelString(in: stream string): stream string
+  requestChannelBool(in: stream bool): stream bool
+  requestChannelDatetime(in: stream datetime): stream datetime
+  requestChannelList(in: stream [string]): stream [string]
+  requestChannelMap(in: stream { string : string }): stream { string : string }
+  requestChannelArgsI64(value: i64, in: stream i64): stream i64
+  requestChannelArgsF64(value: f64, in: stream f64): stream f64
+  requestChannelArgsType(value: MyType, in: stream MyType): stream MyType
+  requestChannelArgsEnum(value: MyEnum, in: stream MyEnum): stream MyEnum
+  requestChannelArgsAlias(value: UUID, in: stream UUID): stream UUID
+  requestChannelArgsString(value: string, in: stream string): stream string
+  requestChannelArgsBool(value: bool, in: stream bool): stream bool
+  requestChannelArgsDatetime(value: datetime, in: stream datetime): stream datetime
+  requestChannelArgsList(value: [string], in: stream [string]): stream [string]
+  requestChannelArgsMap(value: { string : string }, in: stream { string : string }): stream { string : string }
+
+  # Supporting non-stream output for request channel
+  requestChannelVoid(in: stream i64): void
+  requestChannelNonStreamOutput(in: stream i64): string
+}
+
 
 interface MyService @service @uses(["Repository"]) {
   emptyVoid(): void

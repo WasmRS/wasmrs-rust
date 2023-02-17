@@ -60,6 +60,28 @@ where
   }
 }
 
+impl<Err> futures::io::AsyncRead for FluxReceiver<bytes::Bytes, Err>
+where
+  Err: ConditionallySafe,
+{
+  fn poll_read(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &mut [u8]) -> Poll<std::io::Result<usize>> {
+    match Pin::new(&mut self.get_mut()).poll_next(cx) {
+      Poll::Ready(Some(Ok(item))) => {
+        let len = item.len();
+        let mut buf = std::io::Cursor::new(buf);
+        buf.write_all(&item).unwrap();
+        Poll::Ready(Ok(len))
+      }
+      Poll::Ready(Some(Err(_err))) => Poll::Ready(Err(std::io::Error::new(
+        std::io::ErrorKind::Other,
+        crate::Error::RecvFailed(99),
+      ))),
+      Poll::Ready(None) => Poll::Ready(Ok(0)),
+      Poll::Pending => Poll::Pending,
+    }
+  }
+}
+
 impl<Item, Err> Clone for FluxReceiver<Item, Err>
 where
   Item: ConditionallySafe,

@@ -671,7 +671,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64",
  "bytes",
@@ -695,7 +695,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-codec"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "heapless",
  "serde",
@@ -705,7 +705,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-frames"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "bytes",
  "serde",
@@ -713,7 +713,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-guest"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "bytes",
  "cfg-if",
@@ -733,7 +733,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-runtime"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "bytes",
  "crossbeam-channel",
@@ -749,7 +749,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-rx"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "async-trait",
  "bytes",
