@@ -23,15 +23,15 @@ extern "C" fn __wasmrs_init(guest_buffer_size: u32, host_buffer_size: u32, max_h
 }
 
 fn deserialize_helper(
-  i: Mono<ParsedPayload, PayloadError>,
+  i: Mono<Payload, PayloadError>,
 ) -> Mono<std::collections::BTreeMap<String, wasmrs_guest::Value>, PayloadError> {
   Mono::from_future(async move {
     match i.await {
       Ok(bytes) => match deserialize(&bytes.data) {
         Ok(v) => Ok(v),
-        Err(e) => Err(PayloadError::application_error(e.to_string())),
+        Err(e) => Err(PayloadError::application_error(e.to_string(), None)),
       },
-      Err(e) => Err(PayloadError::application_error(e.to_string())),
+      Err(e) => Err(PayloadError::application_error(e.to_string(), None)),
     }
   })
 }
@@ -53,22 +53,16 @@ impl TestComponent {
       fn des(_map: std::collections::BTreeMap<String, Value>) -> Result<test_service::test::Input, Error> {
         unreachable!()
       }
-      let _ = TestComponent::test(match des(input_payload) {
-        Ok(o) => o,
-        Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
-          return;
-        }
-      })
-      .await
-      .map(|result| {
-        serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
-      })
-      .map(|output| {
-        let _ = tx.send(output);
-      });
+      let _ = TestComponent::test(test_service::test::Input {})
+        .await
+        .map(|result| {
+          serialize(&result)
+            .map(|b| RawPayload::new_data(None, Some(b.into())))
+            .map_err(|e| PayloadError::application_error(e.to_string(), None))
+        })
+        .map(|output| {
+          let _ = tx.send(output);
+        });
     });
     Ok(Mono::from_future(async move { rx.await? }))
   }
@@ -90,21 +84,21 @@ impl TestComponent {
               .remove("message")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("message".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = TestComponent::echo(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -113,7 +107,7 @@ impl TestComponent {
     Ok(Mono::from_future(async move { rx.await? }))
   }
   fn chars_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -130,13 +124,13 @@ impl TestComponent {
               .remove("input")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("input".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -145,8 +139,8 @@ impl TestComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -154,24 +148,25 @@ impl TestComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn reverse_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_input_tx, real_input_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_input_tx, real_input_rx) = FluxChannel::new_parts();
     let input_inner_tx = real_input_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<test_service::reverse::Input, Error> {
+      let des = move |payload: Payload| -> Result<test_service::reverse::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = test_service::reverse::Input { input: real_input_rx };
 
         if let Some(v) = map.remove("input") {
           let _ = input_inner_tx.send_result(
-            <String as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <String as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -183,7 +178,7 @@ impl TestComponent {
               if let Some(a) = payload.remove("input") {
                 let _ = real_input_tx.send_result(
                   <String as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -194,7 +189,7 @@ impl TestComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -203,7 +198,7 @@ impl TestComponent {
       };
       match TestComponent::reverse(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -212,8 +207,8 @@ impl TestComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -227,11 +222,11 @@ impl TestComponent {
     Ok(real_out_rx)
   }
   fn wrap_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_input_tx, real_input_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_input_tx, real_input_rx) = FluxChannel::new_parts();
     let input_inner_tx = real_input_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<test_service::wrap::Input, Error> {
+      let des = move |payload: Payload| -> Result<test_service::wrap::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = test_service::wrap::Input {
           left: <String as serde::Deserialize>::deserialize(
@@ -239,19 +234,20 @@ impl TestComponent {
               .remove("left")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("left".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           right: <String as serde::Deserialize>::deserialize(
             map
               .remove("right")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("right".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           input: real_input_rx,
         };
 
         if let Some(v) = map.remove("input") {
           let _ = input_inner_tx.send_result(
-            <String as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <String as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -263,7 +259,7 @@ impl TestComponent {
               if let Some(a) = payload.remove("input") {
                 let _ = real_input_tx.send_result(
                   <String as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -274,7 +270,7 @@ impl TestComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -283,7 +279,7 @@ impl TestComponent {
       };
       match TestComponent::wrap(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -292,8 +288,8 @@ impl TestComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {

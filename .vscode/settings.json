@@ -6,6 +6,5 @@
     "titleBar.inactiveBackground": "#ffa50099",
     "titleBar.inactiveForeground": "#15202b99"
   },
-  "rust-analyzer.cargo.features": ["wasmrs/dump-frames"],
-  "cSpell.words": ["wasmrs", "wasi", "nanobus"]
+  "rust-analyzer.cargo.features": ["wasmrs/dump-frames"]
 }

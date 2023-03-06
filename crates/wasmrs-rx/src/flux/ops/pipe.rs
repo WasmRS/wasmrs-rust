@@ -4,7 +4,7 @@ use std::task::Poll;
 use futures::{Stream, TryStreamExt};
 use pin_project_lite::pin_project;
 
-use crate::flux::Flux;
+use crate::flux::FluxChannel;
 use wasmrs_runtime::ConditionallySafe;
 
 pin_project! {
@@ -16,7 +16,7 @@ where
 {
     #[pin]
     from: From,
-    to: Flux<Item, Err>,
+    to: FluxChannel<Item, Err>,
 }
 }
 
@@ -26,7 +26,7 @@ where
   Err: ConditionallySafe,
 {
   /// Create a new [FluxPipe]
-  pub fn new(from: From, to: Flux<Item, Err>) -> Self {
+  pub fn new(from: From, to: FluxChannel<Item, Err>) -> Self {
     Self { from, to }
   }
 }
@@ -63,11 +63,11 @@ mod test {
 
   #[tokio::test]
   async fn test_pipes() -> Result<()> {
-    let (flux, observer) = Flux::new_channels();
+    let (flux, observer) = FluxChannel::new_parts();
 
     flux.send("First".to_owned())?;
 
-    let second_flux = Flux::<String, String>::new();
+    let second_flux = FluxChannel::<String, String>::new();
 
     let mut pipe = observer.pipe(second_flux);
 

@@ -1,7 +1,7 @@
 use bytes::Bytes;
 
 use super::{request_payload::RequestPayload, Error, FrameFlags, FrameHeader, FrameType, RSocketFrame};
-use crate::{Frame, Payload};
+use crate::{Frame, RawPayload};
 
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
@@ -9,7 +9,7 @@ use crate::{Frame, Payload};
 pub struct RequestResponse(pub RequestPayload);
 
 impl RequestResponse {
-  pub(crate) fn from_payload(stream_id: u32, payload: Payload, flags: FrameFlags, initial_n: u32) -> Self {
+  pub(crate) fn from_payload(stream_id: u32, payload: RawPayload, flags: FrameFlags, initial_n: u32) -> Self {
     Self(RequestPayload::from_payload(
       stream_id,
       payload,
@@ -50,7 +50,7 @@ impl RSocketFrame<RequestResponse> for RequestResponse {
   }
 }
 
-impl From<RequestResponse> for Payload {
+impl From<RequestResponse> for RawPayload {
   fn from(req: RequestResponse) -> Self {
     req.0.into()
   }

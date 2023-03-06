@@ -3,7 +3,7 @@ use std::sync::Arc;
 use parking_lot::RwLock;
 use wasmrs_rx::*;
 
-use crate::{Mono, Payload, PayloadError, RSocket};
+use crate::{Mono, PayloadError, RSocket, RawPayload};
 
 #[derive(Clone)]
 pub(crate) struct Responder {
@@ -19,23 +19,23 @@ impl Responder {
 }
 
 impl RSocket for Responder {
-  fn fire_and_forget(&self, req: Payload) -> Mono<(), PayloadError> {
+  fn fire_and_forget(&self, req: RawPayload) -> Mono<(), PayloadError> {
     let inner = self.inner.read();
     (*inner).fire_and_forget(req)
   }
 
-  fn request_response(&self, req: Payload) -> Mono<Payload, PayloadError> {
+  fn request_response(&self, req: RawPayload) -> Mono<RawPayload, PayloadError> {
     let inner = self.inner.read();
     (*inner).request_response(req)
   }
 
-  fn request_stream(&self, req: Payload) -> FluxReceiver<Payload, PayloadError> {
+  fn request_stream(&self, req: RawPayload) -> FluxReceiver<RawPayload, PayloadError> {
     let inner = self.inner.clone();
     let r = inner.read();
     (*r).request_stream(req)
   }
 
-  fn request_channel(&self, stream: FluxReceiver<Payload, PayloadError>) -> FluxReceiver<Payload, PayloadError> {
+  fn request_channel(&self, stream: Box<dyn Flux<RawPayload, PayloadError>>) -> FluxReceiver<RawPayload, PayloadError> {
     let inner = self.inner.clone();
     let r = inner.read();
     (*r).request_channel(stream)
@@ -44,23 +44,23 @@ impl RSocket for Responder {
 pub(crate) struct EmptyRSocket;
 
 impl RSocket for EmptyRSocket {
-  fn fire_and_forget(&self, _req: Payload) -> Mono<(), PayloadError> {
-    Mono::new_error(PayloadError::application_error("Unimplemented"))
+  fn fire_and_forget(&self, _req: RawPayload) -> Mono<(), PayloadError> {
+    Mono::new_error(PayloadError::application_error("Unimplemented", None))
   }
 
-  fn request_response(&self, _req: Payload) -> Mono<Payload, PayloadError> {
-    Mono::new_error(PayloadError::application_error("Unimplemented"))
+  fn request_response(&self, _req: RawPayload) -> Mono<RawPayload, PayloadError> {
+    Mono::new_error(PayloadError::application_error("Unimplemented", None))
   }
 
-  fn request_stream(&self, _req: Payload) -> FluxReceiver<Payload, PayloadError> {
-    let channel = Flux::<Payload, PayloadError>::new();
-    let _ = channel.error(PayloadError::application_error("Unimplemented"));
-    channel.take_rx().unwrap()
+  fn request_stream(&self, _req: RawPayload) -> FluxReceiver<RawPayload, PayloadError> {
+    let (tx, channel) = FluxChannel::<RawPayload, PayloadError>::new_parts();
+    let _ = tx.error(PayloadError::application_error("Unimplemented", None));
+    channel
   }
 
-  fn request_channel(&self, _reqs: FluxReceiver<Payload, PayloadError>) -> FluxReceiver<Payload, PayloadError> {
-    let channel = Flux::<Payload, PayloadError>::new();
-    let _ = channel.error(PayloadError::application_error("Unimplemented"));
-    channel.take_rx().unwrap()
+  fn request_channel(&self, _reqs: Box<dyn Flux<RawPayload, PayloadError>>) -> FluxReceiver<RawPayload, PayloadError> {
+    let (tx, channel) = FluxChannel::<RawPayload, PayloadError>::new_parts();
+    let _ = tx.error(PayloadError::application_error("Unimplemented", None));
+    channel
   }
 }

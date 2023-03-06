@@ -80,10 +80,12 @@
 #![allow(clippy::needless_pass_by_value)]
 
 mod error;
+mod handlers;
 mod operations;
 mod socket;
 /// Utility functions related to frames.
 pub mod util;
+pub use handlers::*;
 
 #[macro_use]
 extern crate tracing;
@@ -91,19 +93,19 @@ extern crate tracing;
 pub use error::Error;
 pub use operations::{Operation, OperationList, OperationType};
 pub use socket::{BufferState, SocketSide, WasmSocket};
-pub use wasmrs_frames::{ErrorCode, Frame, Metadata, Payload};
+pub use wasmrs_frames::{ErrorCode, Frame, Metadata, RawPayload};
 
 #[cfg(feature = "record-frames")]
 mod record;
 #[cfg(feature = "record-frames")]
 pub use record::{get_records, FrameRecord, FRAME_RECORDS};
-
 use wasmrs_runtime::ConditionallySafe;
+pub use wasmrs_rx::Flux;
 use wasmrs_rx::*;
 
 type Result<T> = std::result::Result<T, Error>;
 
-use wasmrs_frames::PayloadError;
+pub use wasmrs_frames::PayloadError;
 
 /// A trait that defines the interface for a wasmRS module host.
 pub trait ModuleHost: Sync + Send {
@@ -123,11 +125,11 @@ pub trait ModuleHost: Sync + Send {
 /// A trait for an RSocket client/server (host/guest).
 pub trait RSocket: ConditionallySafe {
   /// Fire and Forget interaction model of RSocket.
-  fn fire_and_forget(&self, payload: Payload) -> Mono<(), PayloadError>;
+  fn fire_and_forget(&self, payload: RawPayload) -> Mono<(), PayloadError>;
   /// Request-Response interaction model of RSocket.
-  fn request_response(&self, payload: Payload) -> Mono<Payload, PayloadError>;
+  fn request_response(&self, payload: RawPayload) -> Mono<RawPayload, PayloadError>;
   /// Request-Stream interaction model of RSocket.
-  fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError>;
+  fn request_stream(&self, payload: RawPayload) -> FluxReceiver<RawPayload, PayloadError>;
   /// Request-Channel interaction model of RSocket.
-  fn request_channel(&self, stream: FluxReceiver<Payload, PayloadError>) -> FluxReceiver<Payload, PayloadError>;
+  fn request_channel(&self, stream: Box<dyn Flux<RawPayload, PayloadError>>) -> FluxReceiver<RawPayload, PayloadError>;
 }

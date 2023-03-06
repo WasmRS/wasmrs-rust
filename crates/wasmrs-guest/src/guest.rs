@@ -1,31 +1,17 @@
 use std::cell::UnsafeCell;
 use std::io::{Cursor, Write};
-use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use wasmrs::util::to_u24_bytes;
-use wasmrs::SocketSide;
-pub use wasmrs::{Frame, Metadata, OperationList, OperationType, Payload, RSocket};
+pub use wasmrs::{
+  Frame, GenericError, IncomingMono, IncomingStream, Metadata, OperationList, OperationType, OutgoingMono,
+  OutgoingStream, RSocket, RawPayload,
+};
+use wasmrs::{OperationMap, ProcessFactory, SocketSide};
 pub use wasmrs_frames::PayloadError;
 pub use wasmrs_runtime::spawn;
-use wasmrs_runtime::{exhaust_pool, UnboundedReceiver};
+use wasmrs_runtime::{exhaust_pool, RtRc, UnboundedReceiver};
 pub use wasmrs_rx::*;
-
-/// An alias to [Box<dyn std::error::Error + Send + Sync + 'static>]
-pub type GenericError = Box<dyn std::error::Error + Send + Sync + 'static>;
-/// An alias for a [Vec<(String, String, Rc<T>)>]
-pub type OperationMap<T> = Vec<(String, String, Rc<T>)>;
-/// An alias for the function that creates the output for a task.
-pub type ProcessFactory<I, O> = fn(I) -> Result<O, GenericError>;
-
-/// An alias for [Mono<ParsedPayload, PayloadError>]
-pub type IncomingMono = Mono<ParsedPayload, PayloadError>;
-/// An alias for [Mono<Payload, PayloadError>]
-pub type OutgoingMono = Mono<Payload, PayloadError>;
-/// An alias for [FluxReceiver<ParsedPayload, PayloadError>]
-pub type IncomingStream = FluxReceiver<ParsedPayload, PayloadError>;
-/// An alias for [FluxReceiver<Payload, PayloadError>]
-pub type OutgoingStream = FluxReceiver<Payload, PayloadError>;
 
 pub use bytes::Bytes;
 pub use futures_util::stream::select_all;
@@ -55,7 +41,7 @@ thread_local! {
 pub struct Host();
 
 impl RSocket for Host {
-  fn fire_and_forget(&self, payload: Payload) -> Mono<(), PayloadError> {
+  fn fire_and_forget(&self, payload: RawPayload) -> Mono<(), PayloadError> {
     SOCKET.with(|cell| {
       #[allow(unsafe_code)]
       let socket = unsafe { &mut *cell.get() };
@@ -63,7 +49,7 @@ impl RSocket for Host {
     })
   }
 
-  fn request_response(&self, payload: Payload) -> Mono<Payload, PayloadError> {
+  fn request_response(&self, payload: RawPayload) -> Mono<RawPayload, PayloadError> {
     SOCKET.with(|cell| {
       #[allow(unsafe_code)]
       let socket = unsafe { &mut *cell.get() };
@@ -71,7 +57,7 @@ impl RSocket for Host {
     })
   }
 
-  fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
+  fn request_stream(&self, payload: RawPayload) -> FluxReceiver<RawPayload, PayloadError> {
     SOCKET.with(|cell| {
       #[allow(unsafe_code)]
       let socket = unsafe { &mut *cell.get() };
@@ -79,32 +65,11 @@ impl RSocket for Host {
     })
   }
 
-  fn request_channel(&self, stream: FluxReceiver<Payload, PayloadError>) -> FluxReceiver<Payload, PayloadError> {
+  fn request_channel(&self, stream: Box<dyn Flux<RawPayload, PayloadError>>) -> FluxReceiver<RawPayload, PayloadError> {
     SOCKET.with(|cell| {
       #[allow(unsafe_code)]
       let socket = unsafe { &mut *cell.get() };
       socket.request_channel(stream)
-    })
-  }
-}
-
-#[allow(missing_debug_implementations)]
-#[derive(Debug)]
-/// A [Payload] with pre-parsed [Metadata].
-pub struct ParsedPayload {
-  /// The parsed [Metadata].
-  pub metadata: Metadata,
-  /// The raw data bytes.
-  pub data: Bytes,
-}
-
-impl TryFrom<Payload> for ParsedPayload {
-  type Error = Error;
-
-  fn try_from(value: Payload) -> Result<Self, Self::Error> {
-    Ok(ParsedPayload {
-      metadata: value.parse_metadata()?,
-      data: value.data.unwrap_or_default(),
     })
   }
 }
@@ -291,7 +256,7 @@ fn register_handler<T>(
   kind.with(|cell| {
     #[allow(unsafe_code)]
     let buffer = unsafe { &mut *cell.get() };
-    buffer.push((ns.as_ref().to_owned(), op.as_ref().to_owned(), Rc::new(handler)));
+    buffer.push((ns.as_ref().to_owned(), op.as_ref().to_owned(), RtRc::new(handler)));
     (buffer.len() - 1) as _
   })
 }

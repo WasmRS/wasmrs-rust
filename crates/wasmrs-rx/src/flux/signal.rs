@@ -24,7 +24,7 @@ where
     match self {
       Self::Ok(arg0) => f.debug_tuple("Ok").field(arg0).finish(),
       Self::Err(arg0) => f.debug_tuple("Err").field(arg0).finish(),
-      Self::Complete => write!(f, "Complete"),
+      Self::Complete => f.write_str("Complete"),
     }
   }
 }

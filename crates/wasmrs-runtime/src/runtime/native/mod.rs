@@ -134,6 +134,32 @@ impl<T> Clone for OptionalMut<T> {
   }
 }
 
+#[allow(missing_debug_implementations)]
+pub struct MutRc<T>(pub(super) Arc<Mutex<T>>);
+
+impl<T> MutRc<T>
+where
+  T: ConditionallySafe,
+{
+  pub fn new(item: T) -> Self {
+    Self(Arc::new(Mutex::new(item)))
+  }
+
+  pub fn lock(&self) -> parking_lot::lock_api::MutexGuard<'_, parking_lot::RawMutex, T> {
+    self.0.lock()
+  }
+}
+impl<T> PartialEq for MutRc<T>
+where
+  T: PartialEq,
+{
+  fn eq(&self, other: &Self) -> bool {
+    self.0.lock().eq(&other.0.lock())
+  }
+}
+
+pub type RtRc<T> = Arc<T>;
+
 pub trait ConditionallySafe: Send + Sync + 'static {}
 
 impl<S> ConditionallySafe for S where S: Send + Sync + 'static {}

@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use futures::StreamExt;
-use wasmrs::{Metadata, Payload, RSocket};
+use wasmrs::{Metadata, RSocket, RawPayload};
 use wasmrs_codec::messagepack::*;
 use wasmrs_host::WasiParams;
 use wasmrs_rx::*;
@@ -30,12 +30,12 @@ async fn test_iota_req_channel_single() -> anyhow::Result<()> {
 
   let bytes = serialize(&input).unwrap();
 
-  let payload = Payload::new(mbytes, bytes.into());
+  let payload = RawPayload::new(mbytes, bytes.into());
 
-  let stream = Flux::new();
+  let stream = FluxChannel::new();
   stream.send(payload.clone())?;
   stream.complete();
-  let mut response = context.request_channel(stream.take_rx().unwrap());
+  let mut response = context.request_channel(Box::new(stream));
   let mut outputs: VecDeque<String> = vec!["DLROW OLLEH".to_owned()].into();
   while let Some(response) = response.next().await {
     println!("response: {:?}", response);
@@ -77,25 +77,25 @@ async fn test_iota_req_channel_multi() -> anyhow::Result<()> {
   struct Input2 {
     input: String,
   }
-  let stream = Flux::new();
+  let stream = FluxChannel::new();
 
   let input = Input1 {
     left: "<<<".to_owned(),
     right: ">>>".to_owned(),
   };
   let bytes = serialize(&input).unwrap();
-  let payload = Payload::new(mbytes.clone(), bytes.into());
+  let payload = RawPayload::new(mbytes.clone(), bytes.into());
   stream.send(payload.clone())?;
 
   let input = Input2 {
     input: "Hello world".to_owned(),
   };
   let bytes = serialize(&input).unwrap();
-  let payload = Payload::new(mbytes, bytes.into());
+  let payload = RawPayload::new(mbytes, bytes.into());
   stream.send(payload.clone())?;
 
   stream.complete();
-  let mut response = context.request_channel(stream.take_rx().unwrap());
+  let mut response = context.request_channel(Box::new(stream));
   let mut outputs: VecDeque<String> = vec!["<<<Hello world>>>".to_owned()].into();
   while let Some(response) = response.next().await {
     println!("response: {:?}", response);

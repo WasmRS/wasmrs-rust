@@ -47,7 +47,7 @@ println!("{}", result);
 A `Flux` is a stream/channel wrapped up together. You can push to it, complete it, and await it:
 
 ```rs
-let mut flux = Flux::<_, Error>::new();
+let mut flux = FluxChannel::<_, Error>::new();
 
 flux.send(100)?;
 flux.send(101)?;
@@ -62,7 +62,7 @@ while let Some(payload) = flux.next().await {
 You can take the receiver portion and split the send/receive as you would other channels:
 
 ```rs
-let flux = Flux::<_, Error>::new();
+let flux = FluxChannel::<_, Error>::new();
 let mut rx = flux.take_rx()?;
 
 let task = tokio::spawn(async move {
@@ -82,7 +82,7 @@ task.await?;
 Since `Flux`es embed the concept of a `Result`, `.send()` pushes `Ok` values and `.error()` can be used to push error values.
 
 ```rs
-let mut flux = Flux::<_, Error>::new();
+let mut flux = FluxChannel::<_, Error>::new();
 
 flux.send(100)?;
 flux.send(101)?;
@@ -97,17 +97,17 @@ while let Some(payload) = flux.next().await {
 
 ## More Info
 
-For more information on wasmRS, see the core [wasmrs](https://github.com/nanobus/iota/blob/main/rust/crates/wasmrs/README.md) crate.
+For more information on wasmRS, see the core [wasmrs](https://github.com/wasmrs/wasmrs-rust/blob/main/crates/wasmrs/README.md) crate.
 
-WasmRS makes heavy use of generated code from `apex` specs and generators to automate all of the boilerplate. See the [getting-started](https://github.com/nanobus/nanobus/blob/main/docs/getting-started.md) for nanobus for up-to-date usage.
+WasmRS makes heavy use of generated code from `apex` specs and generators to automate all of the boilerplate. See the [getting-started](https://github.com/WasmRS/docs/blob/main/wasmrs-rust-howto.md) for usage.
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://github.com/nanobus/iota/blob/main/CONTRIBUTING.md)
+See [CONTRIBUTING.md](https://github.com/WasmRS/wasmrs-rust/blob/main/CONTRIBUTING.md)
 
 ## License
 
-See the root [LICENSE.txt](https://github.com/nanobus/iota/blob/main/LICENSE.txt)
+See the root [LICENSE.txt](https://github.com/WasmRS/wasmrs-rust/blob/main/LICENSE.txt)
 
 
 

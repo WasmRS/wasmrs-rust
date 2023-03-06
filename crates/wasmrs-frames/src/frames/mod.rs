@@ -12,9 +12,6 @@ pub(crate) mod request_payload;
 
 use bytes::Bytes;
 
-use crate::util::from_u32_bytes;
-use crate::Error;
-
 use self::f_cancel::Cancel;
 use self::f_error::ErrorFrame;
 use self::f_payload::PayloadFrame;
@@ -23,6 +20,7 @@ use self::f_request_fnf::RequestFnF;
 use self::f_request_n::RequestN;
 use self::f_request_response::RequestResponse;
 use self::f_request_stream::RequestStream;
+use crate::Error;
 
 /// The type that holds the bitmask for Frame flags.
 pub type FrameFlags = u16;
@@ -35,11 +33,12 @@ pub struct FrameHeader {
   /// The header bytes.
   pub header: Bytes,
 }
+
 #[derive(Clone, Default)]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[must_use]
 /// A complete [Payload] object that includes metadata and data bytes.
-pub struct Payload {
+pub struct RawPayload {
   /// Metadata bytes if they exist.
   pub metadata: Option<Bytes>,
   /// The core payload data bytes if it exists.
@@ -47,12 +46,15 @@ pub struct Payload {
 }
 
 /// Metadata associated with the frame.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
+#[cfg_attr(feature = "derive_serde", derive(serde::Serialize, serde::Deserialize))]
 #[must_use]
 pub struct Metadata {
   /// The operation index.
   pub index: u32,
+  /// The stream name.
+  pub extra: Option<Bytes>,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -79,28 +81,25 @@ pub enum FrameType {
 }
 impl std::fmt::Display for FrameType {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(
-      f,
-      "{}",
-      match self {
-        Self::Reserved => "RESERVED",
-        Self::Setup => "SETUP",
-        Self::Lease => "LEASE",
-        Self::Keepalive => "KEEPALIVE",
-        Self::RequestResponse => "REQUEST_RESPONSE",
-        Self::RequestFnf => "REQUEST_FNF",
-        Self::RequestStream => "REQUEST_STREAM",
-        Self::RequestChannel => "REQUEST_CHANNEL",
-        Self::RequestN => "REQUEST_N",
-        Self::Cancel => "CANCEL",
-        Self::Payload => "PAYLOAD",
-        Self::Err => "ERROR",
-        Self::MetadataPush => "METADATA_PUSH",
-        Self::Resume => "RESUME",
-        Self::ResumeOk => "RESUME_OK",
-        Self::Ext => "EXT",
-      }
-    )
+    let name = match self {
+      Self::Reserved => "RESERVED",
+      Self::Setup => "SETUP",
+      Self::Lease => "LEASE",
+      Self::Keepalive => "KEEPALIVE",
+      Self::RequestResponse => "REQUEST_RESPONSE",
+      Self::RequestFnf => "REQUEST_FNF",
+      Self::RequestStream => "REQUEST_STREAM",
+      Self::RequestChannel => "REQUEST_CHANNEL",
+      Self::RequestN => "REQUEST_N",
+      Self::Cancel => "CANCEL",
+      Self::Payload => "PAYLOAD",
+      Self::Err => "ERROR",
+      Self::MetadataPush => "METADATA_PUSH",
+      Self::Resume => "RESUME",
+      Self::ResumeOk => "RESUME_OK",
+      Self::Ext => "EXT",
+    };
+    f.write_str(name)
   }
 }
 impl TryFrom<u8> for FrameType {
@@ -165,17 +164,14 @@ pub enum FrameFlag {
 }
 impl std::fmt::Display for FrameFlag {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(
-      f,
-      "{}",
-      match self {
-        Self::Metadata => "M",
-        Self::Follows => "FRS",
-        Self::Complete => "CL",
-        Self::Next => "N",
-        Self::Ignore => "I",
-      }
-    )
+    let flag = match self {
+      Self::Metadata => "M",
+      Self::Follows => "FRS",
+      Self::Complete => "CL",
+      Self::Next => "N",
+      Self::Ignore => "I",
+    };
+    f.write_str(flag)
   }
 }
 impl TryFrom<u32> for FrameFlag {
@@ -277,7 +273,7 @@ pub enum Frame {
   RequestChannel(RequestChannel),
 }
 
-impl Payload {
+impl RawPayload {
   /// Create a new payload with the passed metadata and data bytes.
   pub fn new(metadata: Bytes, data: Bytes) -> Self {
     Self {
@@ -300,28 +296,26 @@ impl Payload {
   }
 
   /// Parse the metadata bytes into a [Metadata] object.
-  pub fn parse_metadata(&self) -> Result<Metadata, Error> {
+  pub fn parse_metadata(&mut self) -> Result<Metadata, Error> {
     if self.metadata.is_none() {
       return Err(crate::Error::MetadataNotFound);
     }
-    let bytes = self.metadata.as_ref().unwrap();
-    let index = from_u32_bytes(&bytes[0..4]);
-
-    Ok(Metadata { index })
+    let bytes = self.metadata.as_mut().unwrap();
+    Metadata::decode(bytes)
   }
 }
 
-impl From<Frame> for Result<Option<Payload>, crate::PayloadError> {
+impl From<Frame> for Result<Option<RawPayload>, crate::PayloadError> {
   fn from(frame: Frame) -> Self {
     match frame {
-      Frame::PayloadFrame(frame) => Ok(Some(Payload::new(frame.metadata, frame.data))),
+      Frame::PayloadFrame(frame) => Ok(Some(RawPayload::new(frame.metadata, frame.data))),
       Frame::Cancel(_frame) => todo!(),
       Frame::ErrorFrame(frame) => Err(crate::PayloadError::new(frame.code, frame.data)),
       Frame::RequestN(_frame) => todo!(),
-      Frame::RequestResponse(frame) => Ok(Some(Payload::new(frame.0.metadata, frame.0.data))),
-      Frame::RequestFnF(frame) => Ok(Some(Payload::new(frame.0.metadata, frame.0.data))),
-      Frame::RequestStream(frame) => Ok(Some(Payload::new(frame.0.metadata, frame.0.data))),
-      Frame::RequestChannel(frame) => Ok(Some(Payload::new(frame.0.metadata, frame.0.data))),
+      Frame::RequestResponse(frame) => Ok(Some(RawPayload::new(frame.0.metadata, frame.0.data))),
+      Frame::RequestFnF(frame) => Ok(Some(RawPayload::new(frame.0.metadata, frame.0.data))),
+      Frame::RequestStream(frame) => Ok(Some(RawPayload::new(frame.0.metadata, frame.0.data))),
+      Frame::RequestChannel(frame) => Ok(Some(RawPayload::new(frame.0.metadata, frame.0.data))),
     }
   }
 }
@@ -436,6 +430,7 @@ impl Frame {
   pub fn new_error(stream_id: u32, code: u32, data: impl AsRef<str>) -> Frame {
     Frame::ErrorFrame(ErrorFrame {
       stream_id,
+      metadata: Bytes::new(),
       code,
       data: data.as_ref().to_owned(),
     })
@@ -452,27 +447,27 @@ impl Frame {
   }
 
   /// Create a new [RequestResponse] frame.
-  pub fn new_request_response(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
+  pub fn new_request_response(stream_id: u32, payload: RawPayload, flags: FrameFlags) -> Frame {
     Frame::RequestResponse(RequestResponse::from_payload(stream_id, payload, flags, 0))
   }
 
   /// Create a new [RequestStream] frame.
-  pub fn new_request_stream(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
+  pub fn new_request_stream(stream_id: u32, payload: RawPayload, flags: FrameFlags) -> Frame {
     Frame::RequestStream(RequestStream::from_payload(stream_id, payload, flags, 0))
   }
 
   /// Create a new [RequestChannel] frame.
-  pub fn new_request_channel(stream_id: u32, payload: Payload, flags: FrameFlags, initial_n: u32) -> Frame {
+  pub fn new_request_channel(stream_id: u32, payload: RawPayload, flags: FrameFlags, initial_n: u32) -> Frame {
     Frame::RequestChannel(RequestChannel::from_payload(stream_id, payload, flags, initial_n))
   }
 
   /// Create a new [RequestFnF] (Fire & Forget) frame
-  pub fn new_request_fnf(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
+  pub fn new_request_fnf(stream_id: u32, payload: RawPayload, flags: FrameFlags) -> Frame {
     Frame::RequestFnF(RequestFnF::from_payload(stream_id, payload, flags, 0))
   }
 
   /// Create a new [PayloadFrame].
-  pub fn new_payload(stream_id: u32, payload: Payload, flags: FrameFlags) -> Frame {
+  pub fn new_payload(stream_id: u32, payload: RawPayload, flags: FrameFlags) -> Frame {
     Frame::PayloadFrame(PayloadFrame::from_payload(stream_id, payload, flags))
   }
 }

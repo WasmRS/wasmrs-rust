@@ -4,7 +4,7 @@ use std::{io::Write, pin::Pin};
 use futures::Stream;
 
 use super::{signal_into_result, FutureResult, Signal};
-use crate::{Error, Observable};
+use crate::{Error, FluxChannel, Observable, Observer};
 use wasmrs_runtime::{ConditionallySafe, OptionalMut, UnboundedReceiver};
 
 #[must_use]
@@ -35,6 +35,17 @@ where
     Self {
       rx: OptionalMut::none(),
     }
+  }
+
+  /// Create a new [FluxReceiver] that is immediately closed with the passed item.
+  pub fn one<I, E>(item: Result<I, E>) -> FluxReceiver<I, E>
+  where
+    I: ConditionallySafe,
+    E: ConditionallySafe,
+  {
+    let (tx, rx) = FluxChannel::new_parts();
+    tx.send_result(item).unwrap();
+    rx
   }
 }
 

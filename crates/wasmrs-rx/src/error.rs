@@ -12,8 +12,6 @@ pub enum Error {
   Runtime(String),
   /// Error decoding a payload.
   Decode(String),
-  /// Missing input in payload.
-  MissingInput(String),
 }
 
 impl std::error::Error for Error {}
@@ -24,11 +22,6 @@ impl std::fmt::Display for Error {
       Error::ReceiverAlreadyGone => f.write_str("Received already taken"),
       Error::Decode(e) => {
         let mut message = "Decode error: ".to_owned();
-        message.push_str(e);
-        f.write_str(e)
-      }
-      Error::MissingInput(e) => {
-        let mut message = "Missing input: ".to_owned();
         message.push_str(e);
         f.write_str(e)
       }

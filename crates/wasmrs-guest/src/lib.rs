@@ -79,10 +79,11 @@
 #![allow(clippy::needless_pass_by_value)]
 
 mod guest;
+pub use error::Error;
 pub use futures_util::FutureExt;
 pub use guest::*;
 pub use wasmrs_runtime as runtime;
-pub use wasmrs_rx::*;
+pub use wasmrs_rx::{Flux, FluxChannel, FluxReceiver, Mono, Observable, Observer};
 
 mod exports;
 mod imports;
@@ -93,11 +94,12 @@ pub mod error;
 
 pub use futures_util::Stream;
 pub use serde_json::Value;
+pub use wasmrs::Payload;
 pub use wasmrs_codec::Timestamp;
 
 /// Deserialize a generic [Value] from MessagePack bytes.
 pub fn deserialize_generic(buf: &[u8]) -> Result<std::collections::BTreeMap<String, Value>, Error> {
-  deserialize(buf).map_err(|e| Error::Decode(e.to_string()))
+  deserialize(buf).map_err(|e| Error::Codec(e.to_string()))
 }
 
 cfg_if::cfg_if!(

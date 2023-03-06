@@ -1,7 +1,7 @@
 use crate::actions::test_service::chars::*;
 
 pub(crate) async fn task(input: Inputs) -> Result<Outputs, crate::Error> {
-  let stream = Flux::new();
+  let stream = FluxChannel::new();
   for c in input.input.chars() {
     stream.send(c.to_string()).unwrap();
   }

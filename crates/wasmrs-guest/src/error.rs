@@ -8,16 +8,18 @@ pub enum Error {
   /// Error reading frame buffer.
   BufferRead,
   /// Internal Error.
-  Internal(wasmrs::Error),
+  Internal(String),
   /// Error decoding payload or metadata.
   Codec(String),
   /// Error in the asynchronous runtime.
   Runtime(String),
+  /// Missing input in payload.
+  MissingInput(String),
 }
 
 impl From<wasmrs::Error> for Error {
   fn from(e: wasmrs::Error) -> Self {
-    Self::Internal(e)
+    Self::Internal(e.to_string())
   }
 }
 
@@ -43,6 +45,11 @@ impl std::fmt::Display for Error {
       Error::Internal(e) => f.write_str(&e.to_string()),
       Error::Codec(e) => f.write_str(e),
       Error::Runtime(e) => f.write_str(e),
+      Error::MissingInput(e) => {
+        let mut message = "Missing input: ".to_owned();
+        message.push_str(e);
+        f.write_str(e)
+      }
     }
   }
 }
@@ -54,6 +61,12 @@ impl From<std::io::Error> for Error {
 
 impl From<wasmrs_frames::Error> for Error {
   fn from(value: wasmrs_frames::Error) -> Self {
-    Error::Internal(value.into())
+    Error::Internal(value.to_string())
+  }
+}
+
+impl From<wasmrs_rx::Error> for Error {
+  fn from(value: wasmrs_rx::Error) -> Self {
+    Error::Internal(value.to_string())
   }
 }

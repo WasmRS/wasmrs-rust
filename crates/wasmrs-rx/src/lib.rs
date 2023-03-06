@@ -85,12 +85,18 @@ mod flux;
 pub use flux::*;
 
 pub use error::Error;
-use futures::Stream;
+use futures::{Stream, TryStream};
+use wasmrs_runtime::ConditionallySafe;
 
 /// A generic trait to wrap over Flux, Mono, and supporting types.
-pub trait FluxLike<I, E>: Stream<Item = Result<I, E>> + Unpin + Send {}
+pub trait Flux<I, E>: Stream<Item = Result<I, E>> + Unpin + ConditionallySafe {}
 
-impl<I, E, T> FluxLike<I, E> for T where T: Stream<Item = Result<I, E>> + Unpin + Send {}
+impl<I, E, T> Flux<I, E> for T
+where
+  T: Stream<Item = Result<I, E>> + Unpin,
+  T: ConditionallySafe,
+{
+}
 
 #[cfg(test)]
 mod test {
@@ -100,14 +106,14 @@ mod test {
 
   #[tokio::test]
   async fn test_basic() -> Result<()> {
-    async fn takes_any(mut stream: impl FluxLike<u32, u32>) -> Vec<u32> {
+    async fn takes_any(mut stream: impl Flux<u32, u32>) -> Vec<u32> {
       let mut acc = vec![];
       while let Some(Ok(v)) = stream.next().await {
         acc.push(v);
       }
       acc
     }
-    let flux = Flux::<u32, u32>::new();
+    let flux = FluxChannel::<u32, u32>::new();
     flux.send(1)?;
     flux.send(2)?;
     flux.send(3)?;

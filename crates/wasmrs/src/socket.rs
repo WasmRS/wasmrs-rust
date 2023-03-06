@@ -14,12 +14,12 @@ mod responder;
 
 pub use self::buffer::BufferState;
 use self::responder::Responder;
-use crate::{Error, Payload};
+use crate::{Error, RawPayload};
 
 pub enum Handler {
-  ReqRR(tokio::sync::oneshot::Sender<Result<Payload, PayloadError>>),
-  ReqRS(Flux<Payload, PayloadError>),
-  ReqRC(Flux<Payload, PayloadError>),
+  ReqRR(tokio::sync::oneshot::Sender<Result<RawPayload, PayloadError>>),
+  ReqRS(FluxChannel<RawPayload, PayloadError>),
+  ReqRC(FluxChannel<RawPayload, PayloadError>),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -124,23 +124,23 @@ impl WasmSocket {
     let flag = frame.get_flag();
     match frame {
       Frame::RequestFnF(f) => {
-        let input: Payload = f.into();
+        let input: RawPayload = f.into();
         self.on_request_fnf(stream_id, input);
       }
       Frame::RequestResponse(f) => {
-        let input: Payload = f.into();
+        let input: RawPayload = f.into();
         self.on_request_response(stream_id, input);
       }
       Frame::RequestStream(f) => {
-        let input: Payload = f.into();
+        let input: RawPayload = f.into();
         self.on_request_stream(stream_id, input);
       }
       Frame::RequestChannel(f) => {
-        let input: Payload = f.into();
+        let input: RawPayload = f.into();
         self.on_request_channel(stream_id, input);
       }
       Frame::PayloadFrame(f) => {
-        let input: Payload = f.into();
+        let input: RawPayload = f.into();
         self.on_payload(stream_id, flag, input);
       }
       Frame::Cancel(_) => {
@@ -166,7 +166,7 @@ impl WasmSocket {
     Ok(())
   }
 
-  fn on_request_response(&self, sid: u32, input: Payload) {
+  fn on_request_response(&self, sid: u32, input: RawPayload) {
     trace!(
         sid,
         side = %self.side,
@@ -187,7 +187,7 @@ impl WasmSocket {
     });
   }
 
-  fn on_request_stream(&self, sid: u32, input: Payload) {
+  fn on_request_stream(&self, sid: u32, input: RawPayload) {
     trace!(sid, side = %self.side, "on_request_stream");
     let responder = self.responder.clone();
     let tx = self.tx.clone();
@@ -210,12 +210,12 @@ impl WasmSocket {
     });
   }
 
-  fn on_request_channel(&self, sid: u32, first: Payload) {
+  fn on_request_channel(&self, sid: u32, first: RawPayload) {
     trace!(sid, side = %self.side, "on_request_channel");
     let responder = self.responder.clone();
 
     let tx = self.tx.clone();
-    let (handler_tx, handler_rx) = Flux::new_channels();
+    let (handler_tx, handler_rx) = FluxChannel::new_parts();
 
     handler_tx.send(first).unwrap();
     self.register_handler(sid, Handler::ReqRC(handler_tx));
@@ -223,7 +223,7 @@ impl WasmSocket {
     let side = self.side;
 
     runtime::spawn(async move {
-      let outputs = responder.request_channel(handler_rx);
+      let outputs = responder.request_channel(Box::new(handler_rx));
       let (abort_handle, abort_registration) = AbortHandle::new_pair();
       abort_handles.insert(sid, abort_handle);
       let mut outputs = Abortable::new(outputs, abort_registration);
@@ -241,12 +241,12 @@ impl WasmSocket {
         send(&tx, side, sending);
       }
       abort_handles.remove(&sid);
-      let complete = Frame::new_payload(sid, Payload::empty(), Frame::FLAG_COMPLETE);
+      let complete = Frame::new_payload(sid, RawPayload::empty(), Frame::FLAG_COMPLETE);
       send(&tx, side, complete);
     });
   }
 
-  fn on_request_fnf(&self, sid: u32, input: Payload) {
+  fn on_request_fnf(&self, sid: u32, input: RawPayload) {
     trace!(sid, side = %self.side, "on_request_fnf");
 
     let responder = self.responder.clone();
@@ -281,7 +281,7 @@ impl WasmSocket {
     }
   }
 
-  fn on_payload(&self, sid: u32, flag: FrameFlags, input: Payload) {
+  fn on_payload(&self, sid: u32, flag: FrameFlags, input: RawPayload) {
     trace!(sid, side = %self.side, "on_payload");
     let tx = self.tx.clone();
     match self.handlers.entry(sid) {
@@ -367,7 +367,7 @@ impl WasmSocket {
 }
 
 impl RSocket for WasmSocket {
-  fn fire_and_forget(&self, payload: Payload) -> Mono<(), PayloadError> {
+  fn fire_and_forget(&self, payload: RawPayload) -> Mono<(), PayloadError> {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_response");
 
@@ -378,7 +378,7 @@ impl RSocket for WasmSocket {
     Mono::new_success(())
   }
 
-  fn request_response(&self, payload: Payload) -> Mono<Payload, PayloadError> {
+  fn request_response(&self, payload: RawPayload) -> Mono<RawPayload, PayloadError> {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_response");
 
@@ -388,16 +388,16 @@ impl RSocket for WasmSocket {
     let frame = Frame::new_request_response(sid, payload, 0);
 
     send(&self.tx, self.side, frame);
-    let fut = rx.map_err(|_e| PayloadError::application_error("Request-response channel failed"));
+    let fut = rx.map_err(|_e| PayloadError::application_error("Request-response channel failed", None));
 
-    Mono::<Payload, PayloadError>::from_future(async move { fut.await? })
+    Mono::<RawPayload, PayloadError>::from_future(async move { fut.await? })
   }
 
-  fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
+  fn request_stream(&self, payload: RawPayload) -> FluxReceiver<RawPayload, PayloadError> {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_stream");
 
-    let (flux, output) = Flux::new_channels();
+    let (flux, output) = FluxChannel::new_parts();
 
     self.register_handler(sid, Handler::ReqRS(flux));
 
@@ -408,11 +408,14 @@ impl RSocket for WasmSocket {
     output
   }
 
-  fn request_channel(&self, mut stream: FluxReceiver<Payload, PayloadError>) -> FluxReceiver<Payload, PayloadError> {
+  fn request_channel(
+    &self,
+    mut stream: Box<dyn Flux<RawPayload, PayloadError>>,
+  ) -> FluxReceiver<RawPayload, PayloadError> {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_channel");
 
-    let (flux, output) = Flux::new_channels();
+    let (flux, output) = FluxChannel::new_parts();
 
     self.register_handler(sid, Handler::ReqRC(flux));
     let mut reqn_rx = self.register_channel(sid);
@@ -463,11 +466,11 @@ fn send(tx: &UnboundedSender<Frame>, _side: SocketSide, frame: Frame) {
   tx.send(frame).unwrap();
 }
 
-fn send_payload(tx: &UnboundedSender<Frame>, sid: u32, side: SocketSide, payload: Payload, flag: FrameFlags) {
+fn send_payload(tx: &UnboundedSender<Frame>, sid: u32, side: SocketSide, payload: RawPayload, flag: FrameFlags) {
   send(tx, side, Frame::new_payload(sid, payload, flag));
 }
 
-fn send_channel(tx: &UnboundedSender<Frame>, sid: u32, side: SocketSide, payload: Payload, flag: FrameFlags) {
+fn send_channel(tx: &UnboundedSender<Frame>, sid: u32, side: SocketSide, payload: RawPayload, flag: FrameFlags) {
   send(
     tx,
     side,
@@ -480,7 +483,7 @@ fn send_cancel(tx: &UnboundedSender<Frame>, sid: u32, side: SocketSide) {
 }
 
 fn send_complete(tx: &UnboundedSender<Frame>, sid: u32, side: SocketSide, flag: FrameFlags) {
-  send(tx, side, Frame::new_payload(sid, Payload::empty(), flag));
+  send(tx, side, Frame::new_payload(sid, RawPayload::empty(), flag));
 }
 
 fn send_app_error(tx: &UnboundedSender<Frame>, sid: u32, side: SocketSide, msg: impl AsRef<str>) {
@@ -498,27 +501,30 @@ mod test {
   struct EchoRSocket;
 
   impl RSocket for EchoRSocket {
-    fn fire_and_forget(&self, _payload: Payload) -> Mono<(), PayloadError> {
+    fn fire_and_forget(&self, _payload: RawPayload) -> Mono<(), PayloadError> {
       /* no op */
       Mono::from_future(async { Ok(()) })
     }
 
-    fn request_response(&self, payload: Payload) -> Mono<Payload, PayloadError> {
+    fn request_response(&self, payload: RawPayload) -> Mono<RawPayload, PayloadError> {
       info!("{:?}", payload);
       Mono::new_success(payload)
     }
 
-    fn request_stream(&self, payload: Payload) -> FluxReceiver<Payload, PayloadError> {
+    fn request_stream(&self, payload: RawPayload) -> FluxReceiver<RawPayload, PayloadError> {
       info!("{:?}", payload);
-      let (tx, rx) = Flux::new_channels();
+      let (tx, rx) = FluxChannel::new_parts();
       tx.send(payload.clone()).unwrap();
       tx.send(payload).unwrap();
       tx.complete();
       rx
     }
 
-    fn request_channel(&self, mut stream: FluxReceiver<Payload, PayloadError>) -> FluxReceiver<Payload, PayloadError> {
-      let (tx, rx) = Flux::new_channels();
+    fn request_channel(
+      &self,
+      mut stream: Box<dyn Flux<RawPayload, PayloadError>>,
+    ) -> FluxReceiver<RawPayload, PayloadError> {
+      let (tx, rx) = FluxChannel::new_parts();
       runtime::spawn(async move {
         while let Some(next) = stream.next().await {
           tx.send_result(next).unwrap();
@@ -560,7 +566,7 @@ mod test {
     let (guest, _host) = make_echo();
 
     let output = guest
-      .fire_and_forget(Payload::new(Bytes::from_static(b""), Bytes::from_static(b"FNF")))
+      .fire_and_forget(RawPayload::new(Bytes::from_static(b""), Bytes::from_static(b"FNF")))
       .await;
     assert!(output.is_ok());
 
@@ -571,7 +577,7 @@ mod test {
   async fn test_reqres() -> Result<()> {
     let (guest, _host) = make_echo();
 
-    let output = guest.request_response(Payload::new(Bytes::from_static(b""), Bytes::from_static(b"REQRES")));
+    let output = guest.request_response(RawPayload::new(Bytes::from_static(b""), Bytes::from_static(b"REQRES")));
     let once = output.await.unwrap();
     assert_eq!(once.data, Some(Bytes::from_static(b"REQRES")));
     Ok(())
@@ -581,7 +587,7 @@ mod test {
   async fn test_reqstream() -> Result<()> {
     let (guest, _host) = make_echo();
 
-    let mut output = guest.request_stream(Payload::new(Bytes::from_static(b""), Bytes::from_static(b"REQ_STR")));
+    let mut output = guest.request_stream(RawPayload::new(Bytes::from_static(b""), Bytes::from_static(b"REQ_STR")));
     let once = output.next().await.unwrap().unwrap();
     assert_eq!(once.data, Some(Bytes::from_static(b"REQ_STR")));
     let once = output.next().await.unwrap().unwrap();
@@ -592,15 +598,15 @@ mod test {
   #[test_log::test(tokio::test)]
   async fn test_reqchannel() -> Result<()> {
     let (guest, _host) = make_echo();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
 
-    let mut output = guest.request_channel(rx);
-    tx.send(Payload::new(
+    let mut output = guest.request_channel(Box::new(rx));
+    tx.send(RawPayload::new(
       Bytes::from_static(b""),
       Bytes::from_static(b"REQCHANNEL1"),
     ))
     .unwrap();
-    tx.send(Payload::new(
+    tx.send(RawPayload::new(
       Bytes::from_static(b""),
       Bytes::from_static(b"REQCHANNEL2"),
     ))

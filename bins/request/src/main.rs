@@ -2,7 +2,7 @@ use std::io::{BufRead, Write};
 
 use clap::Parser;
 use futures::StreamExt;
-use wasmrs::{Metadata, Payload, RSocket};
+use wasmrs::{Metadata, RSocket, RawPayload};
 use wasmrs_codec::messagepack::*;
 use wasmrs_host::WasiParams;
 use wasmrs_rx::*;
@@ -58,10 +58,10 @@ async fn main() -> anyhow::Result<()> {
 
   if args.channel {
     let stdin = std::io::stdin();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
 
     let task = tokio::spawn(async move {
-      let mut response = context.request_channel(rx);
+      let mut response = context.request_channel(Box::new(rx));
       while let Some(Ok(payload)) = response.next().await {
         let bytes = payload.data.unwrap();
         let val: String = deserialize(&bytes).unwrap();
@@ -70,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
     });
     for (_i, line) in stdin.lock().lines().enumerate() {
       let bytes = serialize(&line.unwrap()).unwrap();
-      let payload = Payload::new(mbytes.clone(), bytes.into());
+      let payload = RawPayload::new(mbytes.clone(), bytes.into());
       let _ = tx.send(payload);
     }
     drop(tx);
@@ -79,7 +79,7 @@ async fn main() -> anyhow::Result<()> {
     let val: serde_json::Value = serde_json::from_str(&args.data)?;
     let bytes = serialize(&val).unwrap();
 
-    let payload = Payload::new(mbytes, bytes.into());
+    let payload = RawPayload::new(mbytes, bytes.into());
     if args.stream {
       let mut response = context.request_stream(payload.clone());
       while let Some(Ok(v)) = response.next().await {

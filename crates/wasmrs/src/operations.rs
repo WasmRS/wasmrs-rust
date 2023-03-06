@@ -124,6 +124,12 @@ impl OperationList {
     Self::get_op(&self.exports, namespace, operation)
   }
 
+  #[must_use]
+  /// Get a list of the exports by name.
+  pub fn get_exports(&self) -> Vec<String> {
+    self.exports.iter().map(|op| op.operation.clone()).collect()
+  }
+
   fn get_op(list: &[Operation], namespace: &str, operation: &str) -> Option<u32> {
     list
       .iter()

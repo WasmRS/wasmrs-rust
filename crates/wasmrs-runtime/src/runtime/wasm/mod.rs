@@ -2,6 +2,7 @@
 #![allow(missing_docs)]
 
 use std::cell::{RefCell, UnsafeCell};
+use std::rc::Rc;
 use std::sync::Arc;
 
 use futures_util::task::LocalSpawnExt;
@@ -199,6 +200,32 @@ impl<T> Clone for OptionalMut<T> {
     Self(self.0.clone())
   }
 }
+
+#[allow(missing_debug_implementations)]
+pub struct MutRc<T>(pub(super) Rc<RefCell<T>>);
+
+impl<T> MutRc<T>
+where
+  T: ConditionallySafe,
+{
+  pub fn new(item: T) -> Self {
+    Self(Rc::new(RefCell::new(item)))
+  }
+
+  pub fn lock(&self) -> std::cell::RefMut<T> {
+    self.0.borrow_mut()
+  }
+}
+impl<T> PartialEq for MutRc<T>
+where
+  T: PartialEq,
+{
+  fn eq(&self, other: &Self) -> bool {
+    self.0.eq(&other.0)
+  }
+}
+
+pub type RtRc<T> = Rc<T>;
 
 pub trait ConditionallySafe: 'static {}
 
