@@ -2,6 +2,7 @@
 pub enum Error {
   #[error(transparent)]
   PayloadError(#[from] wasmrs_guest::PayloadError),
+
   #[error(transparent)]
   Protocol(#[from] wasmrs_guest::Error),
 

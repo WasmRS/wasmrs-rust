@@ -1,10 +1,10 @@
 use crate::actions::test_service::chars::*;
 
 pub(crate) async fn task(input: Input) -> Result<Output, crate::Error> {
-  let stream = Flux::new();
+  let (tx, output) = FluxChannel::new_parts();
   for c in input.input.chars() {
-    stream.send(c.to_string()).unwrap();
+    tx.send(c.to_string()).unwrap();
   }
-  stream.complete();
-  Ok(stream.take_rx()?)
+  tx.complete();
+  Ok(output)
 }

@@ -1,6 +1,6 @@
 use futures::Stream;
 
-use super::{Flux, FluxPipe};
+use super::{FluxChannel, FluxPipe};
 use wasmrs_runtime::ConditionallySafe;
 
 /// The wasmrs-rx implementation of an Rx Observable trait
@@ -11,7 +11,7 @@ where
   Self: Sized,
 {
   /// Pipe one [Flux] into another.
-  fn pipe(self, into: Flux<Item, Err>) -> FluxPipe<Item, Err, Self> {
+  fn pipe(self, into: FluxChannel<Item, Err>) -> FluxPipe<Item, Err, Self> {
     FluxPipe::new(self, into)
   }
 }

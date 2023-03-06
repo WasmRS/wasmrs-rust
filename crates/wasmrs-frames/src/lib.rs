@@ -82,7 +82,6 @@ mod frames;
 pub use frames::*;
 
 mod error;
-pub use error::Error;
-pub use error::PayloadError;
+pub use error::{ex_err, Error, PayloadError};
 
 pub(crate) mod util;

@@ -4,7 +4,7 @@ version = "0.3.0"
 edition = "2021"
 description = "Make a request to a wasmRS .wasm file."
 license = "Apache-2.0"
-repository = "https://github.com/nanobus/iota"
+repository = "https://github.com/wasmrs/wasmrs-rust"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]

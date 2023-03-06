@@ -1,4 +1,4 @@
-use wasmrs::{Metadata, Payload, RSocket};
+use wasmrs::{Metadata, RSocket, RawPayload};
 use wasmrs_codec::messagepack::*;
 use wasmrs_host::WasiParams;
 use wasmrs_wasmtime::WasmtimeBuilder;
@@ -26,7 +26,7 @@ async fn test_iota_req_response() -> anyhow::Result<()> {
 
   let bytes = serialize(&input).unwrap();
 
-  let payload = Payload::new(mbytes, bytes.into());
+  let payload = RawPayload::new(mbytes, bytes.into());
 
   let response = context.request_response(payload.clone());
   match response.await {

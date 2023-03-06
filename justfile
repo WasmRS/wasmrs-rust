@@ -12,6 +12,7 @@ debug:
 
 test:
   cargo test --workspace
+  cargo test -p wasmrs-runtime --target=wasm32-unknown-unknown
 
 clean:
   cargo clean

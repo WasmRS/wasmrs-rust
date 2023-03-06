@@ -2,7 +2,7 @@ use bytes::{BufMut, Bytes, BytesMut};
 
 use super::{Error, FrameFlags, FrameHeader, FrameType, RSocketFlags, RSocketFrame};
 use crate::util::{from_u24_bytes, to_u24_bytes};
-use crate::{Frame, Payload};
+use crate::{Frame, RawPayload};
 
 /// A Payload frame.
 #[derive(Clone)]
@@ -24,7 +24,7 @@ pub struct PayloadFrame {
 }
 
 impl PayloadFrame {
-  pub(crate) fn from_payload(stream_id: u32, payload: Payload, flags: FrameFlags) -> Self {
+  pub(crate) fn from_payload(stream_id: u32, payload: RawPayload, flags: FrameFlags) -> Self {
     Self {
       stream_id,
       metadata: payload.metadata.unwrap_or_default(),
@@ -107,9 +107,9 @@ impl RSocketFrame<PayloadFrame> for PayloadFrame {
   }
 }
 
-impl From<PayloadFrame> for Payload {
+impl From<PayloadFrame> for RawPayload {
   fn from(req: PayloadFrame) -> Self {
-    Payload {
+    RawPayload {
       metadata: Some(req.metadata),
       data: Some(req.data),
     }

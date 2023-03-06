@@ -8,11 +8,11 @@ This crate is a low-level API for testing wasmRS modules. It is not intended for
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://github.com/nanobus/iota/blob/main/CONTRIBUTING.md)
+See [CONTRIBUTING.md](https://github.com/WasmRS/wasmrs-rust/blob/main/CONTRIBUTING.md)
 
 ## License
 
-See the root [LICENSE.txt](https://github.com/nanobus/iota/blob/main/LICENSE.txt)
+See the root [LICENSE.txt](https://github.com/WasmRS/wasmrs-rust/blob/main/LICENSE.txt)
 
 
 

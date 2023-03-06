@@ -1,5 +1,5 @@
 use clap::Parser;
-use wasmrs::{Metadata, Payload, RSocket};
+use wasmrs::{Metadata, RSocket, RawPayload};
 use wasmrs_codec::messagepack::*;
 use wasmrs_host::WasiParams;
 use wasmrs_wasmtime::WasmtimeBuilder;
@@ -50,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
   let val: serde_json::Value = serde_json::from_str(&args.data)?;
   let bytes = serialize(&val).unwrap();
 
-  let payload = Payload::new(mbytes, bytes.into());
+  let payload = RawPayload::new(mbytes, bytes.into());
 
   if args.stream {
     unimplemented!()

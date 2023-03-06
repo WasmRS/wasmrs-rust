@@ -19,8 +19,9 @@ impl core::fmt::Display for Error {
 impl From<Error> for wasmrs_frames::PayloadError {
   fn from(val: Error) -> Self {
     use core::fmt::Write;
+
     let mut string: heapless::String<256> = heapless::String::new();
-    write!(string, "{:.256}", val).unwrap();
+    string.write_fmt(format_args!("{:.256}", val)).unwrap();
 
     wasmrs_frames::PayloadError::new(0, string.as_str())
   }

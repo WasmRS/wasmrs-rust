@@ -163,7 +163,7 @@ where
 #[must_use]
 #[allow(missing_debug_implementations)]
 /// An implementation of the `Flux` as seen in RSocket and reactive streams. It is similar to a [Stream<Item = Result<Item, Err>>] or an unbounded channel.
-pub struct Flux<Item, Err>
+pub struct FluxChannel<Item, Err>
 where
   Item: ConditionallySafe,
   Err: ConditionallySafe,
@@ -173,7 +173,7 @@ where
   rx: FluxReceiver<Item, Err>,
 }
 
-impl<Item, Err> Flux<Item, Err>
+impl<Item, Err> FluxChannel<Item, Err>
 where
   Item: ConditionallySafe,
   Err: ConditionallySafe,
@@ -190,7 +190,7 @@ where
   }
 
   /// Create a new [Flux] and return the parts, pre-separated.
-  pub fn new_channels() -> (Self, FluxReceiver<Item, Err>) {
+  pub fn new_parts() -> (Self, FluxReceiver<Item, Err>) {
     let (tx, rx) = unbounded_channel();
 
     (
@@ -226,7 +226,19 @@ where
   }
 }
 
-impl<Item, Err> Clone for Flux<Item, Err>
+impl<Item, Err> TryFrom<FluxChannel<Item, Err>> for FluxReceiver<Item, Err>
+where
+  Item: ConditionallySafe,
+  Err: ConditionallySafe,
+{
+  type Error = Error;
+
+  fn try_from(value: FluxChannel<Item, Err>) -> Result<Self, Self::Error> {
+    value.take_rx()
+  }
+}
+
+impl<Item, Err> Clone for FluxChannel<Item, Err>
 where
   Item: ConditionallySafe,
   Err: ConditionallySafe,
@@ -240,7 +252,7 @@ where
   }
 }
 
-impl<Err> AsyncRead for Flux<Vec<u8>, Err>
+impl<Err> AsyncRead for FluxChannel<Vec<u8>, Err>
 where
   Err: ConditionallySafe,
 {
@@ -262,14 +274,14 @@ where
   }
 }
 
-impl<Item, Err> Observable<Item, Err> for Flux<Item, Err>
+impl<Item, Err> Observable<Item, Err> for FluxChannel<Item, Err>
 where
   Item: ConditionallySafe,
   Err: ConditionallySafe,
 {
 }
 
-impl<Item, Err> Observer<Item, Err> for Flux<Item, Err>
+impl<Item, Err> Observer<Item, Err> for FluxChannel<Item, Err>
 where
   Item: ConditionallySafe,
   Err: ConditionallySafe,
@@ -288,7 +300,7 @@ where
   }
 }
 
-impl<Item, Err> Default for Flux<Item, Err>
+impl<Item, Err> Default for FluxChannel<Item, Err>
 where
   Item: ConditionallySafe,
   Err: ConditionallySafe,
@@ -298,7 +310,7 @@ where
   }
 }
 
-impl<Item, Err> Stream for Flux<Item, Err>
+impl<Item, Err> Stream for FluxChannel<Item, Err>
 where
   Item: ConditionallySafe,
   Err: ConditionallySafe,
@@ -333,7 +345,7 @@ mod test {
 
   #[tokio::test]
   async fn test_flux() -> Result<()> {
-    let mut flux = Flux::<u32, u32>::new();
+    let mut flux = FluxChannel::<u32, u32>::new();
     flux.send(1)?;
     let value = flux.next().await;
     assert_eq!(value, Some(Ok(1)));

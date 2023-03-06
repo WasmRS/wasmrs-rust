@@ -108,14 +108,15 @@ impl FrameRecord {
 
 impl std::fmt::Display for FrameRecord {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      FrameRecord::Incoming { side, stream_id, frame } => {
-        write!(f, "s{}-{}-in", stream_id, side)
-      }
-      FrameRecord::Outgoing { side, stream_id, frame } => {
-        write!(f, "s{}-{}-out", stream_id, side)
-      }
-    }
+    let (sid, side) = match self {
+      FrameRecord::Incoming { side, stream_id, frame } => (stream_id, side),
+      FrameRecord::Outgoing { side, stream_id, frame } => (stream_id, side),
+    };
+    f.write_str("s")?;
+    sid.fmt(f)?;
+    f.write_str("-")?;
+    side.fmt(f)?;
+    f.write_str("-out")
   }
 }
 

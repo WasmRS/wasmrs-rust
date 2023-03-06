@@ -4,7 +4,7 @@ version = "0.4.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "wasmRS guest implementation of the RSocket protocol for reactive streams in WebAssembly."
-repository = "https://github.com/nanobus/iota"
+repository = "https://github.com/wasmrs/wasmrs-rust"
 
 [features]
 default = []

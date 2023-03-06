@@ -53,7 +53,7 @@ impl AsRef<str> for HostExports {
 
 impl std::fmt::Display for HostExports {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", self.as_ref())
+    f.write_str(self.as_ref())
   }
 }
 
@@ -113,6 +113,6 @@ impl AsRef<str> for GuestExports {
 
 impl std::fmt::Display for GuestExports {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", self.as_ref())
+    f.write_str(self.as_ref())
   }
 }

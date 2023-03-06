@@ -2,7 +2,7 @@ use bytes::{BufMut, Bytes, BytesMut};
 
 use super::{Error, FrameFlags, FrameHeader, FrameType, RSocketFlags};
 use crate::util::{from_u24_bytes, from_u32_bytes, to_u24_bytes};
-use crate::{Frame, Payload};
+use crate::{Frame, RawPayload};
 
 #[derive(Clone)]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
@@ -26,7 +26,7 @@ pub struct RequestPayload {
 impl RequestPayload {
   pub(super) fn from_payload(
     stream_id: u32,
-    payload: Payload,
+    payload: RawPayload,
     frame_type: FrameType,
     flags: FrameFlags,
     initial_n: u32,
@@ -116,9 +116,9 @@ impl RequestPayload {
   }
 }
 
-impl From<RequestPayload> for Payload {
+impl From<RequestPayload> for RawPayload {
   fn from(req: RequestPayload) -> Self {
-    Payload {
+    RawPayload {
       metadata: Some(req.metadata),
       data: Some(req.data),
     }

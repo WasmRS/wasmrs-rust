@@ -35,7 +35,7 @@ fn request_response(input: Mono<ParsedPayload, PayloadError>) -> Result<Mono<Pay
 fn request_stream(
   input: Mono<ParsedPayload, PayloadError>,
 ) -> Result<FluxReceiver<Payload, PayloadError>, GenericError> {
-  let channel = Flux::<Payload, PayloadError>::new();
+  let channel = FluxChannel::<Payload, PayloadError>::new();
   let rx = channel.take_rx().unwrap();
   spawn(async move {
     let input = deserialize::<String>(&input.await.unwrap().data).unwrap();
@@ -51,7 +51,7 @@ fn request_stream(
 fn request_channel(
   mut input: FluxReceiver<ParsedPayload, PayloadError>,
 ) -> Result<FluxReceiver<Payload, PayloadError>, GenericError> {
-  let channel = Flux::<Payload, PayloadError>::new();
+  let channel = FluxChannel::<Payload, PayloadError>::new();
   let rx = channel.take_rx().unwrap();
   spawn(async move {
     while let Some(payload) = input.next().await {
@@ -86,17 +86,17 @@ From there, edit the `apex.axdl` interface definition to match your needs and ru
 
 ## More Information
 
-WasmRS makes heavy use of generated code from `apex` specs and generators to automate all of the boilerplate. See the [getting-started](https://github.com/nanobus/nanobus/blob/main/docs/getting-started.md) for NanoBus for up-to-date usage.
+WasmRS makes heavy use of generated code from `apex` specs and generators to automate all of the boilerplate. See the [getting-started](https://github.com/WasmRS/docs/blob/main/wasmrs-rust-howto.md) for usage.
 
-For more information on wasmRS, see the core [wasmrs](https://github.com/nanobus/iota/blob/main/rust/crates/wasmrs/README.md) crate.
+For more information on wasmRS, see the core [wasmrs](https://github.com/wasmrs/wasmrs-rust/blob/main/crates/wasmrs/README.md) crate.
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://github.com/nanobus/iota/blob/main/CONTRIBUTING.md)
+See [CONTRIBUTING.md](https://github.com/WasmRS/wasmrs-rust/blob/main/CONTRIBUTING.md)
 
 ## License
 
-See the root [LICENSE.txt](https://github.com/nanobus/iota/blob/main/LICENSE.txt)
+See the root [LICENSE.txt](https://github.com/WasmRS/wasmrs-rust/blob/main/LICENSE.txt)
 
 
 

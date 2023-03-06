@@ -104,15 +104,15 @@ extern "C" fn __wasmrs_init(guest_buffer_size: u32, host_buffer_size: u32, max_h
 }
 
 fn deserialize_helper(
-  i: Mono<ParsedPayload, PayloadError>,
+  i: Mono<Payload, PayloadError>,
 ) -> Mono<std::collections::BTreeMap<String, wasmrs_guest::Value>, PayloadError> {
   Mono::from_future(async move {
     match i.await {
       Ok(bytes) => match deserialize(&bytes.data) {
         Ok(v) => Ok(v),
-        Err(e) => Err(PayloadError::application_error(e.to_string())),
+        Err(e) => Err(PayloadError::application_error(e.to_string(), None)),
       },
-      Err(e) => Err(PayloadError::application_error(e.to_string())),
+      Err(e) => Err(PayloadError::application_error(e.to_string(), None)),
     }
   })
 }
@@ -125,7 +125,7 @@ pub(crate) struct MyStreamerComponent();
 
 impl MyStreamerComponent {
   fn request_stream_i64_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -143,7 +143,7 @@ impl MyStreamerComponent {
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -152,8 +152,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -161,14 +161,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_f64_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -186,7 +186,7 @@ impl MyStreamerComponent {
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -195,8 +195,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -204,14 +204,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_type_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -229,7 +229,7 @@ impl MyStreamerComponent {
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -238,8 +238,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -247,14 +247,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_enum_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -272,7 +272,7 @@ impl MyStreamerComponent {
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -281,8 +281,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -290,14 +290,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_uuid_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -315,7 +315,7 @@ impl MyStreamerComponent {
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -324,8 +324,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -333,14 +333,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_alias_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -358,7 +358,7 @@ impl MyStreamerComponent {
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -367,8 +367,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -376,14 +376,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_string_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -401,7 +401,7 @@ impl MyStreamerComponent {
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -410,8 +410,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -419,14 +419,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_bool_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -444,7 +444,7 @@ impl MyStreamerComponent {
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -453,8 +453,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -462,14 +462,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_datetime_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -487,7 +487,7 @@ impl MyStreamerComponent {
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -496,8 +496,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -505,14 +505,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_list_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -530,7 +530,7 @@ impl MyStreamerComponent {
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -539,8 +539,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -548,14 +548,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_map_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -573,7 +573,7 @@ impl MyStreamerComponent {
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -582,8 +582,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -591,14 +591,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_args_i64_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -617,13 +617,13 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -632,8 +632,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -641,14 +641,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_args_f64_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -667,13 +667,13 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -682,8 +682,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -691,14 +691,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_args_type_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -717,13 +717,13 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -732,8 +732,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -741,14 +741,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_args_enum_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -767,13 +767,13 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -782,8 +782,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -791,14 +791,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_args_uuid_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -817,13 +817,13 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -832,8 +832,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -841,14 +841,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_args_alias_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -867,13 +867,13 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -882,8 +882,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -891,14 +891,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_args_string_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -917,13 +917,13 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -932,8 +932,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -941,14 +941,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_args_bool_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -967,13 +967,13 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -982,8 +982,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -991,14 +991,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_args_datetime_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -1017,13 +1017,13 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -1032,8 +1032,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -1041,14 +1041,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_args_list_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -1067,13 +1067,13 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -1082,8 +1082,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -1091,14 +1091,14 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_stream_args_map_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
-    let (out_tx, out_rx) = Flux::new_channels();
+    let (out_tx, out_rx) = FluxChannel::new_parts();
     let input = deserialize_helper(input);
     spawn(async move {
       let input_payload = match input.await {
@@ -1117,13 +1117,13 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let input = match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
       };
@@ -1132,8 +1132,8 @@ impl MyStreamerComponent {
           while let Some(next) = result.next().await {
             let out = match next {
               Ok(output) => serialize(&output)
-                .map(|b| Payload::new_data(None, Some(b.into())))
-                .map_err(|e| PayloadError::application_error(e.to_string())),
+                .map(|b| RawPayload::new_data(None, Some(b.into())))
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
               Err(e) => Err(e),
             };
             let _ = out_tx.send_result(out);
@@ -1141,24 +1141,25 @@ impl MyStreamerComponent {
           out_tx.complete();
         }
         Err(e) => {
-          let _ = out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = out_tx.error(PayloadError::application_error(e.to_string(), None));
         }
       }
     });
     Ok(out_rx)
   }
   fn request_channel_i64_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_i64::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_i64::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_i64::Input { r#in: real_in_rx };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <i64 as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <i64 as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -1170,7 +1171,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <i64 as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -1181,7 +1182,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -1190,7 +1191,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_i64(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -1199,8 +1200,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -1214,17 +1215,18 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_f64_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_f64::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_f64::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_f64::Input { r#in: real_in_rx };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <f64 as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <f64 as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -1236,7 +1238,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <f64 as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -1247,7 +1249,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -1256,7 +1258,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_f64(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -1265,8 +1267,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -1280,17 +1282,18 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_type_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_type::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_type::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_type::Input { r#in: real_in_rx };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <MyType as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <MyType as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -1302,7 +1305,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <MyType as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -1313,7 +1316,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -1322,7 +1325,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_type(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -1331,8 +1334,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -1346,17 +1349,18 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_enum_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_enum::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_enum::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_enum::Input { r#in: real_in_rx };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <MyEnum as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <MyEnum as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -1368,7 +1372,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <MyEnum as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -1379,7 +1383,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -1388,7 +1392,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_enum(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -1397,8 +1401,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -1412,17 +1416,18 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_alias_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_alias::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_alias::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_alias::Input { r#in: real_in_rx };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <Uuid as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <Uuid as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -1434,7 +1439,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <Uuid as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -1445,7 +1450,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -1454,7 +1459,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_alias(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -1463,8 +1468,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -1478,17 +1483,18 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_string_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_string::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_string::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_string::Input { r#in: real_in_rx };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <String as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <String as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -1500,7 +1506,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <String as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -1511,7 +1517,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -1520,7 +1526,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_string(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -1529,8 +1535,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -1544,17 +1550,18 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_bool_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_bool::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_bool::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_bool::Input { r#in: real_in_rx };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <bool as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <bool as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -1566,7 +1573,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <bool as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -1577,7 +1584,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -1586,7 +1593,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_bool(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -1595,8 +1602,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -1610,18 +1617,18 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_datetime_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_datetime::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_datetime::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_datetime::Input { r#in: real_in_rx };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
             <wasmrs_guest::Timestamp as serde::Deserialize>::deserialize(v)
-              .map_err(|e| PayloadError::application_error(e.to_string())),
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -1633,7 +1640,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <wasmrs_guest::Timestamp as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -1644,7 +1651,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -1653,7 +1660,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_datetime(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -1662,8 +1669,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -1677,18 +1684,18 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_list_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_list::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_list::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_list::Input { r#in: real_in_rx };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
             <Vec<String> as serde::Deserialize>::deserialize(v)
-              .map_err(|e| PayloadError::application_error(e.to_string())),
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -1700,7 +1707,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <Vec<String> as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -1711,7 +1718,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -1720,7 +1727,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_list(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -1729,8 +1736,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -1744,18 +1751,18 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_map_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_map::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_map::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_map::Input { r#in: real_in_rx };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
             <std::collections::HashMap<String, String> as serde::Deserialize>::deserialize(v)
-              .map_err(|e| PayloadError::application_error(e.to_string())),
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -1767,7 +1774,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <std::collections::HashMap<String, String> as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -1778,7 +1785,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -1787,7 +1794,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_map(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -1796,8 +1803,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -1811,11 +1818,11 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_args_i64_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_args_i64::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_args_i64::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_args_i64::Input {
           value: <i64 as serde::Deserialize>::deserialize(
@@ -1823,13 +1830,14 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           r#in: real_in_rx,
         };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <i64 as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <i64 as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -1841,7 +1849,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <i64 as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -1852,7 +1860,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -1861,7 +1869,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_args_i64(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -1870,8 +1878,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -1885,11 +1893,11 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_args_f64_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_args_f64::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_args_f64::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_args_f64::Input {
           value: <f64 as serde::Deserialize>::deserialize(
@@ -1897,13 +1905,14 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           r#in: real_in_rx,
         };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <f64 as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <f64 as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -1915,7 +1924,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <f64 as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -1926,7 +1935,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -1935,7 +1944,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_args_f64(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -1944,8 +1953,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -1959,11 +1968,11 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_args_type_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_args_type::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_args_type::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_args_type::Input {
           value: <MyType as serde::Deserialize>::deserialize(
@@ -1971,13 +1980,14 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           r#in: real_in_rx,
         };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <MyType as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <MyType as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -1989,7 +1999,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <MyType as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -2000,7 +2010,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -2009,7 +2019,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_args_type(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -2018,8 +2028,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -2033,11 +2043,11 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_args_enum_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_args_enum::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_args_enum::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_args_enum::Input {
           value: <MyEnum as serde::Deserialize>::deserialize(
@@ -2045,13 +2055,14 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           r#in: real_in_rx,
         };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <MyEnum as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <MyEnum as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -2063,7 +2074,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <MyEnum as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -2074,7 +2085,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -2083,7 +2094,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_args_enum(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -2092,8 +2103,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -2107,11 +2118,11 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_args_alias_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_args_alias::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_args_alias::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_args_alias::Input {
           value: <Uuid as serde::Deserialize>::deserialize(
@@ -2119,13 +2130,14 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           r#in: real_in_rx,
         };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <Uuid as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <Uuid as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -2137,7 +2149,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <Uuid as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -2148,7 +2160,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -2157,7 +2169,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_args_alias(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -2166,8 +2178,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -2181,31 +2193,30 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_args_string_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des =
-        move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_args_string::Input, Error> {
-          let mut map = deserialize_generic(&payload.data)?;
-          let input = my_streamer_service::request_channel_args_string::Input {
-            value: <String as serde::Deserialize>::deserialize(
-              map
-                .remove("value")
-                .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
-            )
-            .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
-            r#in: real_in_rx,
-          };
-
-          if let Some(v) = map.remove("in") {
-            let _ = in_inner_tx.send_result(
-              <String as serde::Deserialize>::deserialize(v)
-                .map_err(|e| PayloadError::application_error(e.to_string())),
-            );
-          }
-          Ok(input)
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_args_string::Input, Error> {
+        let mut map = deserialize_generic(&payload.data)?;
+        let input = my_streamer_service::request_channel_args_string::Input {
+          value: <String as serde::Deserialize>::deserialize(
+            map
+              .remove("value")
+              .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
+          )
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
+          r#in: real_in_rx,
         };
+
+        if let Some(v) = map.remove("in") {
+          let _ = in_inner_tx.send_result(
+            <String as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
+          );
+        }
+        Ok(input)
+      };
       let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
         spawn(async move {
           while let Ok(Some(Ok(payload))) = input.recv().await {
@@ -2213,7 +2224,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <String as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -2224,7 +2235,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -2233,7 +2244,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_args_string(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -2242,8 +2253,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -2257,11 +2268,11 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_args_bool_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_args_bool::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_args_bool::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_args_bool::Input {
           value: <bool as serde::Deserialize>::deserialize(
@@ -2269,13 +2280,14 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           r#in: real_in_rx,
         };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <bool as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <bool as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -2287,7 +2299,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <bool as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -2298,7 +2310,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -2307,7 +2319,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_args_bool(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -2316,8 +2328,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -2331,31 +2343,30 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_args_datetime_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des =
-        move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_args_datetime::Input, Error> {
-          let mut map = deserialize_generic(&payload.data)?;
-          let input = my_streamer_service::request_channel_args_datetime::Input {
-            value: <wasmrs_guest::Timestamp as serde::Deserialize>::deserialize(
-              map
-                .remove("value")
-                .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
-            )
-            .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
-            r#in: real_in_rx,
-          };
-
-          if let Some(v) = map.remove("in") {
-            let _ = in_inner_tx.send_result(
-              <wasmrs_guest::Timestamp as serde::Deserialize>::deserialize(v)
-                .map_err(|e| PayloadError::application_error(e.to_string())),
-            );
-          }
-          Ok(input)
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_args_datetime::Input, Error> {
+        let mut map = deserialize_generic(&payload.data)?;
+        let input = my_streamer_service::request_channel_args_datetime::Input {
+          value: <wasmrs_guest::Timestamp as serde::Deserialize>::deserialize(
+            map
+              .remove("value")
+              .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
+          )
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
+          r#in: real_in_rx,
         };
+
+        if let Some(v) = map.remove("in") {
+          let _ = in_inner_tx.send_result(
+            <wasmrs_guest::Timestamp as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
+          );
+        }
+        Ok(input)
+      };
       let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
         spawn(async move {
           while let Ok(Some(Ok(payload))) = input.recv().await {
@@ -2363,7 +2374,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <wasmrs_guest::Timestamp as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -2374,7 +2385,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -2383,7 +2394,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_args_datetime(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -2392,8 +2403,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -2407,11 +2418,11 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_args_list_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_args_list::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_args_list::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_args_list::Input {
           value: <Vec<String> as serde::Deserialize>::deserialize(
@@ -2419,14 +2430,14 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           r#in: real_in_rx,
         };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
             <Vec<String> as serde::Deserialize>::deserialize(v)
-              .map_err(|e| PayloadError::application_error(e.to_string())),
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -2438,7 +2449,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <Vec<String> as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -2449,7 +2460,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -2458,7 +2469,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_args_list(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -2467,8 +2478,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -2482,11 +2493,11 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_args_map_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_args_map::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_args_map::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_args_map::Input {
           value: <std::collections::HashMap<String, String> as serde::Deserialize>::deserialize(
@@ -2494,14 +2505,14 @@ impl MyStreamerComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           r#in: real_in_rx,
         };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
             <std::collections::HashMap<String, String> as serde::Deserialize>::deserialize(v)
-              .map_err(|e| PayloadError::application_error(e.to_string())),
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -2513,7 +2524,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <std::collections::HashMap<String, String> as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -2524,7 +2535,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -2533,7 +2544,7 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_args_map(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
@@ -2542,8 +2553,8 @@ impl MyStreamerComponent {
               Ok(output) => {
                 let _ = real_out_tx.send_result(
                   serialize(&output)
-                    .map(|b| Payload::new_data(None, Some(b.into())))
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map(|b| RawPayload::new_data(None, Some(b.into())))
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
               Err(e) => {
@@ -2557,17 +2568,18 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_void_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
-      let des = move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_void::Input, Error> {
+      let des = move |payload: Payload| -> Result<my_streamer_service::request_channel_void::Input, Error> {
         let mut map = deserialize_generic(&payload.data)?;
         let input = my_streamer_service::request_channel_void::Input { r#in: real_in_rx };
 
         if let Some(v) = map.remove("in") {
           let _ = in_inner_tx.send_result(
-            <i64 as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+            <i64 as serde::Deserialize>::deserialize(v)
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
         Ok(input)
@@ -2579,7 +2591,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <i64 as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -2590,7 +2602,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -2599,14 +2611,14 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_void(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
           let _ = real_out_tx.send_result(
             serialize(&result)
-              .map(|b| Payload::new_data(None, Some(b.into())))
-              .map_err(|e| PayloadError::application_error(e.to_string())),
+              .map(|b| RawPayload::new_data(None, Some(b.into())))
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
       }
@@ -2614,18 +2626,19 @@ impl MyStreamerComponent {
     Ok(real_out_rx)
   }
   fn request_channel_non_stream_output_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
-    let (real_out_tx, real_out_rx) = Flux::new_channels();
-    let (real_in_tx, real_in_rx) = Flux::new_channels();
+    let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
+    let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
     spawn(async move {
       let des =
-        move |payload: ParsedPayload| -> Result<my_streamer_service::request_channel_non_stream_output::Input, Error> {
+        move |payload: Payload| -> Result<my_streamer_service::request_channel_non_stream_output::Input, Error> {
           let mut map = deserialize_generic(&payload.data)?;
           let input = my_streamer_service::request_channel_non_stream_output::Input { r#in: real_in_rx };
 
           if let Some(v) = map.remove("in") {
             let _ = in_inner_tx.send_result(
-              <i64 as serde::Deserialize>::deserialize(v).map_err(|e| PayloadError::application_error(e.to_string())),
+              <i64 as serde::Deserialize>::deserialize(v)
+                .map_err(|e| PayloadError::application_error(e.to_string(), None)),
             );
           }
           Ok(input)
@@ -2637,7 +2650,7 @@ impl MyStreamerComponent {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
                   <i64 as serde::Deserialize>::deserialize(a)
-                    .map_err(|e| PayloadError::application_error(e.to_string())),
+                    .map_err(|e| PayloadError::application_error(e.to_string(), None)),
                 );
               }
             } else {
@@ -2648,7 +2661,7 @@ impl MyStreamerComponent {
         match des(first) {
           Ok(o) => o,
           Err(e) => {
-            let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+            let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
             return;
           }
         }
@@ -2657,14 +2670,14 @@ impl MyStreamerComponent {
       };
       match MyStreamerComponent::request_channel_non_stream_output(input_map).await {
         Err(e) => {
-          let _ = real_out_tx.error(PayloadError::application_error(e.to_string()));
+          let _ = real_out_tx.error(PayloadError::application_error(e.to_string(), None));
           return;
         }
         Ok(mut result) => {
           let _ = real_out_tx.send_result(
             serialize(&result)
-              .map(|b| Payload::new_data(None, Some(b.into())))
-              .map_err(|e| PayloadError::application_error(e.to_string())),
+              .map(|b| RawPayload::new_data(None, Some(b.into())))
+              .map_err(|e| PayloadError::application_error(e.to_string(), None)),
           );
         }
       }
@@ -3704,7 +3717,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_i64::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_I64_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default()
       .request_stream(payload)
@@ -3725,7 +3738,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_f64::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_F64_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default()
       .request_stream(payload)
@@ -3746,7 +3759,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_type::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_TYPE_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default()
       .request_stream(payload)
@@ -3767,7 +3780,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_enum::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ENUM_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default()
       .request_stream(payload)
@@ -3788,7 +3801,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_uuid::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_UUID_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default()
       .request_stream(payload)
@@ -3809,7 +3822,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_alias::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ALIAS_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default()
       .request_stream(payload)
@@ -3830,7 +3843,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_string::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_STRING_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default()
       .request_stream(payload)
@@ -3851,7 +3864,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_bool::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_BOOL_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default()
       .request_stream(payload)
@@ -3872,7 +3885,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_datetime::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_DATETIME_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default().request_stream(payload).map(|result| {
       result.map(|payload| Ok(deserialize::<request_stream_datetime::Output>(&payload.data.unwrap())?))?
@@ -3893,7 +3906,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_list::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_LIST_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default()
       .request_stream(payload)
@@ -3914,7 +3927,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_map::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_MAP_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default()
       .request_stream(payload)
@@ -3935,7 +3948,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_args_i64::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_I64_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default().request_stream(payload).map(|result| {
       result.map(|payload| Ok(deserialize::<request_stream_args_i64::Output>(&payload.data.unwrap())?))?
@@ -3958,7 +3971,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_args_f64::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_F64_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default().request_stream(payload).map(|result| {
       result.map(|payload| Ok(deserialize::<request_stream_args_f64::Output>(&payload.data.unwrap())?))?
@@ -3981,7 +3994,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_args_type::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_TYPE_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default().request_stream(payload).map(|result| {
       result.map(|payload| Ok(deserialize::<request_stream_args_type::Output>(&payload.data.unwrap())?))?
@@ -4004,7 +4017,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_args_enum::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_ENUM_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default().request_stream(payload).map(|result| {
       result.map(|payload| Ok(deserialize::<request_stream_args_enum::Output>(&payload.data.unwrap())?))?
@@ -4027,7 +4040,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_args_uuid::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_UUID_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default().request_stream(payload).map(|result| {
       result.map(|payload| Ok(deserialize::<request_stream_args_uuid::Output>(&payload.data.unwrap())?))?
@@ -4050,7 +4063,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_args_alias::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_ALIAS_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default().request_stream(payload).map(|result| {
       result.map(|payload| {
@@ -4077,7 +4090,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_args_string::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_STRING_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default().request_stream(payload).map(|result| {
       result.map(|payload| {
@@ -4104,7 +4117,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_args_bool::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_BOOL_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default().request_stream(payload).map(|result| {
       result.map(|payload| Ok(deserialize::<request_stream_args_bool::Output>(&payload.data.unwrap())?))?
@@ -4127,7 +4140,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_args_datetime::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_DATETIME_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default().request_stream(payload).map(|result| {
       result.map(|payload| {
@@ -4154,7 +4167,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_args_list::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_LIST_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default().request_stream(payload).map(|result| {
       result.map(|payload| Ok(deserialize::<request_stream_args_list::Output>(&payload.data.unwrap())?))?
@@ -4177,7 +4190,7 @@ pub mod my_provider {
   ) -> impl Stream<Item = Result<request_stream_args_map::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_STREAM_ARGS_MAP_INDEX_BYTES.as_slice();
     let payload = wasmrs_guest::serialize(&input)
-      .map(|bytes| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
+      .map(|bytes| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), bytes.into()))
       .unwrap();
     Host::default().request_stream(payload).map(|result| {
       result.map(|payload| Ok(deserialize::<request_stream_args_map::Output>(&payload.data.unwrap())?))?
@@ -4199,7 +4212,7 @@ pub mod my_provider {
     mut input: request_channel_i64::Input,
   ) -> impl Stream<Item = Result<request_channel_i64::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_I64_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4220,19 +4233,19 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(rx)
+      .request_channel(Box::new(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_i64::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4253,7 +4266,7 @@ pub mod my_provider {
     mut input: request_channel_f64::Input,
   ) -> impl Stream<Item = Result<request_channel_f64::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_F64_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4274,19 +4287,19 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(rx)
+      .request_channel(Box::new(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_f64::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4307,7 +4320,7 @@ pub mod my_provider {
     mut input: request_channel_type::Input,
   ) -> impl Stream<Item = Result<request_channel_type::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_TYPE_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4328,19 +4341,19 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(rx)
+      .request_channel(Box::new(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_type::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4361,7 +4374,7 @@ pub mod my_provider {
     mut input: request_channel_enum::Input,
   ) -> impl Stream<Item = Result<request_channel_enum::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ENUM_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4382,19 +4395,19 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(rx)
+      .request_channel(Box::new(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_enum::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4415,7 +4428,7 @@ pub mod my_provider {
     mut input: request_channel_alias::Input,
   ) -> impl Stream<Item = Result<request_channel_alias::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ALIAS_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4436,19 +4449,19 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(rx)
+      .request_channel(Box::new(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_alias::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4469,7 +4482,7 @@ pub mod my_provider {
     mut input: request_channel_string::Input,
   ) -> impl Stream<Item = Result<request_channel_string::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_STRING_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4490,19 +4503,19 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(rx)
+      .request_channel(Box::new(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_string::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4523,7 +4536,7 @@ pub mod my_provider {
     mut input: request_channel_bool::Input,
   ) -> impl Stream<Item = Result<request_channel_bool::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_BOOL_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4544,19 +4557,19 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(rx)
+      .request_channel(Box::new(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_bool::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4577,7 +4590,7 @@ pub mod my_provider {
     mut input: request_channel_datetime::Input,
   ) -> impl Stream<Item = Result<request_channel_datetime::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_DATETIME_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4598,18 +4611,18 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(rx).map(|result| {
+    Host::default().request_channel(Box::new(rx)).map(|result| {
       result.map(|payload| Ok(deserialize::<request_channel_datetime::Output>(&payload.data.unwrap())?))?
     })
   }
@@ -4631,7 +4644,7 @@ pub mod my_provider {
     mut input: request_channel_list::Input,
   ) -> impl Stream<Item = Result<request_channel_list::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_LIST_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4652,19 +4665,19 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(rx)
+      .request_channel(Box::new(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_list::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4685,7 +4698,7 @@ pub mod my_provider {
     mut input: request_channel_map::Input,
   ) -> impl Stream<Item = Result<request_channel_map::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_MAP_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4706,19 +4719,19 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(rx)
+      .request_channel(Box::new(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_map::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4739,7 +4752,7 @@ pub mod my_provider {
     mut input: request_channel_args_i64::Input,
   ) -> impl Stream<Item = Result<request_channel_args_i64::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_I64_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4760,18 +4773,18 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(rx).map(|result| {
+    Host::default().request_channel(Box::new(rx)).map(|result| {
       result.map(|payload| Ok(deserialize::<request_channel_args_i64::Output>(&payload.data.unwrap())?))?
     })
   }
@@ -4796,7 +4809,7 @@ pub mod my_provider {
     mut input: request_channel_args_f64::Input,
   ) -> impl Stream<Item = Result<request_channel_args_f64::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_F64_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4817,18 +4830,18 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(rx).map(|result| {
+    Host::default().request_channel(Box::new(rx)).map(|result| {
       result.map(|payload| Ok(deserialize::<request_channel_args_f64::Output>(&payload.data.unwrap())?))?
     })
   }
@@ -4853,7 +4866,7 @@ pub mod my_provider {
     mut input: request_channel_args_type::Input,
   ) -> impl Stream<Item = Result<request_channel_args_type::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_TYPE_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4874,18 +4887,18 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(rx).map(|result| {
+    Host::default().request_channel(Box::new(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_type::Output>(
           &payload.data.unwrap(),
@@ -4914,7 +4927,7 @@ pub mod my_provider {
     mut input: request_channel_args_enum::Input,
   ) -> impl Stream<Item = Result<request_channel_args_enum::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_ENUM_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4935,18 +4948,18 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(rx).map(|result| {
+    Host::default().request_channel(Box::new(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_enum::Output>(
           &payload.data.unwrap(),
@@ -4975,7 +4988,7 @@ pub mod my_provider {
     mut input: request_channel_args_alias::Input,
   ) -> impl Stream<Item = Result<request_channel_args_alias::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_ALIAS_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -4996,18 +5009,18 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(rx).map(|result| {
+    Host::default().request_channel(Box::new(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_alias::Output>(
           &payload.data.unwrap(),
@@ -5036,7 +5049,7 @@ pub mod my_provider {
     mut input: request_channel_args_string::Input,
   ) -> impl Stream<Item = Result<request_channel_args_string::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_STRING_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -5057,18 +5070,18 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(rx).map(|result| {
+    Host::default().request_channel(Box::new(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_string::Output>(
           &payload.data.unwrap(),
@@ -5097,7 +5110,7 @@ pub mod my_provider {
     mut input: request_channel_args_bool::Input,
   ) -> impl Stream<Item = Result<request_channel_args_bool::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_BOOL_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -5118,18 +5131,18 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(rx).map(|result| {
+    Host::default().request_channel(Box::new(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_bool::Output>(
           &payload.data.unwrap(),
@@ -5158,7 +5171,7 @@ pub mod my_provider {
     mut input: request_channel_args_datetime::Input,
   ) -> impl Stream<Item = Result<request_channel_args_datetime::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_DATETIME_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -5179,18 +5192,18 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(rx).map(|result| {
+    Host::default().request_channel(Box::new(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_datetime::Output>(
           &payload.data.unwrap(),
@@ -5219,7 +5232,7 @@ pub mod my_provider {
     mut input: request_channel_args_list::Input,
   ) -> impl Stream<Item = Result<request_channel_args_list::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_LIST_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -5240,18 +5253,18 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(rx).map(|result| {
+    Host::default().request_channel(Box::new(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_list::Output>(
           &payload.data.unwrap(),
@@ -5280,7 +5293,7 @@ pub mod my_provider {
     mut input: request_channel_args_map::Input,
   ) -> impl Stream<Item = Result<request_channel_args_map::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_ARGS_MAP_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -5301,18 +5314,18 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(rx).map(|result| {
+    Host::default().request_channel(Box::new(rx)).map(|result| {
       result.map(|payload| Ok(deserialize::<request_channel_args_map::Output>(&payload.data.unwrap())?))?
     })
   }
@@ -5337,7 +5350,7 @@ pub mod my_provider {
     mut input: request_channel_void::Input,
   ) -> impl Stream<Item = Result<request_channel_void::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_VOID_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -5358,19 +5371,19 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(rx)
+      .request_channel(Box::new(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_void::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -5391,7 +5404,7 @@ pub mod my_provider {
     mut input: request_channel_non_stream_output::Input,
   ) -> impl Stream<Item = Result<request_channel_non_stream_output::Output, PayloadError>> {
     let op_id_bytes = MY_PROVIDER_REQUEST_CHANNEL_NON_STREAM_OUTPUT_INDEX_BYTES.as_slice();
-    let (tx, rx) = Flux::new_channels();
+    let (tx, rx) = FluxChannel::new_parts();
     #[derive(serde::Serialize, serde::Deserialize)]
     #[serde(untagged)]
     enum OpInputs {
@@ -5412,18 +5425,18 @@ pub mod my_provider {
         };
         let message = OpInputs::In(payload);
         let payload = wasmrs_guest::serialize(&message)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()));
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None));
         let _ = tx_inner.send_result(payload);
       }
     });
 
     let payload = wasmrs_guest::serialize(&first)
-      .map(|b| Payload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
-      .map_err(|e| PayloadError::application_error(e.to_string()));
+      .map(|b| RawPayload::new([op_id_bytes, &[0, 0, 0, 0]].concat().into(), b.into()))
+      .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(rx).map(|result| {
+    Host::default().request_channel(Box::new(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_non_stream_output::Output>(
           &payload.data.unwrap(),
@@ -5463,22 +5476,16 @@ impl MyServiceComponent {
       fn des(_map: std::collections::BTreeMap<String, Value>) -> Result<my_service_service::empty_void::Input, Error> {
         unreachable!()
       }
-      let _ = MyServiceComponent::empty_void(match des(input_payload) {
-        Ok(o) => o,
-        Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
-          return;
-        }
-      })
-      .await
-      .map(|result| {
-        serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
-      })
-      .map(|output| {
-        let _ = tx.send(output);
-      });
+      let _ = MyServiceComponent::empty_void(my_service_service::empty_void::Input {})
+        .await
+        .map(|result| {
+          serialize(&result)
+            .map(|b| RawPayload::new_data(None, Some(b.into())))
+            .map_err(|e| PayloadError::application_error(e.to_string(), None))
+        })
+        .map(|output| {
+          let _ = tx.send(output);
+        });
     });
     Ok(Mono::from_future(async move { rx.await? }))
   }
@@ -5500,21 +5507,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_type(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -5540,21 +5547,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_enum(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -5580,21 +5587,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_uuid(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -5620,21 +5627,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_alias(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -5660,21 +5667,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_string(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -5700,21 +5707,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_i64(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -5740,21 +5747,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_i32(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -5780,21 +5787,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_i16(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -5820,21 +5827,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_i8(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -5860,21 +5867,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_u64(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -5900,21 +5907,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_u32(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -5940,21 +5947,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_u16(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -5980,21 +5987,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_u8(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6020,21 +6027,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_f64(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6060,21 +6067,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_f32(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6100,21 +6107,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_bytes(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6140,21 +6147,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_datetime(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6180,21 +6187,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_list(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6222,21 +6229,21 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         )
       }
       let _ = MyServiceComponent::unary_map(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6264,27 +6271,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<MyType> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_type(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6312,27 +6319,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<MyEnum> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_enum(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6360,27 +6367,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<Uuid> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_uuid(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6408,27 +6415,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<MyAlias> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_alias(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6456,27 +6463,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<String> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_string(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6502,27 +6509,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<i64> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_i64(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6548,27 +6555,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<i32> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_i32(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6594,27 +6601,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<i16> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_i16(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6640,27 +6647,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<i8> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_i8(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6686,27 +6693,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<u64> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_u64(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6732,27 +6739,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<u32> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_u32(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6778,27 +6785,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<u16> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_u16(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6824,27 +6831,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<u8> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_u8(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6870,27 +6877,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<f64> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_f64(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6916,27 +6923,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<f32> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_f32(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -6964,27 +6971,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<wasmrs_guest::Bytes> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_bytes(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -7012,27 +7019,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<wasmrs_guest::Timestamp> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_datetime(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -7060,27 +7067,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<Vec<String>> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_list(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);
@@ -7106,27 +7113,27 @@ impl MyServiceComponent {
               .remove("value")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("value".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
           optional: <Option<std::collections::HashMap<String, String>> as serde::Deserialize>::deserialize(
             map
               .remove("optional")
               .ok_or_else(|| wasmrs_guest::Error::MissingInput("optional".to_owned()))?,
           )
-          .map_err(|e| wasmrs_guest::Error::Decode(e.to_string()))?,
+          .map_err(|e| wasmrs_guest::Error::Codec(e.to_string()))?,
         })
       }
       let _ = MyServiceComponent::func_map(match des(input_payload) {
         Ok(o) => o,
         Err(e) => {
-          let _ = tx.send(Err(PayloadError::application_error(e.to_string())));
+          let _ = tx.send(Err(PayloadError::application_error(e.to_string(), None)));
           return;
         }
       })
       .await
       .map(|result| {
         serialize(&result)
-          .map(|b| Payload::new_data(None, Some(b.into())))
-          .map_err(|e| PayloadError::application_error(e.to_string()))
+          .map(|b| RawPayload::new_data(None, Some(b.into())))
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))
       })
       .map(|output| {
         let _ = tx.send(output);

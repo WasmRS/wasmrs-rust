@@ -7,7 +7,7 @@ WasmRS revolves around a handful of methods that allow the host and the guest to
 
 As in RSocket, wasmRS frames contain a stream ID allowing the destination to differentiate multiple frames for different transactions.
 
-For more information on the protocol, see the [wasmRS documentation](https://github.com/nanobus/iota/blob/main/docs/wasmrs.md) at the root of this project.
+For more information on the protocol, see the [wasmRS documentation](https://github.com/wasmrs/docs/blob/main/wasmrs.md) at the root of this project.
 
 ## Prerequisites
 
@@ -50,15 +50,15 @@ RUST_LOG=wasmrs=trace cargo run --bin request ...
 ## See also
 
 - [nanobus](https://github.com/nanobus/nanobus) as a way to run wasmRS modules
-- [apex](https://apexlang.io) to generate boilerplate for iotas and projects using wasmrs.
+- [apex](https://apexlang.io) to generate wasmrs boilerplate and scaffold projects using wasmrs.
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://github.com/nanobus/iota/blob/main/CONTRIBUTING.md)
+See [CONTRIBUTING.md](https://github.com/wasmrs/wasmrs-rust/blob/main/CONTRIBUTING.md)
 
 ## License
 
-See the root [LICENSE.txt](https://github.com/nanobus/iota/blob/main/LICENSE.txt)
+See the root [LICENSE.txt](https://github.com/wasmrs/wasmrs-rust/blob/main/LICENSE.txt)
 
 
 

@@ -91,14 +91,13 @@ impl std::fmt::Display for FrameHeader {
     }
 
     let t = self.frame_type();
-
-    write!(
-      f,
-      "FrameHeader{{id={},type={},flag={}}}",
-      self.stream_id(),
-      t,
-      flags.join("|")
-    )
+    f.write_str("FrameHeader{{id=")?;
+    self.stream_id().fmt(f)?;
+    f.write_str(",type=")?;
+    t.fmt(f)?;
+    f.write_str(",flag=")?;
+    flags.join("|").fmt(f)?;
+    f.write_str("}}")
   }
 }
 

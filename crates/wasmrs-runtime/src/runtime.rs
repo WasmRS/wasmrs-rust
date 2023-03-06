@@ -136,3 +136,44 @@ where
     poll.map_err(|_e| Error::RecvFailed(95))
   }
 }
+
+impl<T> std::fmt::Debug for MutRc<T>
+where
+  T: std::fmt::Debug,
+{
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_tuple("MutRc").field(&self.0).finish()
+  }
+}
+
+impl<T> Clone for MutRc<T> {
+  fn clone(&self) -> Self {
+    Self(self.0.clone())
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use super::*;
+  use anyhow::Result;
+
+  #[test]
+  fn test_mutrc() -> Result<()> {
+    let base = MutRc::new("Hello World".to_owned());
+    let mut lock = base.lock();
+    let res = lock.split_off(6);
+    drop(lock);
+    assert_eq!(res, "World");
+    assert_eq!(base, MutRc::new("Hello ".to_owned()));
+    Ok(())
+  }
+
+  #[test]
+  fn test_rc() -> Result<()> {
+    let one = RtRc::new("Hello World".to_owned());
+    let two = RtRc::new("Hello World".to_owned());
+
+    assert_eq!(one, two);
+    Ok(())
+  }
+}

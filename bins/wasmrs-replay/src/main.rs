@@ -3,7 +3,7 @@ use std::{io::Read, sync::Arc};
 use base64::Engine;
 use clap::Parser;
 use tracing::{debug, info};
-use wasmrs::{Payload, RSocket, SocketSide, WasmSocket};
+use wasmrs::{RSocket, RawPayload, SocketSide, WasmSocket};
 use wasmrs_frames::PayloadError;
 use wasmrs_host::WasiParams;
 use wasmrs_rx::*;
@@ -77,22 +77,22 @@ async fn main() -> anyhow::Result<()> {
 struct HostServer {}
 
 impl RSocket for HostServer {
-  fn fire_and_forget(&self, _req: Payload) -> Mono<(), PayloadError> {
+  fn fire_and_forget(&self, _req: RawPayload) -> Mono<(), PayloadError> {
     Mono::default()
   }
 
-  fn request_response(&self, _payload: Payload) -> Mono<Payload, PayloadError> {
+  fn request_response(&self, _payload: RawPayload) -> Mono<RawPayload, PayloadError> {
     Mono::default()
   }
 
-  fn request_stream(&self, _req: Payload) -> FluxReceiver<Payload, PayloadError> {
-    let (tx, rx) = Flux::new_channels();
+  fn request_stream(&self, _req: RawPayload) -> FluxReceiver<RawPayload, PayloadError> {
+    let (tx, rx) = FluxChannel::new_parts();
     tx.complete();
     rx
   }
 
-  fn request_channel(&self, _reqs: FluxReceiver<Payload, PayloadError>) -> FluxReceiver<Payload, PayloadError> {
-    let (tx, rx) = Flux::new_channels();
+  fn request_channel(&self, _reqs: Box<dyn Flux<RawPayload, PayloadError>>) -> FluxReceiver<RawPayload, PayloadError> {
+    let (tx, rx) = FluxChannel::new_parts();
     tx.complete();
     rx
   }

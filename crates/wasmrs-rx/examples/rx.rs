@@ -56,7 +56,7 @@ async fn mono_later() -> Result<()> {
 }
 
 async fn basic_flux() -> Result<()> {
-  let mut flux = Flux::<_, Error>::new();
+  let mut flux = FluxChannel::<_, Error>::new();
 
   flux.send(100)?;
   flux.send(101)?;
@@ -71,7 +71,7 @@ async fn basic_flux() -> Result<()> {
 }
 
 async fn flux_channels() -> Result<()> {
-  let flux = Flux::<_, Error>::new();
+  let flux = FluxChannel::<_, Error>::new();
   let mut rx = flux.take_rx()?;
 
   let task = tokio::spawn(async move {
@@ -91,7 +91,7 @@ async fn flux_channels() -> Result<()> {
 }
 
 async fn errors() -> Result<()> {
-  let mut flux = Flux::<_, Error>::new();
+  let mut flux = FluxChannel::<_, Error>::new();
 
   flux.send(100)?;
   flux.send(101)?;

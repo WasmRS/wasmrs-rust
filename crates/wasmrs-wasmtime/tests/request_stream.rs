@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use futures::StreamExt;
-use wasmrs::{Metadata, Payload, RSocket};
+use wasmrs::{Metadata, RSocket, RawPayload};
 use wasmrs_codec::messagepack::*;
 use wasmrs_host::WasiParams;
 use wasmrs_wasmtime::WasmtimeBuilder;
@@ -29,7 +29,7 @@ async fn test_iota_req_stream() -> anyhow::Result<()> {
 
   let bytes = serialize(&input).unwrap();
 
-  let payload = Payload::new(mbytes, bytes.into());
+  let payload = RawPayload::new(mbytes, bytes.into());
 
   let mut response = context.request_stream(payload.clone());
   let mut outputs: VecDeque<String> = input.input.chars().map(|i| i.to_string()).collect();
