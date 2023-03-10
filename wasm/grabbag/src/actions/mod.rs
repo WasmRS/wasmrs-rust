@@ -5487,7 +5487,10 @@ impl MyServiceComponent {
           let _ = tx.send(output);
         });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_type_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5527,7 +5530,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_enum_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5567,7 +5573,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_uuid_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5607,7 +5616,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_alias_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5647,7 +5659,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_string_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5687,7 +5702,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_i64_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5727,7 +5745,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_i32_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5767,7 +5788,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_i16_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5807,7 +5831,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_i8_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5847,7 +5874,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_u64_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5887,7 +5917,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_u32_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5927,7 +5960,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_u16_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5967,7 +6003,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_u8_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6007,7 +6046,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_f64_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6047,7 +6089,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_f32_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6087,7 +6132,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_bytes_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6127,7 +6175,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_datetime_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6167,7 +6218,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_list_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6207,7 +6261,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn unary_map_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6249,7 +6306,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_type_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6297,7 +6357,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_enum_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6345,7 +6408,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_uuid_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6393,7 +6459,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_alias_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6441,7 +6510,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_string_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6489,7 +6561,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_i64_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6535,7 +6610,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_i32_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6581,7 +6659,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_i16_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6627,7 +6708,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_i8_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6673,7 +6757,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_u64_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6719,7 +6806,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_u32_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6765,7 +6855,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_u16_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6811,7 +6904,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_u8_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6857,7 +6953,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_f64_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6903,7 +7002,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_f32_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6949,7 +7051,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_bytes_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6997,7 +7102,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_datetime_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -7045,7 +7153,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_list_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -7093,7 +7204,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn func_map_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -7139,7 +7253,10 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
 }
 

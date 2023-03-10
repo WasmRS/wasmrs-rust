@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use parking_lot::Mutex;
-use wasmrs::{BufferState, Frame, OperationList, WasmSocket};
+use wasmrs::{BufferState, Frame, OperationList, PayloadError, WasmSocket};
 use wasmrs_host::errors::Error;
 use wasmrs_host::{CallbackProvider, WasiParams};
 use wasmtime::{Engine, Store};
@@ -33,7 +33,9 @@ impl CallbackProvider for ProviderStore {
         Ok(())
       }
       Err((stream_id, err)) => {
-        self.socket.send(Frame::new_error(stream_id, 0, err.to_string()));
+        self
+          .socket
+          .send(Frame::new_error(stream_id, PayloadError::new(0, err.to_string(), None)));
         Ok(())
       }
     }

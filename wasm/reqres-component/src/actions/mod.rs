@@ -64,7 +64,10 @@ impl TestComponent {
           let _ = tx.send(output);
         });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn echo_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -104,7 +107,10 @@ impl TestComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move { rx.await? }))
+    Ok(Mono::from_future(async move {
+      rx.await
+        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+    }))
   }
   fn chars_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();

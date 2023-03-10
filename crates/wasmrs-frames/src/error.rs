@@ -59,19 +59,10 @@ pub struct PayloadError {
 
 impl PayloadError {
   /// Create a new [PayloadError] with the passed code and message.
-  pub fn new(code: u32, msg: impl AsRef<str>) -> Self {
+  pub fn new(code: u32, msg: impl AsRef<str>, metadata: Option<Bytes>) -> Self {
     Self {
       code,
-      metadata: None,
-      msg: msg.as_ref().to_owned(),
-    }
-  }
-
-  /// todo better name
-  pub fn new_md(msg: impl AsRef<str>) -> Self {
-    Self {
-      code: ErrorCode::ApplicationError.into(),
-      metadata: None,
+      metadata,
       msg: msg.as_ref().to_owned(),
     }
   }
