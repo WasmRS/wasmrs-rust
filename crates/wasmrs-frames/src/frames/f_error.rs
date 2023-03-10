@@ -13,7 +13,7 @@ pub struct ErrorFrame {
   /// The error code.
   pub code: u32,
   /// Any metadata associated with the Error as raw bytes.
-  pub metadata: Bytes,
+  pub metadata: Option<Bytes>,
   /// The error message data.
   pub data: String,
 }
@@ -36,9 +36,9 @@ impl RSocketFrame<ErrorFrame> for ErrorFrame {
     Self::check_type(header)?;
     let metadata = if header.has_metadata() {
       let metadata_len = from_u24_bytes(&buffer.split_to(3)) as usize;
-      buffer.split_to(metadata_len)
+      Some(buffer.split_to(metadata_len))
     } else {
-      Bytes::new()
+      None
     };
 
     Ok(ErrorFrame {
@@ -51,11 +51,10 @@ impl RSocketFrame<ErrorFrame> for ErrorFrame {
 
   fn encode(self) -> Bytes {
     let header = self.gen_header().encode();
-    let (mlen, md) = if self.metadata.is_empty() {
-      (Bytes::new(), Bytes::new())
-    } else {
-      (to_u24_bytes(self.metadata.len() as u32), self.metadata)
-    };
+    let (mlen, md) = self.metadata.map_or_else(
+      || (Bytes::new(), Bytes::new()),
+      |md| (to_u24_bytes(md.len() as u32), md),
+    );
 
     let code = self.code.to_be_bytes();
     let data = self.data.into_bytes();
@@ -74,7 +73,7 @@ impl RSocketFrame<ErrorFrame> for ErrorFrame {
 
   fn get_flag(&self) -> FrameFlags {
     let mut flags = 0;
-    if !self.metadata.is_empty() {
+    if self.metadata.is_some() {
       flags |= Frame::FLAG_METADATA;
     }
     flags
@@ -104,7 +103,7 @@ mod test {
   fn test_encode() -> Result<()> {
     let payload = ErrorFrame {
       stream_id: 1234,
-      metadata: Bytes::new(),
+      metadata: None,
       data: "errstr".to_owned(),
       code: 11,
     };

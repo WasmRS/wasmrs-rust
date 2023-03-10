@@ -131,7 +131,7 @@ pub(crate) fn send_frame(read_until: u32) {
   let read_result = read_frames(read_until);
   if read_result.is_err() {
     tracing::error!("could not read local buffer");
-    send_error_frame(0, 0, "Could not read local buffer");
+    send_error_frame(0, PayloadError::new(0, "Could not read local buffer", None));
     return;
   }
   let bytes_list = read_result.unwrap();
@@ -144,7 +144,7 @@ pub(crate) fn send_frame(read_until: u32) {
           let _ = socket.process_once(frame);
         }
         Err(_e) => {
-          send_error_frame(0, 0, "Could not decode frame data");
+          send_error_frame(0, PayloadError::new(0, "Could not decode frame data", None));
           continue;
         }
       }
@@ -178,8 +178,8 @@ fn read_frames(read_until: u32) -> Result<Vec<Bytes>, Error> {
   })
 }
 
-fn send_error_frame(stream_id: u32, code: u32, msg: impl AsRef<str>) {
-  let err = Frame::new_error(stream_id, code, msg.as_ref());
+fn send_error_frame(stream_id: u32, e: PayloadError) {
+  let err = Frame::new_error(stream_id, e);
   send_host_frame(vec![err.encode()]);
 }
 

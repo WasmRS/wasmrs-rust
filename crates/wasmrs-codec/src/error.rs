@@ -23,6 +23,6 @@ impl From<Error> for wasmrs_frames::PayloadError {
     let mut string: heapless::String<256> = heapless::String::new();
     string.write_fmt(format_args!("{:.256}", val)).unwrap();
 
-    wasmrs_frames::PayloadError::new(0, string.as_str())
+    wasmrs_frames::PayloadError::new(0, string.as_str(), None)
   }
 }

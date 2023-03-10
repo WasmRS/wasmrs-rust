@@ -20,7 +20,7 @@ use self::f_request_fnf::RequestFnF;
 use self::f_request_n::RequestN;
 use self::f_request_response::RequestResponse;
 use self::f_request_stream::RequestStream;
-use crate::Error;
+use crate::{Error, PayloadError};
 
 /// The type that holds the bitmask for Frame flags.
 pub type FrameFlags = u16;
@@ -305,12 +305,12 @@ impl RawPayload {
   }
 }
 
-impl From<Frame> for Result<Option<RawPayload>, crate::PayloadError> {
+impl From<Frame> for Result<Option<RawPayload>, PayloadError> {
   fn from(frame: Frame) -> Self {
     match frame {
       Frame::PayloadFrame(frame) => Ok(Some(RawPayload::new(frame.metadata, frame.data))),
       Frame::Cancel(_frame) => todo!(),
-      Frame::ErrorFrame(frame) => Err(crate::PayloadError::new(frame.code, frame.data)),
+      Frame::ErrorFrame(frame) => Err(crate::PayloadError::new(frame.code, frame.data, frame.metadata)),
       Frame::RequestN(_frame) => todo!(),
       Frame::RequestResponse(frame) => Ok(Some(RawPayload::new(frame.0.metadata, frame.0.data))),
       Frame::RequestFnF(frame) => Ok(Some(RawPayload::new(frame.0.metadata, frame.0.data))),
@@ -427,12 +427,12 @@ impl Frame {
   }
 
   /// Create a new [ErrorFrame].
-  pub fn new_error(stream_id: u32, code: u32, data: impl AsRef<str>) -> Frame {
+  pub fn new_error(stream_id: u32, e: PayloadError) -> Frame {
     Frame::ErrorFrame(ErrorFrame {
       stream_id,
-      metadata: Bytes::new(),
-      code,
-      data: data.as_ref().to_owned(),
+      metadata: e.metadata,
+      code: e.code,
+      data: e.msg,
     })
   }
 

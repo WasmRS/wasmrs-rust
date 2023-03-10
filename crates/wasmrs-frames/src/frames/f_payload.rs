@@ -19,7 +19,7 @@ pub struct PayloadFrame {
   pub follows: bool,
   /// Whether or not this frame is the last frame in a stream.
   pub complete: bool,
-  /// TODO
+  /// Whether or not this frame is followed by another frame.
   pub next: bool,
 }
 
