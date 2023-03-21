@@ -8,7 +8,7 @@ repository = "https://github.com/wasmrs/wasmrs-rust"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-wasmrs = { path = "../../crates/wasmrs", version = "0.5.0" }
+wasmrs = { path = "../../crates/wasmrs", version = "0.6.0" }
 wasmrs-codec = { path = "../../crates/wasmrs-codec", version = "0.5.0" }
 wasmrs-wasmtime = { path = "../../crates/wasmrs-wasmtime", version = "0.5.0" }
 wasmrs-host = { path = "../../crates/wasmrs-host", version = "0.5.0" }
