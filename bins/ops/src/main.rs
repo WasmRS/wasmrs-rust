@@ -20,7 +20,7 @@ async fn main() -> anyhow::Result<()> {
     .wasi_params(WasiParams::default())
     .build()?;
   let host = wasmrs_host::Host::new(engine)?;
-  let context = host.new_context()?;
+  let context = host.new_context(64 * 1024, 64 * 1024)?;
   context.dump_operations();
 
   Ok(())

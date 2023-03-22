@@ -37,7 +37,7 @@ async fn main() -> anyhow::Result<()> {
 
   let mut rx = socket.take_rx().unwrap();
   let mut context = engine.new_context(Arc::new(socket))?;
-  context.run_init()?;
+  context.run_init(64 * 1024, 64 * 1024)?;
 
   let mut replay = String::new();
   std::fs::File::open(args.replay)?.read_to_string(&mut replay)?;
