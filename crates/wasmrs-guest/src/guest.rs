@@ -219,10 +219,12 @@ fn send_host_frame(mut payloads: Vec<Bytes>) -> Vec<Bytes> {
     }
     total
   });
-  #[allow(unsafe_code)]
-  unsafe {
-    tracing::trace!(size, "sending frame to host");
-    _host_wasmrs_send(size);
+  if size > 0 {
+    #[allow(unsafe_code)]
+    unsafe {
+      tracing::trace!(size, "sending frame to host");
+      _host_wasmrs_send(size);
+    }
   }
   payloads
 }
