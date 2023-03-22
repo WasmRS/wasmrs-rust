@@ -291,7 +291,7 @@ impl WasmSocket {
         Handler::ReqRR(_) => match o.remove() {
           Handler::ReqRR(sender) => {
             if flag.flag_next() && sender.send(Ok(input)).is_err() {
-              error!(sid, side = %self.side, "response successful payload for REQUEST_RESPONSE failed");
+              error!(sid, side = %self.side, "error sending payload for REQUEST_RESPONSE, channel already closed");
             }
           }
           _ => unreachable!(),
@@ -301,7 +301,7 @@ impl WasmSocket {
             if sender.is_closed() {
               send_cancel(&tx, sid, self.side);
             } else if let Err(_e) = sender.send(input) {
-              error!(sid, side = %self.side, "response successful payload for REQUEST_STREAM failed");
+              error!(sid, side = %self.side, "error sending payload for REQUEST_STREAM, channel already closed");
               send_cancel(&tx, sid, self.side);
             }
           }
@@ -315,7 +315,7 @@ impl WasmSocket {
             if sender.is_closed() {
               send_cancel(&tx, sid, self.side);
             } else if (sender.send(input)).is_err() {
-              error!(sid, side = %self.side, "response successful payload for REQUEST_CHANNEL failed");
+              error!(sid, side = %self.side, "error sending payload for REQUEST_CHANNEL, channel already closed");
               send_cancel(&tx, sid, self.side);
             }
           }
@@ -326,7 +326,7 @@ impl WasmSocket {
         }
       },
       Entry::Vacant(_) => {
-        warn!(sid, side = %self.side, "response successful payload for REQUEST_CHANNEL failed");
+        warn!(sid, side = %self.side, "error sending payload, handler missing");
       }
     }
   }
@@ -417,9 +417,9 @@ impl RSocket for WasmSocket {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_channel");
 
-    let (flux, output) = FluxChannel::new_parts();
+    let (tx, rx) = FluxChannel::new_parts();
 
-    self.register_handler(sid, Handler::ReqRC(flux));
+    self.register_handler(sid, Handler::ReqRC(tx));
     let mut reqn_rx = self.register_channel(sid);
     let tx = self.tx.clone();
     let channels = self.channels.clone();
@@ -456,7 +456,7 @@ impl RSocket for WasmSocket {
       send_complete(&tx, sid, side, Frame::FLAG_COMPLETE);
     });
 
-    output
+    rx
   }
 }
 
