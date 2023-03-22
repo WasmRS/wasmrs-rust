@@ -30,7 +30,7 @@ async fn test_iota_req_channel_callback() -> anyhow::Result<()> {
   let host = wasmrs_host::Host::new(engine)?;
 
   host.register_request_channel("test", "callback", callback);
-  let context = host.new_context()?;
+  let context = host.new_context(64 * 1024, 64 * 1024)?;
   let op = context.get_export("test", "callback")?;
 
   let mbytes = Metadata::new(op).encode();

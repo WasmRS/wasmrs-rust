@@ -14,7 +14,7 @@ async fn test_iota_req_stream() -> anyhow::Result<()> {
     .wasi_params(WasiParams::default())
     .build()?;
   let host = wasmrs_host::Host::new(engine)?;
-  let context = host.new_context()?;
+  let context = host.new_context(64 * 1024, 64 * 1024)?;
   let op = context.get_export("suite.test", "chars")?;
 
   let mbytes = Metadata::new(op).encode();

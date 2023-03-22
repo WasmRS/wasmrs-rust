@@ -39,7 +39,7 @@ impl Host {
   }
 
   /// Create a new [CallContext], a way to bucket calls together with the same memory and configuration.
-  pub fn new_context(&self) -> Result<CallContext> {
+  pub fn new_context(&self, host_buffer_size: u32, guest_buffer_size: u32) -> Result<CallContext> {
     let mut socket = WasmSocket::new(
       HostServer {
         handlers: self.handlers.clone(),
@@ -50,7 +50,7 @@ impl Host {
     let socket = Arc::new(socket);
 
     let context = self.engine.borrow().new_context(socket.clone())?;
-    context.init()?;
+    context.init(host_buffer_size, guest_buffer_size)?;
     spawn_writer(rx, context.clone());
 
     CallContext::new(self.mtu, socket, context)

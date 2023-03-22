@@ -114,7 +114,11 @@ impl WasmtimeCallContext {
   }
 
   /// Run wasmrs init function.
-  pub fn run_init(&mut self) -> std::result::Result<(), wasmrs_host::errors::Error> {
+  pub fn run_init(
+    &mut self,
+    host_buffer_size: u32,
+    guest_buffer_size: u32,
+  ) -> std::result::Result<(), wasmrs_host::errors::Error> {
     if let Ok(start) = self
       .instance
       .get_typed_func(&mut self.store, GuestExports::Start.as_ref())
@@ -130,7 +134,7 @@ impl WasmtimeCallContext {
       .get_typed_func(&mut self.store, GuestExports::Init.as_ref())
       .map_err(|_e| wasmrs_host::errors::Error::InitFailed(Error::GuestInit.to_string()))?;
     init
-      .call(&mut self.store, (1024, 1024, 128))
+      .call(&mut self.store, (host_buffer_size, guest_buffer_size, 128))
       .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?;
 
     if let Ok(oplist) = self
@@ -172,7 +176,11 @@ impl wasmrs::ModuleHost for WasmtimeCallContext {
 }
 
 impl ProviderCallContext for WasmtimeCallContext {
-  fn init(&mut self) -> std::result::Result<(), wasmrs_host::errors::Error> {
-    self.run_init()
+  fn init(
+    &mut self,
+    host_buffer_size: u32,
+    guest_buffer_size: u32,
+  ) -> std::result::Result<(), wasmrs_host::errors::Error> {
+    self.run_init(host_buffer_size, guest_buffer_size)
   }
 }

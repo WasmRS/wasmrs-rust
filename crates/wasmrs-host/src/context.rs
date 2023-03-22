@@ -17,8 +17,8 @@ impl SharedContext {
     Self(Arc::new(Mutex::new(context)))
   }
 
-  pub(crate) fn init(&self) -> Result<()> {
-    self.0.lock().init()
+  pub(crate) fn init(&self, host_buffer_size: u32, guest_buffer_size: u32) -> Result<()> {
+    self.0.lock().init(host_buffer_size, guest_buffer_size)
   }
 
   pub(crate) fn write_frame(&self, frame: Frame) -> Result<()> {
@@ -57,7 +57,7 @@ pub trait EngineProvider {
 /// The trait implemented by a context for a call or set of calls.
 pub trait ProviderCallContext: wasmrs::ModuleHost {
   /// Initialize the call context.
-  fn init(&mut self) -> Result<()>;
+  fn init(&mut self, host_buffer_size: u32, guest_buffer_size: u32) -> Result<()>;
 }
 
 /// The trait that a host needs to implement to satisfy wasmrs protocol imports and to query data about the loaded module.

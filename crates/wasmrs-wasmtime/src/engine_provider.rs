@@ -153,12 +153,16 @@ impl wasmrs::ModuleHost for WasmtimeCallContext {
 }
 
 impl ProviderCallContext for WasmtimeCallContext {
-  fn init(&mut self) -> std::result::Result<(), wasmrs_host::errors::Error> {
+  fn init(
+    &mut self,
+    host_buffer_size: u32,
+    guest_buffer_size: u32,
+  ) -> std::result::Result<(), wasmrs_host::errors::Error> {
     if let Ok(start) = self
       .instance
       .get_typed_func(&mut self.store, GuestExports::Start.as_ref())
     {
-      trace!("Calling tinygo _start method");
+      trace!("calling tinygo _start method");
       start
         .call(&mut self.store, ())
         .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?;
@@ -169,14 +173,14 @@ impl ProviderCallContext for WasmtimeCallContext {
       .get_typed_func(&mut self.store, GuestExports::Init.as_ref())
       .map_err(|_e| wasmrs_host::errors::Error::InitFailed(Error::GuestInit.to_string()))?;
     init
-      .call(&mut self.store, (1024, 1024, 128))
+      .call(&mut self.store, (host_buffer_size, guest_buffer_size, 128))
       .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?;
 
     if let Ok(oplist) = self
       .instance
       .get_typed_func::<(), ()>(&mut self.store, GuestExports::OpListRequest.as_ref())
     {
-      trace!("Calling operation list");
+      trace!("calling operation list");
       oplist.call(&mut self.store, ()).unwrap();
     }
     Ok(())

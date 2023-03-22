@@ -15,7 +15,7 @@ async fn test_iota_req_channel_single() -> anyhow::Result<()> {
     .wasi_params(WasiParams::default())
     .build()?;
   let host = wasmrs_host::Host::new(engine)?;
-  let context = host.new_context()?;
+  let context = host.new_context(64 * 1024, 64 * 1024)?;
   let op = context.get_export("suite.test", "reverse")?;
 
   let mbytes = Metadata::new(op).encode();
@@ -63,7 +63,7 @@ async fn test_iota_req_channel_multi() -> anyhow::Result<()> {
     .wasi_params(WasiParams::default())
     .build()?;
   let host = wasmrs_host::Host::new(engine)?;
-  let context = host.new_context()?;
+  let context = host.new_context(64 * 1024, 64 * 1024)?;
   let op = context.get_export("suite.test", "wrap")?;
 
   let mbytes = Metadata::new(op).encode();
