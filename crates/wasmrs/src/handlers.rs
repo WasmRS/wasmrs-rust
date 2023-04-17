@@ -1,25 +1,25 @@
 use bytes::Bytes;
 use wasmrs_frames::{Metadata, PayloadError, RawPayload};
 use wasmrs_runtime::RtRc;
-use wasmrs_rx::{FluxReceiver, Mono};
 
 use crate::operations::OperationList;
+use crate::{BoxFlux, BoxMono};
 
 /// An alias to [Box<dyn std::error::Error + Send + Sync + 'static>]
 pub type GenericError = Box<dyn std::error::Error + Send + Sync + 'static>;
 /// An alias for a [Vec<(String, String, RtRc<T>)>]
 pub type OperationMap<T> = Vec<(String, String, RtRc<T>)>;
 /// An alias for the function that creates the output for a task.
-pub type ProcessFactory<I, O> = fn(I) -> Result<O, GenericError>;
+pub type ProcessFactory<I, O> = Box<dyn Fn(I) -> Result<O, GenericError> + Send + Sync>;
 
 /// An alias for [Mono<ParsedPayload, PayloadError>]
-pub type IncomingMono = Mono<Payload, PayloadError>;
+pub type IncomingMono = BoxMono<Payload, PayloadError>;
 /// An alias for [Mono<Payload, PayloadError>]
-pub type OutgoingMono = Mono<RawPayload, PayloadError>;
+pub type OutgoingMono = BoxMono<RawPayload, PayloadError>;
 /// An alias for [FluxReceiver<ParsedPayload, PayloadError>]
-pub type IncomingStream = FluxReceiver<Payload, PayloadError>;
+pub type IncomingStream = BoxFlux<Payload, PayloadError>;
 /// An alias for [FluxReceiver<Payload, PayloadError>]
-pub type OutgoingStream = FluxReceiver<RawPayload, PayloadError>;
+pub type OutgoingStream = BoxFlux<RawPayload, PayloadError>;
 
 #[allow(missing_debug_implementations)]
 #[derive(Debug)]
@@ -66,19 +66,25 @@ impl std::fmt::Debug for Handlers {
 }
 
 impl Handlers {
+  /// Get the operation list.
+  pub fn op_list(&self) -> &OperationList {
+    &self.op_list
+  }
+
   /// Register a Request/Response style handler on the host.
   pub fn register_request_response(
     &mut self,
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
     handler: ProcessFactory<IncomingMono, OutgoingMono>,
-  ) {
+  ) -> usize {
     let list = &mut self.request_response_handlers;
     list.push((ns.as_ref().to_owned(), op.as_ref().to_owned(), RtRc::new(handler)));
     let index = list.len() - 1;
     self
       .op_list
-      .add_export(index as _, crate::OperationType::RequestFnF, ns, op);
+      .add_export(index as _, crate::OperationType::RequestResponse, ns, op);
+    index
   }
 
   /// Register a Request/Response style handler on the host.
@@ -87,13 +93,14 @@ impl Handlers {
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
     handler: ProcessFactory<IncomingMono, OutgoingStream>,
-  ) {
+  ) -> usize {
     let list = &mut self.request_stream_handlers;
     list.push((ns.as_ref().to_owned(), op.as_ref().to_owned(), RtRc::new(handler)));
     let index = list.len() - 1;
     self
       .op_list
-      .add_export(index as _, crate::OperationType::RequestFnF, ns, op);
+      .add_export(index as _, crate::OperationType::RequestStream, ns, op);
+    index
   }
 
   /// Register a Request/Response style handler on the host.
@@ -102,13 +109,14 @@ impl Handlers {
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
     handler: ProcessFactory<IncomingStream, OutgoingStream>,
-  ) {
+  ) -> usize {
     let list = &mut self.request_channel_handlers;
     list.push((ns.as_ref().to_owned(), op.as_ref().to_owned(), RtRc::new(handler)));
     let index = list.len() - 1;
     self
       .op_list
-      .add_export(index as _, crate::OperationType::RequestFnF, ns, op);
+      .add_export(index as _, crate::OperationType::RequestChannel, ns, op);
+    index
   }
 
   /// Register a Request/Response style handler on the host.
@@ -117,13 +125,14 @@ impl Handlers {
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
     handler: ProcessFactory<IncomingMono, ()>,
-  ) {
+  ) -> usize {
     let list = &mut self.request_fnf_handlers;
     list.push((ns.as_ref().to_owned(), op.as_ref().to_owned(), RtRc::new(handler)));
     let index = list.len() - 1;
     self
       .op_list
       .add_export(index as _, crate::OperationType::RequestFnF, ns, op);
+    index
   }
 
   #[must_use]

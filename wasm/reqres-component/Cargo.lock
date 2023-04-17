@@ -656,9 +656,9 @@ checksum = "dcc811dc4066ac62f84f11307873c4850cb653bfa9b1719cee2bd2204a4bc5dd"
 
 [[package]]
 name = "wasm-msgpack"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c941b159bac04e6c53096043d6da93f4ead1e0ad959ddad2b2eecf9708fc596"
+checksum = "4b26eaeb28a70b042ee943c8d360e47d703f45931906e373d948d443733db9c5"
 dependencies = [
  "byteorder",
  "heapless",
@@ -671,7 +671,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "base64",
  "bytes",
@@ -695,7 +695,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-codec"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "heapless",
  "serde",
@@ -705,7 +705,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-frames"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "bytes",
  "serde",
@@ -713,7 +713,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-guest"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "bytes",
  "cfg-if",
@@ -733,7 +733,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-runtime"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "bytes",
  "crossbeam-channel",
@@ -749,7 +749,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-rx"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "bytes",

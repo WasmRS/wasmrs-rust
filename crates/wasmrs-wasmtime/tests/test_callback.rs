@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use futures::StreamExt;
-use wasmrs::{GenericError, Metadata, Payload, PayloadError, RSocket, RawPayload};
+use wasmrs::{BoxFlux, GenericError, Metadata, Payload, PayloadError, RSocket, RawPayload};
 use wasmrs_codec::messagepack::*;
 use wasmrs_host::WasiParams;
 use wasmrs_rx::*;
@@ -9,9 +9,7 @@ use wasmrs_wasmtime::WasmtimeBuilder;
 
 static MODULE_BYTES: &[u8] = include_bytes!("../../../build/baseline.wasm");
 
-fn callback(
-  incoming: FluxReceiver<Payload, PayloadError>,
-) -> Result<FluxReceiver<RawPayload, PayloadError>, GenericError> {
+fn callback(incoming: BoxFlux<Payload, PayloadError>) -> Result<BoxFlux<RawPayload, PayloadError>, GenericError> {
   let (tx, rx) = FluxChannel::new_parts();
   tokio::spawn(async move {
     let mut incoming = incoming;
@@ -19,7 +17,7 @@ fn callback(
       let _ = tx.send_result(payload.map(|p| RawPayload::new_data(None, Some(p.data))));
     }
   });
-  Ok(rx)
+  Ok(rx.boxed())
 }
 
 #[test_log::test(tokio::test)]
@@ -29,7 +27,7 @@ async fn test_iota_req_channel_callback() -> anyhow::Result<()> {
     .build()?;
   let host = wasmrs_host::Host::new(engine)?;
 
-  host.register_request_channel("test", "callback", callback);
+  host.register_request_channel("test", "callback", Box::new(callback));
   let context = host.new_context(64 * 1024, 64 * 1024)?;
   let op = context.get_export("test", "callback")?;
 
@@ -44,7 +42,7 @@ async fn test_iota_req_channel_callback() -> anyhow::Result<()> {
   let stream = FluxChannel::new();
   stream.send(payload.clone())?;
   stream.complete();
-  let mut response = context.request_channel(Box::new(stream));
+  let mut response = context.request_channel(Box::pin(stream));
   let mut outputs: VecDeque<String> = vec!["HELLO WORLD".to_owned()].into();
   while let Some(response) = response.next().await {
     println!("response: {:?}", response);

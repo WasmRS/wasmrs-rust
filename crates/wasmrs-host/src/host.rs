@@ -4,8 +4,8 @@ use std::sync::Arc;
 use futures_util::StreamExt;
 use parking_lot::Mutex;
 use wasmrs::{
-  Frame, Handlers, IncomingMono, IncomingStream, Metadata, OutgoingMono, OutgoingStream, Payload, ProcessFactory,
-  RSocket, RawPayload, WasmSocket,
+  BoxFlux, BoxMono, Frame, Handlers, IncomingMono, IncomingStream, Metadata, OutgoingMono, OutgoingStream, Payload,
+  ProcessFactory, RSocket, RawPayload, WasmSocket,
 };
 use wasmrs_frames::PayloadError;
 use wasmrs_runtime::{spawn, UnboundedReceiver};
@@ -62,8 +62,8 @@ impl Host {
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
     handler: ProcessFactory<IncomingMono, OutgoingMono>,
-  ) {
-    self.handlers.lock().register_request_response(ns, op, handler);
+  ) -> usize {
+    self.handlers.lock().register_request_response(ns, op, handler)
   }
 
   /// Register a Request/Response style handler on the host.
@@ -72,8 +72,8 @@ impl Host {
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
     handler: ProcessFactory<IncomingMono, OutgoingStream>,
-  ) {
-    self.handlers.lock().register_request_stream(ns, op, handler);
+  ) -> usize {
+    self.handlers.lock().register_request_stream(ns, op, handler)
   }
 
   /// Register a Request/Response style handler on the host.
@@ -82,8 +82,8 @@ impl Host {
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
     handler: ProcessFactory<IncomingStream, OutgoingStream>,
-  ) {
-    self.handlers.lock().register_request_channel(ns, op, handler);
+  ) -> usize {
+    self.handlers.lock().register_request_channel(ns, op, handler)
   }
 
   /// Register a Request/Response style handler on the host.
@@ -92,8 +92,8 @@ impl Host {
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
     handler: ProcessFactory<IncomingMono, ()>,
-  ) {
-    self.handlers.lock().register_fire_and_forget(ns, op, handler);
+  ) -> usize {
+    self.handlers.lock().register_fire_and_forget(ns, op, handler)
   }
 }
 
@@ -119,37 +119,34 @@ fn parse_payload(req: RawPayload) -> Payload {
 }
 
 impl RSocket for HostServer {
-  fn fire_and_forget(&self, req: RawPayload) -> Mono<(), PayloadError> {
+  fn fire_and_forget(&self, req: RawPayload) -> BoxMono<(), PayloadError> {
     let payload = parse_payload(req);
     let handler = self.handlers.lock().get_fnf_handler(payload.metadata.index).unwrap();
-    handler(Mono::new_success(payload)).unwrap();
-    Mono::new_success(())
+    handler(Mono::new_success(payload).boxed()).unwrap();
+    Mono::new_success(()).boxed()
   }
 
-  fn request_response(&self, req: RawPayload) -> Mono<RawPayload, PayloadError> {
+  fn request_response(&self, req: RawPayload) -> BoxMono<RawPayload, PayloadError> {
     let payload = parse_payload(req);
     let handler = self
       .handlers
       .lock()
       .get_request_response_handler(payload.metadata.index)
       .unwrap();
-    handler(Mono::new_success(payload)).unwrap()
+    handler(Mono::new_success(payload).boxed()).unwrap()
   }
 
-  fn request_stream(&self, req: RawPayload) -> FluxReceiver<RawPayload, PayloadError> {
+  fn request_stream(&self, req: RawPayload) -> BoxFlux<RawPayload, PayloadError> {
     let payload = parse_payload(req);
     let handler = self
       .handlers
       .lock()
       .get_request_stream_handler(payload.metadata.index)
       .unwrap();
-    handler(Mono::new_success(payload)).unwrap()
+    handler(Mono::new_success(payload).boxed()).unwrap()
   }
 
-  fn request_channel(
-    &self,
-    mut reqs: Box<dyn Flux<RawPayload, PayloadError>>,
-  ) -> FluxReceiver<RawPayload, PayloadError> {
+  fn request_channel(&self, mut reqs: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
     let (out_tx, out_rx) = FluxChannel::<RawPayload, PayloadError>::new_parts();
     let handlers = self.handlers.clone();
     tokio::spawn(async move {
@@ -165,7 +162,6 @@ impl RSocket for HostServer {
         }
         Some(Ok(p)) => p,
       };
-      println!("got first payload.{:?}", first);
 
       let payload = parse_payload(first);
       let handler = handlers
@@ -173,25 +169,21 @@ impl RSocket for HostServer {
         .get_request_channel_handler(payload.metadata.index)
         .unwrap();
       let _ = inner_tx.send(payload);
-      let mut out = handler(inner_rx).unwrap();
+      let mut out = handler(inner_rx.boxed()).unwrap();
       tokio::spawn(async move {
-        println!("waiting for handler output.");
         while let Some(p) = out.next().await {
-          println!("got handler output {:?}.", p);
           let _ = out_tx.send_result(p);
         }
         out_tx.complete();
       });
       tokio::spawn(async move {
-        println!("waiting for next payload packet.");
         while let Some(p) = reqs.next().await {
-          println!("got payload packet output {:?}.", p);
           let _ = inner_tx.send_result(p.map(parse_payload));
         }
         inner_tx.complete();
       });
     });
-    out_rx
+    out_rx.boxed()
   }
 }
 
@@ -237,19 +229,19 @@ impl CallContext {
 }
 
 impl RSocket for CallContext {
-  fn fire_and_forget(&self, payload: RawPayload) -> Mono<(), PayloadError> {
+  fn fire_and_forget(&self, payload: RawPayload) -> BoxMono<(), PayloadError> {
     self.socket.fire_and_forget(payload)
   }
 
-  fn request_response(&self, payload: RawPayload) -> Mono<RawPayload, PayloadError> {
+  fn request_response(&self, payload: RawPayload) -> BoxMono<RawPayload, PayloadError> {
     self.socket.request_response(payload)
   }
 
-  fn request_stream(&self, payload: RawPayload) -> FluxReceiver<RawPayload, PayloadError> {
+  fn request_stream(&self, payload: RawPayload) -> BoxFlux<RawPayload, PayloadError> {
     self.socket.request_stream(payload)
   }
 
-  fn request_channel(&self, stream: Box<dyn Flux<RawPayload, PayloadError>>) -> FluxReceiver<RawPayload, PayloadError> {
+  fn request_channel(&self, stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
     self.socket.request_channel(stream)
   }
 }

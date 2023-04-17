@@ -5,22 +5,25 @@ use wasmrs_guest as guest;
 extern "C" fn __wasmrs_init(guest_buffer_size: u32, host_buffer_size: u32, max_host_frame_len: u32) {
   guest::init(guest_buffer_size, host_buffer_size, max_host_frame_len);
 
-  guest::register_request_response("greeting", "sayHello", request_response);
-  guest::register_request_stream("echo", "chars", request_stream);
-  guest::register_request_channel("echo", "reverse", request_channel);
-  guest::register_request_channel("test", "callback", channel_callback);
+  guest::register_request_response("greeting", "sayHello", Box::new(request_response));
+  guest::register_request_stream("echo", "chars", Box::new(request_stream));
+  guest::register_request_channel("echo", "reverse", Box::new(request_channel));
+  guest::register_request_channel("test", "callback", Box::new(channel_callback));
   guest::add_import(0, OperationType::RequestChannel, "test", "echo");
 }
 
-fn request_response(input: Mono<Payload, PayloadError>) -> Result<Mono<RawPayload, PayloadError>, GenericError> {
-  Ok(Mono::from_future(async move {
-    let input = deserialize::<String>(&input.await.unwrap().data).unwrap();
-    let output = format!("Hello, {}!", input);
-    Ok(RawPayload::new_data(None, Some(serialize(&output).unwrap().into())))
-  }))
+fn request_response(input: BoxMono<Payload, PayloadError>) -> Result<BoxMono<RawPayload, PayloadError>, GenericError> {
+  Ok(
+    Mono::from_future(async move {
+      let input = deserialize::<String>(&input.await.unwrap().data).unwrap();
+      let output = format!("Hello, {}!", input);
+      Ok(RawPayload::new_data(None, Some(serialize(&output).unwrap().into())))
+    })
+    .boxed(),
+  )
 }
 
-fn request_stream(input: Mono<Payload, PayloadError>) -> Result<FluxReceiver<RawPayload, PayloadError>, GenericError> {
+fn request_stream(input: BoxMono<Payload, PayloadError>) -> Result<BoxFlux<RawPayload, PayloadError>, GenericError> {
   let channel = FluxChannel::<RawPayload, PayloadError>::new();
   let rx = channel.take_rx().unwrap();
   spawn(async move {
@@ -32,12 +35,12 @@ fn request_stream(input: Mono<Payload, PayloadError>) -> Result<FluxReceiver<Raw
     }
   });
 
-  Ok(rx)
+  Ok(rx.boxed())
 }
 
 fn request_channel(
-  mut input: FluxReceiver<Payload, PayloadError>,
-) -> Result<FluxReceiver<RawPayload, PayloadError>, GenericError> {
+  mut input: BoxFlux<Payload, PayloadError>,
+) -> Result<BoxFlux<RawPayload, PayloadError>, GenericError> {
   let channel = FluxChannel::<RawPayload, PayloadError>::new();
   let rx = channel.take_rx().unwrap();
   spawn(async move {
@@ -55,15 +58,15 @@ fn request_channel(
     }
   });
 
-  Ok(rx)
+  Ok(rx.boxed())
 }
 
 fn channel_callback(
-  mut input: FluxReceiver<Payload, PayloadError>,
-) -> Result<FluxReceiver<RawPayload, PayloadError>, GenericError> {
+  mut input: BoxFlux<Payload, PayloadError>,
+) -> Result<BoxFlux<RawPayload, PayloadError>, GenericError> {
   let (job_tx, job_rx) = FluxChannel::<RawPayload, PayloadError>::new_parts();
   let (host_tx, host_rx) = FluxChannel::<RawPayload, PayloadError>::new_parts();
-  let mut host_stream = Host::default().request_channel(Box::new(host_rx));
+  let mut host_stream = Host::default().request_channel(Box::pin(host_rx));
   spawn(async move {
     println!("waiting for input...");
     while let Some(payload) = input.next().await {
@@ -95,5 +98,5 @@ fn channel_callback(
     }
   });
 
-  Ok(job_rx)
+  Ok(job_rx.boxed())
 }

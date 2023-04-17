@@ -103,6 +103,8 @@ use wasmrs_runtime::ConditionallySafe;
 pub use wasmrs_rx::Flux;
 use wasmrs_rx::*;
 
+pub use wasmrs_rx::{BoxFlux, BoxMono};
+
 type Result<T> = std::result::Result<T, Error>;
 
 pub use wasmrs_frames::PayloadError;
@@ -125,11 +127,11 @@ pub trait ModuleHost: Sync + Send {
 /// A trait for an RSocket client/server (host/guest).
 pub trait RSocket: ConditionallySafe {
   /// Fire and Forget interaction model of RSocket.
-  fn fire_and_forget(&self, payload: RawPayload) -> Mono<(), PayloadError>;
+  fn fire_and_forget(&self, payload: RawPayload) -> BoxMono<(), PayloadError>;
   /// Request-Response interaction model of RSocket.
-  fn request_response(&self, payload: RawPayload) -> Mono<RawPayload, PayloadError>;
+  fn request_response(&self, payload: RawPayload) -> BoxMono<RawPayload, PayloadError>;
   /// Request-Stream interaction model of RSocket.
-  fn request_stream(&self, payload: RawPayload) -> FluxReceiver<RawPayload, PayloadError>;
+  fn request_stream(&self, payload: RawPayload) -> BoxFlux<RawPayload, PayloadError>;
   /// Request-Channel interaction model of RSocket.
-  fn request_channel(&self, stream: Box<dyn Flux<RawPayload, PayloadError>>) -> FluxReceiver<RawPayload, PayloadError>;
+  fn request_channel(&self, stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError>;
 }

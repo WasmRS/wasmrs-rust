@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use base64::Engine;
-use wasmrs::{RSocket, RawPayload, SocketSide, WasmSocket};
+use wasmrs::{BoxFlux, BoxMono, RSocket, RawPayload, SocketSide, WasmSocket};
 use wasmrs_frames::PayloadError;
 use wasmrs_host::WasiParams;
 use wasmrs_rx::*;
@@ -62,23 +62,23 @@ async fn test_iota_req_channel() -> anyhow::Result<()> {
 struct HostServer {}
 
 impl RSocket for HostServer {
-  fn fire_and_forget(&self, _req: RawPayload) -> Mono<(), PayloadError> {
-    Mono::default()
+  fn fire_and_forget(&self, _req: RawPayload) -> BoxMono<(), PayloadError> {
+    Mono::default().boxed()
   }
 
-  fn request_response(&self, _payload: RawPayload) -> Mono<RawPayload, PayloadError> {
-    Mono::default()
+  fn request_response(&self, _payload: RawPayload) -> BoxMono<RawPayload, PayloadError> {
+    Mono::default().boxed()
   }
 
-  fn request_stream(&self, _req: RawPayload) -> FluxReceiver<RawPayload, PayloadError> {
+  fn request_stream(&self, _req: RawPayload) -> BoxFlux<RawPayload, PayloadError> {
     let (tx, rx) = FluxChannel::new_parts();
     tx.complete();
-    rx
+    rx.boxed()
   }
 
-  fn request_channel(&self, _reqs: Box<dyn Flux<RawPayload, PayloadError>>) -> FluxReceiver<RawPayload, PayloadError> {
+  fn request_channel(&self, _reqs: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
     let (tx, rx) = FluxChannel::new_parts();
     tx.complete();
-    rx
+    rx.boxed()
   }
 }

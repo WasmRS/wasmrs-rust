@@ -96,8 +96,9 @@ pub use futures_util::Stream;
 pub use serde_json::Value;
 pub use wasmrs::Payload;
 pub use wasmrs_codec::Timestamp;
+pub use wasmrs_rx::{BoxFlux, BoxMono};
 
-/// Deserialize a generic [Value] from MessagePack bytes.
+/// Deserialize a generic [Value] from CBOR bytes.
 pub fn deserialize_generic(buf: &[u8]) -> Result<std::collections::BTreeMap<String, Value>, Error> {
   deserialize(buf).map_err(|e| Error::Codec(e.to_string()))
 }

@@ -33,7 +33,7 @@ pub trait MonoFuture<Item, Err>: Future<Output = Result<Item, Err>> + Conditiona
 
 #[allow(missing_debug_implementations)]
 #[must_use]
-/// An implementation of the `Mono` as seen in RSocket and reactive streams. It is similar to a [Future<Output = Result<Item, Err>>] that can be pushed to after instantiation.
+/// An implementation of [Mono] as seen in RSocket and reactive streams. It is similar to a [Future<Output = Result<Item, Err>>] that can be pushed to after instantiation.
 pub struct Mono<Item, Err>
 where
   Item: ConditionallySafe,
@@ -54,6 +54,12 @@ where
       inner: None,
       done: AtomicBool::new(false),
     }
+  }
+
+  /// Create a [Pin<Box<Mono>>] from a [Mono].
+  #[must_use]
+  pub fn boxed(self) -> Pin<Box<Self>> {
+    Box::pin(self)
   }
 
   /// Create a [Mono] from a [Future].
@@ -124,7 +130,10 @@ where
           s.done.store(true, Ordering::SeqCst);
           Poll::Ready(Some(v))
         }
-        Poll::Pending => Poll::Pending,
+        Poll::Pending => {
+          cx.waker().wake_by_ref();
+          Poll::Pending
+        }
       },
       None => {
         cx.waker().wake_by_ref();
@@ -187,6 +196,12 @@ where
       tx,
       rx: FluxReceiver::new(rx),
     }
+  }
+
+  /// Create a [Pin<Box<FluxChannel>>] from a [FluxChannel].
+  #[must_use]
+  pub fn boxed(self) -> Pin<Box<Self>> {
+    Box::pin(self)
   }
 
   /// Create a new [Flux] and return the parts, pre-separated.
@@ -269,7 +284,10 @@ where
         crate::Error::RecvFailed(98),
       ))),
       Poll::Ready(None) => Poll::Ready(Ok(0)),
-      Poll::Pending => Poll::Pending,
+      Poll::Pending => {
+        cx.waker().wake_by_ref();
+        Poll::Pending
+      }
     }
   }
 }

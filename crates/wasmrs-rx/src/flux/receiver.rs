@@ -30,6 +30,12 @@ where
     }
   }
 
+  /// Create a [Pin<Box<FluxReceiver>>] from a [FluxReceiver].
+  #[must_use]
+  pub fn boxed(self) -> Pin<Box<Self>> {
+    Box::pin(self)
+  }
+
   /// Create a new [FluxReceiver] that is immediately closed.
   pub fn none() -> Self {
     Self {
