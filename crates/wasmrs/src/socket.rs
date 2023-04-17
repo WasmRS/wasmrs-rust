@@ -1,5 +1,5 @@
 #![allow(missing_debug_implementations)]
-use crate::{Frame, PayloadError, RSocket};
+use crate::{BoxFlux, BoxMono, Frame, PayloadError, RSocket};
 use bytes::Bytes;
 use wasmrs_frames::{ErrorCode, FrameFlags, RSocketFlags};
 use wasmrs_runtime::{self as runtime, unbounded_channel, Entry, SafeMap, UnboundedReceiver, UnboundedSender};
@@ -225,7 +225,7 @@ impl WasmSocket {
     let side = self.side;
 
     runtime::spawn(async move {
-      let outputs = responder.request_channel(Box::new(handler_rx));
+      let outputs = responder.request_channel(Box::pin(handler_rx));
       let (abort_handle, abort_registration) = AbortHandle::new_pair();
       abort_handles.insert(sid, abort_handle);
       let mut outputs = Abortable::new(outputs, abort_registration);
@@ -234,7 +234,6 @@ impl WasmSocket {
       let request_n = Frame::new_request_n(sid, Frame::REQUEST_MAX, 0);
 
       send(&tx, side, request_n);
-
       while let Some(next) = outputs.next().await {
         let sending = match next {
           Ok(payload) => Frame::new_payload(sid, payload, Frame::FLAG_NEXT),
@@ -369,7 +368,7 @@ impl WasmSocket {
 }
 
 impl RSocket for WasmSocket {
-  fn fire_and_forget(&self, payload: RawPayload) -> Mono<(), PayloadError> {
+  fn fire_and_forget(&self, payload: RawPayload) -> BoxMono<(), PayloadError> {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_response");
 
@@ -377,10 +376,10 @@ impl RSocket for WasmSocket {
 
     send(&self.tx, self.side, frame);
 
-    Mono::new_success(())
+    Mono::new_success(()).boxed()
   }
 
-  fn request_response(&self, payload: RawPayload) -> Mono<RawPayload, PayloadError> {
+  fn request_response(&self, payload: RawPayload) -> BoxMono<RawPayload, PayloadError> {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_response");
 
@@ -392,10 +391,10 @@ impl RSocket for WasmSocket {
     send(&self.tx, self.side, frame);
     let fut = rx.map_err(|_e| PayloadError::application_error("Request-response channel failed", None));
 
-    Mono::<RawPayload, PayloadError>::from_future(async move { fut.await? })
+    Mono::<RawPayload, PayloadError>::from_future(async move { fut.await? }).boxed()
   }
 
-  fn request_stream(&self, payload: RawPayload) -> FluxReceiver<RawPayload, PayloadError> {
+  fn request_stream(&self, payload: RawPayload) -> BoxFlux<RawPayload, PayloadError> {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_stream");
 
@@ -407,13 +406,10 @@ impl RSocket for WasmSocket {
 
     send(&self.tx, self.side, frame);
 
-    output
+    output.boxed()
   }
 
-  fn request_channel(
-    &self,
-    mut stream: Box<dyn Flux<RawPayload, PayloadError>>,
-  ) -> FluxReceiver<RawPayload, PayloadError> {
+  fn request_channel(&self, mut stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_channel");
 
@@ -456,7 +452,7 @@ impl RSocket for WasmSocket {
       send_complete(&tx, sid, side, Frame::FLAG_COMPLETE);
     });
 
-    rx
+    rx.boxed()
   }
 }
 
@@ -465,7 +461,9 @@ fn send(tx: &UnboundedSender<Frame>, _side: SocketSide, frame: Frame) {
   #[cfg(feature = "record-frames")]
   crate::record::write_outgoing_record(_side, frame.clone());
 
-  tx.send(frame).unwrap();
+  if let Err(e) = tx.send(frame) {
+    warn!(error = %e,side = %_side, "error sending frame to socket writer");
+  };
 }
 
 fn send_payload(tx: &UnboundedSender<Frame>, sid: u32, side: SocketSide, payload: RawPayload, flag: FrameFlags) {
@@ -507,29 +505,26 @@ mod test {
   struct EchoRSocket;
 
   impl RSocket for EchoRSocket {
-    fn fire_and_forget(&self, _payload: RawPayload) -> Mono<(), PayloadError> {
+    fn fire_and_forget(&self, _payload: RawPayload) -> BoxMono<(), PayloadError> {
       /* no op */
-      Mono::from_future(async { Ok(()) })
+      Box::pin(Mono::from_future(async { Ok(()) }))
     }
 
-    fn request_response(&self, payload: RawPayload) -> Mono<RawPayload, PayloadError> {
+    fn request_response(&self, payload: RawPayload) -> BoxMono<RawPayload, PayloadError> {
       info!("{:?}", payload);
-      Mono::new_success(payload)
+      Box::pin(Mono::new_success(payload))
     }
 
-    fn request_stream(&self, payload: RawPayload) -> FluxReceiver<RawPayload, PayloadError> {
+    fn request_stream(&self, payload: RawPayload) -> BoxFlux<RawPayload, PayloadError> {
       info!("{:?}", payload);
       let (tx, rx) = FluxChannel::new_parts();
       tx.send(payload.clone()).unwrap();
       tx.send(payload).unwrap();
       tx.complete();
-      rx
+      Box::pin(rx)
     }
 
-    fn request_channel(
-      &self,
-      mut stream: Box<dyn Flux<RawPayload, PayloadError>>,
-    ) -> FluxReceiver<RawPayload, PayloadError> {
+    fn request_channel(&self, mut stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
       let (tx, rx) = FluxChannel::new_parts();
       runtime::spawn(async move {
         while let Some(next) = stream.next().await {
@@ -537,7 +532,7 @@ mod test {
         }
         tx.complete();
       });
-      rx
+      Box::pin(rx)
     }
   }
 
@@ -606,7 +601,7 @@ mod test {
     let (guest, _host) = make_echo();
     let (tx, rx) = FluxChannel::new_parts();
 
-    let mut output = guest.request_channel(Box::new(rx));
+    let mut output = guest.request_channel(Box::pin(rx));
     tx.send(RawPayload::new(
       Bytes::from_static(b""),
       Bytes::from_static(b"REQCHANNEL1"),

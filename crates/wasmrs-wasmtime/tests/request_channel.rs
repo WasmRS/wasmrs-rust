@@ -35,7 +35,7 @@ async fn test_iota_req_channel_single() -> anyhow::Result<()> {
   let stream = FluxChannel::new();
   stream.send(payload.clone())?;
   stream.complete();
-  let mut response = context.request_channel(Box::new(stream));
+  let mut response = context.request_channel(Box::pin(stream));
   let mut outputs: VecDeque<String> = vec!["DLROW OLLEH".to_owned()].into();
   while let Some(response) = response.next().await {
     println!("response: {:?}", response);
@@ -95,7 +95,7 @@ async fn test_iota_req_channel_multi() -> anyhow::Result<()> {
   stream.send(payload.clone())?;
 
   stream.complete();
-  let mut response = context.request_channel(Box::new(stream));
+  let mut response = context.request_channel(Box::pin(stream));
   let mut outputs: VecDeque<String> = vec!["<<<Hello world>>>".to_owned()].into();
   while let Some(response) = response.next().await {
     println!("response: {:?}", response);

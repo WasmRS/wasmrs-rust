@@ -158,17 +158,6 @@ mod test {
   use anyhow::Result;
 
   #[test]
-  fn test_mutrc() -> Result<()> {
-    let base = MutRc::new("Hello World".to_owned());
-    let mut lock = base.lock();
-    let res = lock.split_off(6);
-    drop(lock);
-    assert_eq!(res, "World");
-    assert_eq!(base, MutRc::new("Hello ".to_owned()));
-    Ok(())
-  }
-
-  #[test]
   fn test_rc() -> Result<()> {
     let one = RtRc::new("Hello World".to_owned());
     let two = RtRc::new("Hello World".to_owned());

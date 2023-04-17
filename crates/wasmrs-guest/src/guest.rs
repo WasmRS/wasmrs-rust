@@ -3,11 +3,11 @@ use std::io::{Cursor, Write};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use wasmrs::util::to_u24_bytes;
+use wasmrs::{BoxFlux, BoxMono, OperationMap, ProcessFactory, SocketSide};
 pub use wasmrs::{
   Frame, GenericError, IncomingMono, IncomingStream, Metadata, OperationList, OperationType, OutgoingMono,
   OutgoingStream, RSocket, RawPayload,
 };
-use wasmrs::{OperationMap, ProcessFactory, SocketSide};
 pub use wasmrs_frames::PayloadError;
 pub use wasmrs_runtime::spawn;
 use wasmrs_runtime::{exhaust_pool, RtRc, UnboundedReceiver};
@@ -15,7 +15,7 @@ pub use wasmrs_rx::*;
 
 pub use bytes::Bytes;
 pub use futures_util::stream::select_all;
-pub use futures_util::StreamExt;
+pub use futures_util::{StreamExt, TryStreamExt};
 pub use wasmrs_codec::messagepack::{deserialize, serialize};
 
 use crate::error::Error;
@@ -41,7 +41,7 @@ thread_local! {
 pub struct Host();
 
 impl RSocket for Host {
-  fn fire_and_forget(&self, payload: RawPayload) -> Mono<(), PayloadError> {
+  fn fire_and_forget(&self, payload: RawPayload) -> BoxMono<(), PayloadError> {
     SOCKET.with(|cell| {
       #[allow(unsafe_code)]
       let socket = unsafe { &mut *cell.get() };
@@ -49,7 +49,7 @@ impl RSocket for Host {
     })
   }
 
-  fn request_response(&self, payload: RawPayload) -> Mono<RawPayload, PayloadError> {
+  fn request_response(&self, payload: RawPayload) -> BoxMono<RawPayload, PayloadError> {
     SOCKET.with(|cell| {
       #[allow(unsafe_code)]
       let socket = unsafe { &mut *cell.get() };
@@ -57,7 +57,7 @@ impl RSocket for Host {
     })
   }
 
-  fn request_stream(&self, payload: RawPayload) -> FluxReceiver<RawPayload, PayloadError> {
+  fn request_stream(&self, payload: RawPayload) -> BoxFlux<RawPayload, PayloadError> {
     SOCKET.with(|cell| {
       #[allow(unsafe_code)]
       let socket = unsafe { &mut *cell.get() };
@@ -65,7 +65,7 @@ impl RSocket for Host {
     })
   }
 
-  fn request_channel(&self, stream: Box<dyn Flux<RawPayload, PayloadError>>) -> FluxReceiver<RawPayload, PayloadError> {
+  fn request_channel(&self, stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
     SOCKET.with(|cell| {
       #[allow(unsafe_code)]
       let socket = unsafe { &mut *cell.get() };

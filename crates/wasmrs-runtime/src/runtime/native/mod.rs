@@ -13,7 +13,7 @@ pub type BoxFuture<Output> = std::pin::Pin<Box<dyn Future<Output = Output> + Sen
 
 pub fn spawn<F>(task: F) -> TaskHandle
 where
-  F: Future<Output = ()> + ConditionallySafe + 'static,
+  F: Future<Output = ()> + Send + 'static,
 {
   tokio::spawn(task)
 }
@@ -147,14 +147,6 @@ where
 
   pub fn lock(&self) -> parking_lot::lock_api::MutexGuard<'_, parking_lot::RawMutex, T> {
     self.0.lock()
-  }
-}
-impl<T> PartialEq for MutRc<T>
-where
-  T: PartialEq,
-{
-  fn eq(&self, other: &Self) -> bool {
-    self.0.lock().eq(&other.0.lock())
   }
 }
 

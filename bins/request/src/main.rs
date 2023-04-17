@@ -61,7 +61,7 @@ async fn main() -> anyhow::Result<()> {
     let (tx, rx) = FluxChannel::new_parts();
 
     let task = tokio::spawn(async move {
-      let mut response = context.request_channel(Box::new(rx));
+      let mut response = context.request_channel(Box::pin(rx));
       while let Some(Ok(payload)) = response.next().await {
         let bytes = payload.data.unwrap();
         let val: String = deserialize(&bytes).unwrap();

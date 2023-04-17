@@ -82,6 +82,8 @@
 mod error;
 mod flux;
 
+use std::pin::Pin;
+
 pub use flux::*;
 
 pub use error::Error;
@@ -90,6 +92,28 @@ use wasmrs_runtime::ConditionallySafe;
 
 /// A generic trait to wrap over Flux, Mono, and supporting types.
 pub trait Flux<I, E>: Stream<Item = Result<I, E>> + Unpin + ConditionallySafe {}
+
+#[cfg(target_family = "wasm")]
+mod wasm {
+  /// A utility type for a boxed future.
+  pub type BoxMono<T, E> = std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, E>> + 'static>>;
+
+  /// A utility type for a boxed stream.
+  pub type BoxFlux<T, E> = std::pin::Pin<Box<dyn futures::Stream<Item = Result<T, E>> + 'static>>;
+}
+#[cfg(target_family = "wasm")]
+pub use wasm::*;
+
+#[cfg(not(target_family = "wasm"))]
+mod native {
+  /// A utility type for a boxed future.
+  pub type BoxMono<T, E> = std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, E>> + Send + 'static>>;
+
+  /// A utility type for a boxed stream.
+  pub type BoxFlux<T, E> = std::pin::Pin<Box<dyn futures::Stream<Item = Result<T, E>> + Send + 'static>>;
+}
+#[cfg(not(target_family = "wasm"))]
+pub use native::*;
 
 impl<I, E, T> Flux<I, E> for T
 where

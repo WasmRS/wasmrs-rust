@@ -106,6 +106,7 @@ pub struct Operation {
 
 #[derive(Debug, Default, Clone)]
 /// A list of imports/exports for a wasmRS module.
+#[must_use]
 pub struct OperationList {
   imports: Vec<Operation>,
   exports: Vec<Operation>,

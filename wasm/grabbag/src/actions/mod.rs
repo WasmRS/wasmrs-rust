@@ -104,7 +104,7 @@ extern "C" fn __wasmrs_init(guest_buffer_size: u32, host_buffer_size: u32, max_h
 }
 
 fn deserialize_helper(
-  i: Mono<Payload, PayloadError>,
+  i: BoxMono<Payload, PayloadError>,
 ) -> Mono<std::collections::BTreeMap<String, wasmrs_guest::Value>, PayloadError> {
   Mono::from_future(async move {
     match i.await {
@@ -165,7 +165,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_f64_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -208,7 +208,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_type_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -251,7 +251,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_enum_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -294,7 +294,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_uuid_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -337,7 +337,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_alias_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -380,7 +380,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_string_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -423,7 +423,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_bool_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -466,7 +466,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_datetime_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -509,7 +509,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_list_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -552,7 +552,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_map_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -595,7 +595,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_args_i64_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -645,7 +645,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_args_f64_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -695,7 +695,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_args_type_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -745,7 +745,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_args_enum_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -795,7 +795,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_args_uuid_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -845,7 +845,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_args_alias_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -895,7 +895,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_args_string_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -945,7 +945,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_args_bool_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -995,7 +995,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_args_datetime_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -1045,7 +1045,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_args_list_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -1095,7 +1095,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
   fn request_stream_args_map_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -1145,9 +1145,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
-  fn request_channel_i64_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_i64_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -1164,9 +1164,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -1212,9 +1212,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_f64_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_f64_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -1231,9 +1231,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -1279,9 +1279,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_type_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_type_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -1298,9 +1298,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -1346,9 +1346,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_enum_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_enum_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -1365,9 +1365,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -1413,9 +1413,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_alias_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_alias_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -1432,9 +1432,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -1480,9 +1480,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_string_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_string_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -1499,9 +1499,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -1547,9 +1547,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_bool_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_bool_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -1566,9 +1566,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -1614,9 +1614,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_datetime_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_datetime_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -1633,9 +1633,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -1681,9 +1681,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_list_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_list_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -1700,9 +1700,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -1748,9 +1748,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_map_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_map_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -1767,9 +1767,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -1815,9 +1815,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_args_i64_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_args_i64_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -1842,9 +1842,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -1890,9 +1890,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_args_f64_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_args_f64_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -1917,9 +1917,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -1965,9 +1965,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_args_type_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_args_type_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -1992,9 +1992,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -2040,9 +2040,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_args_enum_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_args_enum_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -2067,9 +2067,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -2115,9 +2115,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_args_alias_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_args_alias_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -2142,9 +2142,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -2190,9 +2190,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_args_string_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_args_string_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -2217,9 +2217,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -2265,9 +2265,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_args_bool_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_args_bool_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -2292,9 +2292,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -2340,9 +2340,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_args_datetime_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_args_datetime_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -2367,9 +2367,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -2415,9 +2415,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_args_list_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_args_list_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -2442,9 +2442,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -2490,9 +2490,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_args_map_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_args_map_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -2517,9 +2517,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -2565,9 +2565,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_void_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_void_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -2584,9 +2584,9 @@ impl MyStreamerComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -2623,9 +2623,9 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn request_channel_non_stream_output_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn request_channel_non_stream_output_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_in_tx, real_in_rx) = FluxChannel::new_parts();
     let in_inner_tx = real_in_tx.clone();
@@ -2643,9 +2643,9 @@ impl MyStreamerComponent {
           }
           Ok(input)
         };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("in") {
                 let _ = real_in_tx.send_result(
@@ -2682,7 +2682,7 @@ impl MyStreamerComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
 }
 
@@ -4245,7 +4245,7 @@ pub mod my_provider {
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(Box::new(rx))
+      .request_channel(Box::pin(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_i64::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4299,7 +4299,7 @@ pub mod my_provider {
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(Box::new(rx))
+      .request_channel(Box::pin(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_f64::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4353,7 +4353,7 @@ pub mod my_provider {
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(Box::new(rx))
+      .request_channel(Box::pin(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_type::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4407,7 +4407,7 @@ pub mod my_provider {
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(Box::new(rx))
+      .request_channel(Box::pin(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_enum::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4461,7 +4461,7 @@ pub mod my_provider {
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(Box::new(rx))
+      .request_channel(Box::pin(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_alias::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4515,7 +4515,7 @@ pub mod my_provider {
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(Box::new(rx))
+      .request_channel(Box::pin(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_string::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4569,7 +4569,7 @@ pub mod my_provider {
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(Box::new(rx))
+      .request_channel(Box::pin(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_bool::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4622,7 +4622,7 @@ pub mod my_provider {
       .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(Box::new(rx)).map(|result| {
+    Host::default().request_channel(Box::pin(rx)).map(|result| {
       result.map(|payload| Ok(deserialize::<request_channel_datetime::Output>(&payload.data.unwrap())?))?
     })
   }
@@ -4677,7 +4677,7 @@ pub mod my_provider {
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(Box::new(rx))
+      .request_channel(Box::pin(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_list::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4731,7 +4731,7 @@ pub mod my_provider {
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(Box::new(rx))
+      .request_channel(Box::pin(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_map::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -4784,7 +4784,7 @@ pub mod my_provider {
       .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(Box::new(rx)).map(|result| {
+    Host::default().request_channel(Box::pin(rx)).map(|result| {
       result.map(|payload| Ok(deserialize::<request_channel_args_i64::Output>(&payload.data.unwrap())?))?
     })
   }
@@ -4841,7 +4841,7 @@ pub mod my_provider {
       .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(Box::new(rx)).map(|result| {
+    Host::default().request_channel(Box::pin(rx)).map(|result| {
       result.map(|payload| Ok(deserialize::<request_channel_args_f64::Output>(&payload.data.unwrap())?))?
     })
   }
@@ -4898,7 +4898,7 @@ pub mod my_provider {
       .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(Box::new(rx)).map(|result| {
+    Host::default().request_channel(Box::pin(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_type::Output>(
           &payload.data.unwrap(),
@@ -4959,7 +4959,7 @@ pub mod my_provider {
       .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(Box::new(rx)).map(|result| {
+    Host::default().request_channel(Box::pin(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_enum::Output>(
           &payload.data.unwrap(),
@@ -5020,7 +5020,7 @@ pub mod my_provider {
       .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(Box::new(rx)).map(|result| {
+    Host::default().request_channel(Box::pin(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_alias::Output>(
           &payload.data.unwrap(),
@@ -5081,7 +5081,7 @@ pub mod my_provider {
       .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(Box::new(rx)).map(|result| {
+    Host::default().request_channel(Box::pin(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_string::Output>(
           &payload.data.unwrap(),
@@ -5142,7 +5142,7 @@ pub mod my_provider {
       .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(Box::new(rx)).map(|result| {
+    Host::default().request_channel(Box::pin(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_bool::Output>(
           &payload.data.unwrap(),
@@ -5203,7 +5203,7 @@ pub mod my_provider {
       .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(Box::new(rx)).map(|result| {
+    Host::default().request_channel(Box::pin(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_datetime::Output>(
           &payload.data.unwrap(),
@@ -5264,7 +5264,7 @@ pub mod my_provider {
       .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(Box::new(rx)).map(|result| {
+    Host::default().request_channel(Box::pin(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_args_list::Output>(
           &payload.data.unwrap(),
@@ -5325,7 +5325,7 @@ pub mod my_provider {
       .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(Box::new(rx)).map(|result| {
+    Host::default().request_channel(Box::pin(rx)).map(|result| {
       result.map(|payload| Ok(deserialize::<request_channel_args_map::Output>(&payload.data.unwrap())?))?
     })
   }
@@ -5383,7 +5383,7 @@ pub mod my_provider {
     let _ = tx.send_result(payload);
 
     Host::default()
-      .request_channel(Box::new(rx))
+      .request_channel(Box::pin(rx))
       .map(|result| result.map(|payload| Ok(deserialize::<request_channel_void::Output>(&payload.data.unwrap())?))?)
   }
 
@@ -5436,7 +5436,7 @@ pub mod my_provider {
       .map_err(|e| PayloadError::application_error(e.to_string(), None));
     let _ = tx.send_result(payload);
 
-    Host::default().request_channel(Box::new(rx)).map(|result| {
+    Host::default().request_channel(Box::pin(rx)).map(|result| {
       result.map(|payload| {
         Ok(deserialize::<request_channel_non_stream_output::Output>(
           &payload.data.unwrap(),
@@ -5487,10 +5487,13 @@ impl MyServiceComponent {
           let _ = tx.send(output);
         });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_type_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5530,10 +5533,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_enum_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5573,10 +5579,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_uuid_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5616,10 +5625,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_alias_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5659,10 +5671,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_string_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5702,10 +5717,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_i64_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5745,10 +5763,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_i32_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5788,10 +5809,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_i16_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5831,10 +5855,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_i8_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5874,10 +5901,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_u64_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5917,10 +5947,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_u32_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -5960,10 +5993,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_u16_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6003,10 +6039,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_u8_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6046,10 +6085,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_f64_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6089,10 +6131,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_f32_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6132,10 +6177,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_bytes_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6175,10 +6223,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_datetime_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6218,10 +6269,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_list_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6261,10 +6315,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn unary_map_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6306,10 +6363,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_type_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6357,10 +6417,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_enum_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6408,10 +6471,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_uuid_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6459,10 +6525,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_alias_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6510,10 +6579,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_string_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6561,10 +6633,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_i64_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6610,10 +6685,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_i32_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6659,10 +6737,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_i16_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6708,10 +6789,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_i8_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6757,10 +6841,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_u64_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6806,10 +6893,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_u32_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6855,10 +6945,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_u16_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6904,10 +6997,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_u8_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -6953,10 +7049,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_f64_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -7002,10 +7101,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_f32_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -7051,10 +7153,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_bytes_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -7102,10 +7207,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_datetime_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -7153,10 +7261,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_list_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -7204,10 +7315,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn func_map_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -7253,10 +7367,13 @@ impl MyServiceComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
 }
 
@@ -8534,490 +8651,498 @@ pub(crate) fn init_exports() {
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "emptyVoid",
-    MyServiceComponent::empty_void_wrapper,
+    Box::new(MyServiceComponent::empty_void_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryType",
-    MyServiceComponent::unary_type_wrapper,
+    Box::new(MyServiceComponent::unary_type_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryEnum",
-    MyServiceComponent::unary_enum_wrapper,
+    Box::new(MyServiceComponent::unary_enum_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryUUID",
-    MyServiceComponent::unary_uuid_wrapper,
+    Box::new(MyServiceComponent::unary_uuid_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryAlias",
-    MyServiceComponent::unary_alias_wrapper,
+    Box::new(MyServiceComponent::unary_alias_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryString",
-    MyServiceComponent::unary_string_wrapper,
+    Box::new(MyServiceComponent::unary_string_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryI64",
-    MyServiceComponent::unary_i64_wrapper,
+    Box::new(MyServiceComponent::unary_i64_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryI32",
-    MyServiceComponent::unary_i32_wrapper,
+    Box::new(MyServiceComponent::unary_i32_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryI16",
-    MyServiceComponent::unary_i16_wrapper,
+    Box::new(MyServiceComponent::unary_i16_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryI8",
-    MyServiceComponent::unary_i8_wrapper,
+    Box::new(MyServiceComponent::unary_i8_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryU64",
-    MyServiceComponent::unary_u64_wrapper,
+    Box::new(MyServiceComponent::unary_u64_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryU32",
-    MyServiceComponent::unary_u32_wrapper,
+    Box::new(MyServiceComponent::unary_u32_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryU16",
-    MyServiceComponent::unary_u16_wrapper,
+    Box::new(MyServiceComponent::unary_u16_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryU8",
-    MyServiceComponent::unary_u8_wrapper,
+    Box::new(MyServiceComponent::unary_u8_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryF64",
-    MyServiceComponent::unary_f64_wrapper,
+    Box::new(MyServiceComponent::unary_f64_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryF32",
-    MyServiceComponent::unary_f32_wrapper,
+    Box::new(MyServiceComponent::unary_f32_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryBytes",
-    MyServiceComponent::unary_bytes_wrapper,
+    Box::new(MyServiceComponent::unary_bytes_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryDatetime",
-    MyServiceComponent::unary_datetime_wrapper,
+    Box::new(MyServiceComponent::unary_datetime_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryList",
-    MyServiceComponent::unary_list_wrapper,
+    Box::new(MyServiceComponent::unary_list_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "unaryMap",
-    MyServiceComponent::unary_map_wrapper,
+    Box::new(MyServiceComponent::unary_map_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcType",
-    MyServiceComponent::func_type_wrapper,
+    Box::new(MyServiceComponent::func_type_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcEnum",
-    MyServiceComponent::func_enum_wrapper,
+    Box::new(MyServiceComponent::func_enum_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcUUID",
-    MyServiceComponent::func_uuid_wrapper,
+    Box::new(MyServiceComponent::func_uuid_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcAlias",
-    MyServiceComponent::func_alias_wrapper,
+    Box::new(MyServiceComponent::func_alias_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcString",
-    MyServiceComponent::func_string_wrapper,
+    Box::new(MyServiceComponent::func_string_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcI64",
-    MyServiceComponent::func_i64_wrapper,
+    Box::new(MyServiceComponent::func_i64_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcI32",
-    MyServiceComponent::func_i32_wrapper,
+    Box::new(MyServiceComponent::func_i32_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcI16",
-    MyServiceComponent::func_i16_wrapper,
+    Box::new(MyServiceComponent::func_i16_wrapper),
   );
 
-  wasmrs_guest::register_request_response("iota.testing.MyService", "funcI8", MyServiceComponent::func_i8_wrapper);
+  wasmrs_guest::register_request_response(
+    "iota.testing.MyService",
+    "funcI8",
+    Box::new(MyServiceComponent::func_i8_wrapper),
+  );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcU64",
-    MyServiceComponent::func_u64_wrapper,
+    Box::new(MyServiceComponent::func_u64_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcU32",
-    MyServiceComponent::func_u32_wrapper,
+    Box::new(MyServiceComponent::func_u32_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcU16",
-    MyServiceComponent::func_u16_wrapper,
+    Box::new(MyServiceComponent::func_u16_wrapper),
   );
 
-  wasmrs_guest::register_request_response("iota.testing.MyService", "funcU8", MyServiceComponent::func_u8_wrapper);
+  wasmrs_guest::register_request_response(
+    "iota.testing.MyService",
+    "funcU8",
+    Box::new(MyServiceComponent::func_u8_wrapper),
+  );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcF64",
-    MyServiceComponent::func_f64_wrapper,
+    Box::new(MyServiceComponent::func_f64_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcF32",
-    MyServiceComponent::func_f32_wrapper,
+    Box::new(MyServiceComponent::func_f32_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcBytes",
-    MyServiceComponent::func_bytes_wrapper,
+    Box::new(MyServiceComponent::func_bytes_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcDatetime",
-    MyServiceComponent::func_datetime_wrapper,
+    Box::new(MyServiceComponent::func_datetime_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcList",
-    MyServiceComponent::func_list_wrapper,
+    Box::new(MyServiceComponent::func_list_wrapper),
   );
 
   wasmrs_guest::register_request_response(
     "iota.testing.MyService",
     "funcMap",
-    MyServiceComponent::func_map_wrapper,
+    Box::new(MyServiceComponent::func_map_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamI64",
-    MyStreamerComponent::request_stream_i64_wrapper,
+    Box::new(MyStreamerComponent::request_stream_i64_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamF64",
-    MyStreamerComponent::request_stream_f64_wrapper,
+    Box::new(MyStreamerComponent::request_stream_f64_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamType",
-    MyStreamerComponent::request_stream_type_wrapper,
+    Box::new(MyStreamerComponent::request_stream_type_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamEnum",
-    MyStreamerComponent::request_stream_enum_wrapper,
+    Box::new(MyStreamerComponent::request_stream_enum_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamUUID",
-    MyStreamerComponent::request_stream_uuid_wrapper,
+    Box::new(MyStreamerComponent::request_stream_uuid_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamAlias",
-    MyStreamerComponent::request_stream_alias_wrapper,
+    Box::new(MyStreamerComponent::request_stream_alias_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamString",
-    MyStreamerComponent::request_stream_string_wrapper,
+    Box::new(MyStreamerComponent::request_stream_string_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamBool",
-    MyStreamerComponent::request_stream_bool_wrapper,
+    Box::new(MyStreamerComponent::request_stream_bool_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamDatetime",
-    MyStreamerComponent::request_stream_datetime_wrapper,
+    Box::new(MyStreamerComponent::request_stream_datetime_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamList",
-    MyStreamerComponent::request_stream_list_wrapper,
+    Box::new(MyStreamerComponent::request_stream_list_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamMap",
-    MyStreamerComponent::request_stream_map_wrapper,
+    Box::new(MyStreamerComponent::request_stream_map_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamArgsI64",
-    MyStreamerComponent::request_stream_args_i64_wrapper,
+    Box::new(MyStreamerComponent::request_stream_args_i64_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamArgsF64",
-    MyStreamerComponent::request_stream_args_f64_wrapper,
+    Box::new(MyStreamerComponent::request_stream_args_f64_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamArgsType",
-    MyStreamerComponent::request_stream_args_type_wrapper,
+    Box::new(MyStreamerComponent::request_stream_args_type_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamArgsEnum",
-    MyStreamerComponent::request_stream_args_enum_wrapper,
+    Box::new(MyStreamerComponent::request_stream_args_enum_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamArgsUUID",
-    MyStreamerComponent::request_stream_args_uuid_wrapper,
+    Box::new(MyStreamerComponent::request_stream_args_uuid_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamArgsAlias",
-    MyStreamerComponent::request_stream_args_alias_wrapper,
+    Box::new(MyStreamerComponent::request_stream_args_alias_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamArgsString",
-    MyStreamerComponent::request_stream_args_string_wrapper,
+    Box::new(MyStreamerComponent::request_stream_args_string_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamArgsBool",
-    MyStreamerComponent::request_stream_args_bool_wrapper,
+    Box::new(MyStreamerComponent::request_stream_args_bool_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamArgsDatetime",
-    MyStreamerComponent::request_stream_args_datetime_wrapper,
+    Box::new(MyStreamerComponent::request_stream_args_datetime_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamArgsList",
-    MyStreamerComponent::request_stream_args_list_wrapper,
+    Box::new(MyStreamerComponent::request_stream_args_list_wrapper),
   );
 
   wasmrs_guest::register_request_stream(
     "iota.testing.MyStreamer",
     "requestStreamArgsMap",
-    MyStreamerComponent::request_stream_args_map_wrapper,
+    Box::new(MyStreamerComponent::request_stream_args_map_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelI64",
-    MyStreamerComponent::request_channel_i64_wrapper,
+    Box::new(MyStreamerComponent::request_channel_i64_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelF64",
-    MyStreamerComponent::request_channel_f64_wrapper,
+    Box::new(MyStreamerComponent::request_channel_f64_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelType",
-    MyStreamerComponent::request_channel_type_wrapper,
+    Box::new(MyStreamerComponent::request_channel_type_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelEnum",
-    MyStreamerComponent::request_channel_enum_wrapper,
+    Box::new(MyStreamerComponent::request_channel_enum_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelAlias",
-    MyStreamerComponent::request_channel_alias_wrapper,
+    Box::new(MyStreamerComponent::request_channel_alias_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelString",
-    MyStreamerComponent::request_channel_string_wrapper,
+    Box::new(MyStreamerComponent::request_channel_string_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelBool",
-    MyStreamerComponent::request_channel_bool_wrapper,
+    Box::new(MyStreamerComponent::request_channel_bool_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelDatetime",
-    MyStreamerComponent::request_channel_datetime_wrapper,
+    Box::new(MyStreamerComponent::request_channel_datetime_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelList",
-    MyStreamerComponent::request_channel_list_wrapper,
+    Box::new(MyStreamerComponent::request_channel_list_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelMap",
-    MyStreamerComponent::request_channel_map_wrapper,
+    Box::new(MyStreamerComponent::request_channel_map_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelArgsI64",
-    MyStreamerComponent::request_channel_args_i64_wrapper,
+    Box::new(MyStreamerComponent::request_channel_args_i64_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelArgsF64",
-    MyStreamerComponent::request_channel_args_f64_wrapper,
+    Box::new(MyStreamerComponent::request_channel_args_f64_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelArgsType",
-    MyStreamerComponent::request_channel_args_type_wrapper,
+    Box::new(MyStreamerComponent::request_channel_args_type_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelArgsEnum",
-    MyStreamerComponent::request_channel_args_enum_wrapper,
+    Box::new(MyStreamerComponent::request_channel_args_enum_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelArgsAlias",
-    MyStreamerComponent::request_channel_args_alias_wrapper,
+    Box::new(MyStreamerComponent::request_channel_args_alias_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelArgsString",
-    MyStreamerComponent::request_channel_args_string_wrapper,
+    Box::new(MyStreamerComponent::request_channel_args_string_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelArgsBool",
-    MyStreamerComponent::request_channel_args_bool_wrapper,
+    Box::new(MyStreamerComponent::request_channel_args_bool_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelArgsDatetime",
-    MyStreamerComponent::request_channel_args_datetime_wrapper,
+    Box::new(MyStreamerComponent::request_channel_args_datetime_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelArgsList",
-    MyStreamerComponent::request_channel_args_list_wrapper,
+    Box::new(MyStreamerComponent::request_channel_args_list_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelArgsMap",
-    MyStreamerComponent::request_channel_args_map_wrapper,
+    Box::new(MyStreamerComponent::request_channel_args_map_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelVoid",
-    MyStreamerComponent::request_channel_void_wrapper,
+    Box::new(MyStreamerComponent::request_channel_void_wrapper),
   );
 
   wasmrs_guest::register_request_channel(
     "iota.testing.MyStreamer",
     "requestChannelNonStreamOutput",
-    MyStreamerComponent::request_channel_non_stream_output_wrapper,
+    Box::new(MyStreamerComponent::request_channel_non_stream_output_wrapper),
   );
 }

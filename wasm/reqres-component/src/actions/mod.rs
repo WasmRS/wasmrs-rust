@@ -23,7 +23,7 @@ extern "C" fn __wasmrs_init(guest_buffer_size: u32, host_buffer_size: u32, max_h
 }
 
 fn deserialize_helper(
-  i: Mono<Payload, PayloadError>,
+  i: BoxMono<Payload, PayloadError>,
 ) -> Mono<std::collections::BTreeMap<String, wasmrs_guest::Value>, PayloadError> {
   Mono::from_future(async move {
     match i.await {
@@ -64,10 +64,13 @@ impl TestComponent {
           let _ = tx.send(output);
         });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn echo_wrapper(input: IncomingMono) -> Result<OutgoingMono, GenericError> {
     let (tx, rx) = runtime::oneshot();
@@ -107,10 +110,13 @@ impl TestComponent {
         let _ = tx.send(output);
       });
     });
-    Ok(Mono::from_future(async move {
-      rx.await
-        .map_err(|e| PayloadError::application_error(e.to_string(), None))?
-    }))
+    Ok(
+      Mono::from_future(async move {
+        rx.await
+          .map_err(|e| PayloadError::application_error(e.to_string(), None))?
+      })
+      .boxed(),
+    )
   }
   fn chars_wrapper(input: IncomingMono) -> Result<OutgoingStream, GenericError> {
     let (out_tx, out_rx) = FluxChannel::new_parts();
@@ -158,9 +164,9 @@ impl TestComponent {
         }
       }
     });
-    Ok(out_rx)
+    Ok(out_rx.boxed())
   }
-  fn reverse_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn reverse_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_input_tx, real_input_rx) = FluxChannel::new_parts();
     let input_inner_tx = real_input_tx.clone();
@@ -177,9 +183,9 @@ impl TestComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("input") {
                 let _ = real_input_tx.send_result(
@@ -225,9 +231,9 @@ impl TestComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
-  fn wrap_wrapper(input: IncomingStream) -> Result<OutgoingStream, GenericError> {
+  fn wrap_wrapper(mut input: IncomingStream) -> Result<OutgoingStream, GenericError> {
     let (real_out_tx, real_out_rx) = FluxChannel::new_parts();
     let (real_input_tx, real_input_rx) = FluxChannel::new_parts();
     let input_inner_tx = real_input_tx.clone();
@@ -258,9 +264,9 @@ impl TestComponent {
         }
         Ok(input)
       };
-      let input_map = if let Ok(Some(Ok(first))) = input.recv().await {
+      let input_map = if let Ok(Some(first)) = input.try_next().await {
         spawn(async move {
-          while let Ok(Some(Ok(payload))) = input.recv().await {
+          while let Ok(Some(payload)) = input.try_next().await {
             if let Ok(mut payload) = deserialize_generic(&payload.data) {
               if let Some(a) = payload.remove("input") {
                 let _ = real_input_tx.send_result(
@@ -306,7 +312,7 @@ impl TestComponent {
         }
       }
     });
-    Ok(real_out_rx)
+    Ok(real_out_rx.boxed())
   }
 }
 
@@ -422,13 +428,13 @@ pub mod test_service {
 
 pub(crate) fn init_imports() {}
 pub(crate) fn init_exports() {
-  wasmrs_guest::register_request_response("suite.test", "test", TestComponent::test_wrapper);
+  wasmrs_guest::register_request_response("suite.test", "test", Box::new(TestComponent::test_wrapper));
 
-  wasmrs_guest::register_request_response("suite.test", "echo", TestComponent::echo_wrapper);
+  wasmrs_guest::register_request_response("suite.test", "echo", Box::new(TestComponent::echo_wrapper));
 
-  wasmrs_guest::register_request_stream("suite.test", "chars", TestComponent::chars_wrapper);
+  wasmrs_guest::register_request_stream("suite.test", "chars", Box::new(TestComponent::chars_wrapper));
 
-  wasmrs_guest::register_request_channel("suite.test", "reverse", TestComponent::reverse_wrapper);
+  wasmrs_guest::register_request_channel("suite.test", "reverse", Box::new(TestComponent::reverse_wrapper));
 
-  wasmrs_guest::register_request_channel("suite.test", "wrap", TestComponent::wrap_wrapper);
+  wasmrs_guest::register_request_channel("suite.test", "wrap", Box::new(TestComponent::wrap_wrapper));
 }

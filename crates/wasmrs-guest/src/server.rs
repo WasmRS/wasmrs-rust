@@ -2,10 +2,10 @@ use std::cell::UnsafeCell;
 
 use futures_util::StreamExt;
 use runtime::RtRc;
-use wasmrs::{OperationMap, Payload, RSocket, RawPayload};
+use wasmrs::{BoxFlux, BoxMono, OperationMap, Payload, RSocket, RawPayload};
 use wasmrs_frames::PayloadError;
 use wasmrs_runtime as runtime;
-use wasmrs_rx::{Flux, FluxChannel, FluxReceiver, Mono, Observer};
+use wasmrs_rx::{FluxChannel, Mono, Observer};
 
 use crate::error::Error;
 
@@ -13,38 +13,38 @@ use crate::error::Error;
 pub(crate) struct WasmServer {}
 
 impl RSocket for WasmServer {
-  fn fire_and_forget(&self, payload: RawPayload) -> Mono<(), PayloadError> {
-    match request_fnf(payload) {
+  fn fire_and_forget(&self, payload: RawPayload) -> BoxMono<(), PayloadError> {
+    Box::pin(match request_fnf(payload) {
       Ok(v) => Mono::new_success(v),
       Err(e) => Mono::new_error(PayloadError::application_error(e.to_string(), None)),
-    }
+    })
   }
 
-  fn request_response(&self, payload: RawPayload) -> Mono<RawPayload, PayloadError> {
+  fn request_response(&self, payload: RawPayload) -> BoxMono<RawPayload, PayloadError> {
     match request_response(payload) {
       Ok(v) => v,
-      Err(e) => Mono::new_error(PayloadError::application_error(e.to_string(), None)),
+      Err(e) => Box::pin(Mono::new_error(PayloadError::application_error(e.to_string(), None))),
     }
   }
 
-  fn request_stream(&self, payload: RawPayload) -> FluxReceiver<RawPayload, PayloadError> {
+  fn request_stream(&self, payload: RawPayload) -> BoxFlux<RawPayload, PayloadError> {
     match request_stream(payload) {
       Ok(flux) => flux,
       Err(e) => {
         let flux = FluxChannel::new();
         let _ = flux.error(PayloadError::application_error(e.to_string(), None));
-        flux.take_rx().unwrap()
+        Box::pin(flux.take_rx().unwrap())
       }
     }
   }
 
-  fn request_channel(&self, stream: Box<dyn Flux<RawPayload, PayloadError>>) -> FluxReceiver<RawPayload, PayloadError> {
+  fn request_channel(&self, stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
     match request_channel(stream) {
       Ok(flux) => flux,
       Err(e) => {
         let flux = FluxChannel::new();
         let _ = flux.error(PayloadError::application_error(e.to_string(), None));
-        flux.take_rx().unwrap()
+        Box::pin(flux.take_rx().unwrap())
       }
     }
   }
@@ -55,40 +55,38 @@ fn request_fnf(payload: RawPayload) -> Result<(), Error> {
 
   let handler = get_process_handler(&crate::guest::REQUEST_FNF_HANDLERS, parsed.metadata.index as _)?;
 
-  handler(Mono::new_success(parsed)).map_err(|e| Error::HandlerFail(e.to_string()))?;
+  handler(Box::pin(Mono::new_success(parsed))).map_err(|e| Error::HandlerFail(e.to_string()))?;
   Ok(())
 }
 
-fn request_response(payload: RawPayload) -> Result<Mono<RawPayload, PayloadError>, Error> {
+fn request_response(payload: RawPayload) -> Result<BoxMono<RawPayload, PayloadError>, Error> {
   let parsed: Payload = payload.try_into()?;
 
   let handler = get_process_handler(&crate::guest::REQUEST_RESPONSE_HANDLERS, parsed.metadata.index as _)?;
 
-  handler(Mono::new_success(parsed)).map_err(|e| Error::HandlerFail(e.to_string()))
+  handler(Box::pin(Mono::new_success(parsed))).map_err(|e| Error::HandlerFail(e.to_string()))
 }
 
-fn request_stream(payload: RawPayload) -> Result<FluxReceiver<RawPayload, PayloadError>, Error> {
+fn request_stream(payload: RawPayload) -> Result<BoxFlux<RawPayload, PayloadError>, Error> {
   let parsed: Payload = payload.try_into()?;
   let handler = get_process_handler(&crate::guest::REQUEST_STREAM_HANDLERS, parsed.metadata.index as _)?;
   let mono = Mono::new_success(parsed);
-  handler(mono).map_err(|e| Error::HandlerFail(e.to_string()))
+  handler(mono.boxed()).map_err(|e| Error::HandlerFail(e.to_string()))
 }
 
-fn request_channel(
-  stream: Box<dyn Flux<RawPayload, PayloadError>>,
-) -> Result<FluxReceiver<RawPayload, PayloadError>, Error> {
+fn request_channel(stream: BoxFlux<RawPayload, PayloadError>) -> Result<BoxFlux<RawPayload, PayloadError>, Error> {
   let (tx, rx) = FluxChannel::new_parts();
   runtime::spawn(async move {
     if let Err(e) = request_channel_inner(tx.clone(), stream).await {
       let _ = tx.error(PayloadError::application_error(e.to_string(), None));
     }
   });
-  Ok(rx)
+  Ok(rx.boxed())
 }
 
 async fn request_channel_inner(
   tx: FluxChannel<RawPayload, PayloadError>,
-  mut stream: Box<dyn Flux<RawPayload, PayloadError>>,
+  mut stream: BoxFlux<RawPayload, PayloadError>,
 ) -> Result<(), Error> {
   let (handler_input, handler_stream) = FluxChannel::new_parts();
   let mut handler_out = if let Some(result) = stream.next().await {
@@ -105,7 +103,7 @@ async fn request_channel_inner(
 
     handler_input.send(parsed).unwrap();
 
-    handler(handler_stream).map_err(|e| Error::HandlerFail(e.to_string()))?
+    handler(handler_stream.boxed()).map_err(|e| Error::HandlerFail(e.to_string()))?
   } else {
     let _ = tx.error(PayloadError::application_error(
       "Can not initiate a channel with no payload",
