@@ -180,7 +180,7 @@ impl WasmSocket {
     let result = responder.request_response(input);
     let side = self.side;
 
-    runtime::spawn(async move {
+    runtime::spawn("on_request_response", async move {
       match result.await {
         Ok(res) => {
           send_payload(&tx, sid, side, res, Frame::FLAG_NEXT | Frame::FLAG_COMPLETE);
@@ -197,7 +197,7 @@ impl WasmSocket {
     let abort_handles = self.abort_handles.clone();
     let side = self.side;
 
-    runtime::spawn(async move {
+    runtime::spawn("on_request_stream", async move {
       let (abort_handle, abort_registration) = AbortHandle::new_pair();
       abort_handles.insert(sid, abort_handle);
       let mut payloads = Abortable::new(responder.request_stream(input), abort_registration);
@@ -225,7 +225,7 @@ impl WasmSocket {
     let abort_handles = self.abort_handles.clone();
     let side = self.side;
 
-    runtime::spawn(async move {
+    runtime::spawn("on_request_channel", async move {
       let outputs = responder.request_channel(Box::pin(handler_rx));
       let (abort_handle, abort_registration) = AbortHandle::new_pair();
       abort_handles.insert(sid, abort_handle);
@@ -257,7 +257,7 @@ impl WasmSocket {
 
     let side = self.side;
 
-    runtime::spawn(async move {
+    runtime::spawn("on_request_fnf", async move {
       if let Err(e) = result.await {
         send_error(&tx, sid, side, e);
       }
@@ -425,7 +425,7 @@ impl RSocket for WasmSocket {
 
     let side = self.side;
 
-    runtime::spawn(async move {
+    runtime::spawn("request_channel", async move {
       let mut first = true;
       let mut n = 1;
       while let Some(next) = stream.next().await {
@@ -532,7 +532,7 @@ mod test {
 
     fn request_channel(&self, mut stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
       let (tx, rx) = FluxChannel::new_parts();
-      runtime::spawn(async move {
+      runtime::spawn("request_channel", async move {
         while let Some(next) = stream.next().await {
           tx.send_result(next).unwrap();
         }
@@ -553,13 +553,13 @@ mod test {
     let host = Arc::new(host);
     let inner_host = host.clone();
 
-    runtime::spawn(async move {
+    runtime::spawn("guest->host", async move {
       while let Some(frame) = guest_frame_rx.recv().await {
         println!("GUEST >>> HOST: {:?}", frame);
         inner_host.process_once(frame).unwrap();
       }
     });
-    runtime::spawn(async move {
+    runtime::spawn("host->guest", async move {
       while let Some(frame) = host_frame_rx.recv().await {
         println!("HOST >>> GUEST: {:?}", frame);
         inner_guest.process_once(frame).unwrap();

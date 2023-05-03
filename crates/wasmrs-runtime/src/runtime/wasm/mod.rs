@@ -17,13 +17,20 @@ thread_local! {
   static IS_RUNNING: AtomicBool = AtomicBool::new(false);
 }
 
-pub fn spawn<Fut>(future: Fut)
+pub fn spawn<Fut>(_id: &'static str, future: Fut)
 where
   Fut: Future<Output = ()> + ConditionallySafe + 'static,
 {
   SPAWNER.with(|spawner| {
     #[allow(unsafe_code)]
     let spawner = unsafe { &mut *spawner.get() };
+    #[cfg(feature = "logging")]
+    println!("wasm:runtime:spawn:start:{}", _id);
+    let future = Box::pin(async move {
+      future.await;
+      #[cfg(feature = "logging")]
+      println!("wasm:runtime:spawn:end:{}", _id)
+    });
     match spawner {
       Some(spawner) => spawner
         .spawn_local(future)
