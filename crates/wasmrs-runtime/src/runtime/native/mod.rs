@@ -11,11 +11,15 @@ pub type TaskHandle = JoinHandle<()>;
 
 pub type BoxFuture<Output> = std::pin::Pin<Box<dyn Future<Output = Output> + Send + Sync + 'static>>;
 
-pub fn spawn<F>(task: F) -> TaskHandle
+pub fn spawn<F>(id: &'static str, task: F) -> TaskHandle
 where
   F: Future<Output = ()> + Send + 'static,
 {
-  tokio::spawn(task)
+  tracing::trace!("native:runtime:task:start:{}", id);
+  tokio::spawn(async move {
+    task.await;
+    tracing::trace!("native:runtime:task:end:{}", id);
+  })
 }
 
 pub fn exhaust_pool() {

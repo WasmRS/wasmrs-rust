@@ -1,8 +1,8 @@
-use std::{io::Read, sync::Arc};
+use std::io::Read;
+use std::sync::Arc;
 
 use base64::Engine;
 use clap::Parser;
-use futures::{FutureExt, StreamExt};
 use tracing::{debug, info};
 use wasmrs::{BoxFlux, BoxMono, RSocket, RawPayload, SocketSide, WasmSocket};
 use wasmrs_frames::PayloadError;

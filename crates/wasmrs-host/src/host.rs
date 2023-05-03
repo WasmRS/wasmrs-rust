@@ -98,7 +98,7 @@ impl Host {
 }
 
 fn spawn_writer(mut rx: UnboundedReceiver<Frame>, context: SharedContext) {
-  spawn(async move {
+  spawn("host:spawn_writer", async move {
     while let Some(frame) = rx.recv().await {
       let _ = context.write_frame(frame);
     }

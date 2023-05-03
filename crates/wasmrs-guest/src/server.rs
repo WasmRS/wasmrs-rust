@@ -66,7 +66,7 @@ fn request_stream(payload: RawPayload) -> Result<BoxFlux<RawPayload, PayloadErro
 fn request_channel(stream: BoxFlux<RawPayload, PayloadError>) -> Result<BoxFlux<RawPayload, PayloadError>, Error> {
   let (tx, rx) = FluxChannel::new_parts();
 
-  runtime::spawn(async move {
+  runtime::spawn("guest:server:request_channel", async move {
     match request_channel_inner(stream).await {
       Ok(mut res_stream) => {
         while let Some(r) = res_stream.next().await {
@@ -109,7 +109,7 @@ async fn request_channel_inner(
     );
   };
 
-  runtime::spawn(async move {
+  runtime::spawn("guest:server:request_channel_inner", async move {
     while let Some(next) = incoming_stream.next().await {
       let v = next.and_then(|v: RawPayload| {
         v.try_into()

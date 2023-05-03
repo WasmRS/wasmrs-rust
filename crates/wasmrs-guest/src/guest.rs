@@ -156,7 +156,7 @@ pub(crate) fn send_frame(read_until: u32) {
 
 fn spawn_writer(mut _rx: UnboundedReceiver<Frame>) {
   #[cfg(target_family = "wasm")]
-  spawn(async move {
+  spawn("guest:frame_writer", async move {
     loop {
       match _rx.recv().await {
         Some(frame) => {
