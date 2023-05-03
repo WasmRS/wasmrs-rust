@@ -25,11 +25,11 @@ extern "C" fn __wasmrs_init(guest_buffer_size: u32, host_buffer_size: u32, max_h
 }
 
 fn request_response(input: Mono<ParsedPayload, PayloadError>) -> Result<Mono<Payload, PayloadError>, GenericError> {
-  Ok(Mono::from_future(async move {
+  Ok(async move {
     let input = deserialize::<String>(&input.await.unwrap().data).unwrap();
     let output = format!("Hello, {}!", input);
     Ok(Payload::new_data(None, Some(serialize(&output).unwrap().into())))
-  }))
+  }.boxed())
 }
 
 fn request_stream(

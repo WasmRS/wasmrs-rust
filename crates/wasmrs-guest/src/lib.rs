@@ -80,7 +80,8 @@
 
 mod guest;
 pub use error::Error;
-pub use futures_util::FutureExt;
+pub use futures_util::{FutureExt, Stream};
+
 pub use guest::*;
 pub use wasmrs_runtime as runtime;
 pub use wasmrs_rx::{Flux, FluxChannel, FluxReceiver, Mono, Observable, Observer};
@@ -92,7 +93,6 @@ mod server;
 /// The wasmRS-guest error module.
 pub mod error;
 
-pub use futures_util::Stream;
 pub use serde_json::Value;
 pub use wasmrs::Payload;
 pub use wasmrs_codec::Timestamp;

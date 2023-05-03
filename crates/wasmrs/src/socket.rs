@@ -1,16 +1,17 @@
 #![allow(missing_debug_implementations)]
-use crate::{BoxFlux, BoxMono, Frame, PayloadError, RSocket};
 use bytes::Bytes;
 use wasmrs_frames::{ErrorCode, FrameFlags, RSocketFlags};
 use wasmrs_runtime::{self as runtime, unbounded_channel, Entry, SafeMap, UnboundedReceiver, UnboundedSender};
 use wasmrs_rx::*;
+
+use crate::{BoxFlux, BoxMono, Frame, PayloadError, RSocket};
 mod buffer;
 
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
 use futures::stream::{AbortHandle, Abortable};
-use futures::{StreamExt, TryFutureExt};
+use futures::{FutureExt, StreamExt, TryFutureExt};
 mod responder;
 
 pub use self::buffer::BufferState;
@@ -255,6 +256,7 @@ impl WasmSocket {
     let result = responder.fire_and_forget(input);
 
     let side = self.side;
+
     runtime::spawn(async move {
       if let Err(e) = result.await {
         send_error(&tx, sid, side, e);
@@ -298,6 +300,7 @@ impl WasmSocket {
         Handler::ReqRS(sender) => {
           if flag.flag_next() {
             if sender.is_closed() {
+              warn!(sid, side = %self.side, "request stream already closed");
               send_cancel(&tx, sid, self.side);
             } else if let Err(_e) = sender.send(input) {
               error!(sid, side = %self.side, "error sending payload for REQUEST_STREAM, channel already closed");
@@ -312,6 +315,7 @@ impl WasmSocket {
         Handler::ReqRC(sender) => {
           if flag.flag_next() {
             if sender.is_closed() {
+              warn!(sid, side = %self.side, "request channel already closed");
               send_cancel(&tx, sid, self.side);
             } else if (sender.send(input)).is_err() {
               error!(sid, side = %self.side, "error sending payload for REQUEST_CHANNEL, channel already closed");
@@ -354,13 +358,13 @@ impl WasmSocket {
       let e = PayloadError::new(code, message, metadata);
       match handler {
         Handler::ReqRR(sender) => {
-          sender.send(Err(e)).unwrap();
+          let _ = sender.send(Err(e));
         }
         Handler::ReqRS(sender) => {
-          sender.error(e).unwrap();
+          let _ = sender.error(e);
         }
         Handler::ReqRC(sender) => {
-          sender.error(e).unwrap();
+          let _ = sender.error(e);
         }
       }
     }
@@ -375,8 +379,7 @@ impl RSocket for WasmSocket {
     let frame = Frame::new_request_fnf(sid, payload, 0);
 
     send(&self.tx, self.side, frame);
-
-    Mono::new_success(()).boxed()
+    futures::future::ready(Ok(())).boxed()
   }
 
   fn request_response(&self, payload: RawPayload) -> BoxMono<RawPayload, PayloadError> {
@@ -391,7 +394,7 @@ impl RSocket for WasmSocket {
     send(&self.tx, self.side, frame);
     let fut = rx.map_err(|_e| PayloadError::application_error("Request-response channel failed", None));
 
-    Mono::<RawPayload, PayloadError>::from_future(async move { fut.await? }).boxed()
+    async move { fut.await? }.boxed()
   }
 
   fn request_stream(&self, payload: RawPayload) -> BoxFlux<RawPayload, PayloadError> {
@@ -421,6 +424,7 @@ impl RSocket for WasmSocket {
     let channels = self.channels.clone();
 
     let side = self.side;
+
     runtime::spawn(async move {
       let mut first = true;
       let mut n = 1;
@@ -441,6 +445,7 @@ impl RSocket for WasmSocket {
         }
         // If we've exhausted our requested n, wait for the next RequestN frame
         if n == 0 {
+          tracing::trace!(%sid,side = %side,"waiting for RequestN");
           if let Some(new_n) = reqn_rx.recv().await {
             n = new_n;
           } else {
@@ -450,6 +455,7 @@ impl RSocket for WasmSocket {
       }
       channels.remove(&sid);
       send_complete(&tx, sid, side, Frame::FLAG_COMPLETE);
+      trace!(sid, side = %side, "request_channel complete");
     });
 
     rx.boxed()
@@ -507,12 +513,12 @@ mod test {
   impl RSocket for EchoRSocket {
     fn fire_and_forget(&self, _payload: RawPayload) -> BoxMono<(), PayloadError> {
       /* no op */
-      Box::pin(Mono::from_future(async { Ok(()) }))
+      futures::future::ready(Ok(())).boxed()
     }
 
     fn request_response(&self, payload: RawPayload) -> BoxMono<RawPayload, PayloadError> {
       info!("{:?}", payload);
-      Box::pin(Mono::new_success(payload))
+      futures::future::ready(Ok(payload)).boxed()
     }
 
     fn request_stream(&self, payload: RawPayload) -> BoxFlux<RawPayload, PayloadError> {

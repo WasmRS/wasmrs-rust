@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
+use futures::{FutureExt, StreamExt};
 use parking_lot::RwLock;
-use wasmrs_rx::*;
 
-use crate::{BoxFlux, BoxMono, Mono, PayloadError, RSocket, RawPayload};
+use crate::{BoxFlux, BoxMono, PayloadError, RSocket, RawPayload};
 
 #[derive(Clone)]
 pub(crate) struct Responder {
@@ -45,22 +45,18 @@ pub(crate) struct EmptyRSocket;
 
 impl RSocket for EmptyRSocket {
   fn fire_and_forget(&self, _req: RawPayload) -> BoxMono<(), PayloadError> {
-    Box::pin(Mono::new_error(PayloadError::application_error("Unimplemented", None)))
+    futures::future::ready(Err(PayloadError::application_error("Unimplemented", None))).boxed()
   }
 
   fn request_response(&self, _req: RawPayload) -> BoxMono<RawPayload, PayloadError> {
-    Box::pin(Mono::new_error(PayloadError::application_error("Unimplemented", None)))
+    futures::future::ready(Err(PayloadError::application_error("Unimplemented", None))).boxed()
   }
 
   fn request_stream(&self, _req: RawPayload) -> BoxFlux<RawPayload, PayloadError> {
-    let (tx, channel) = FluxChannel::<RawPayload, PayloadError>::new_parts();
-    let _ = tx.error(PayloadError::application_error("Unimplemented", None));
-    Box::pin(channel)
+    futures::stream::iter([Err(PayloadError::application_error("Unimplemented", None))]).boxed()
   }
 
   fn request_channel(&self, _reqs: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
-    let (tx, channel) = FluxChannel::<RawPayload, PayloadError>::new_parts();
-    let _ = tx.error(PayloadError::application_error("Unimplemented", None));
-    Box::pin(channel)
+    futures::stream::iter([Err(PayloadError::application_error("Unimplemented", None))]).boxed()
   }
 }

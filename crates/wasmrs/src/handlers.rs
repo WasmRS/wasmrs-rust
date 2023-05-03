@@ -10,7 +10,7 @@ pub type GenericError = Box<dyn std::error::Error + Send + Sync + 'static>;
 /// An alias for a [Vec<(String, String, RtRc<T>)>]
 pub type OperationMap<T> = Vec<(String, String, RtRc<T>)>;
 /// An alias for the function that creates the output for a task.
-pub type ProcessFactory<I, O> = Box<dyn Fn(I) -> Result<O, GenericError> + Send + Sync>;
+pub type OperationHandler<I, O> = Box<dyn Fn(I) -> Result<O, GenericError> + Send + Sync>;
 
 /// An alias for [Mono<ParsedPayload, PayloadError>]
 pub type IncomingMono = BoxMono<Payload, PayloadError>;
@@ -53,10 +53,10 @@ impl TryFrom<RawPayload> for Payload {
 /// A list of all the operations exported by a wasmrs implementer.
 pub struct Handlers {
   op_list: OperationList,
-  request_response_handlers: OperationMap<ProcessFactory<IncomingMono, OutgoingMono>>,
-  request_stream_handlers: OperationMap<ProcessFactory<IncomingMono, OutgoingStream>>,
-  request_channel_handlers: OperationMap<ProcessFactory<IncomingStream, OutgoingStream>>,
-  request_fnf_handlers: OperationMap<ProcessFactory<IncomingMono, ()>>,
+  request_response_handlers: OperationMap<OperationHandler<IncomingMono, OutgoingMono>>,
+  request_stream_handlers: OperationMap<OperationHandler<IncomingMono, OutgoingStream>>,
+  request_channel_handlers: OperationMap<OperationHandler<IncomingStream, OutgoingStream>>,
+  request_fnf_handlers: OperationMap<OperationHandler<IncomingMono, ()>>,
 }
 
 impl std::fmt::Debug for Handlers {
@@ -76,7 +76,7 @@ impl Handlers {
     &mut self,
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
-    handler: ProcessFactory<IncomingMono, OutgoingMono>,
+    handler: OperationHandler<IncomingMono, OutgoingMono>,
   ) -> usize {
     let list = &mut self.request_response_handlers;
     list.push((ns.as_ref().to_owned(), op.as_ref().to_owned(), RtRc::new(handler)));
@@ -92,7 +92,7 @@ impl Handlers {
     &mut self,
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
-    handler: ProcessFactory<IncomingMono, OutgoingStream>,
+    handler: OperationHandler<IncomingMono, OutgoingStream>,
   ) -> usize {
     let list = &mut self.request_stream_handlers;
     list.push((ns.as_ref().to_owned(), op.as_ref().to_owned(), RtRc::new(handler)));
@@ -108,7 +108,7 @@ impl Handlers {
     &mut self,
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
-    handler: ProcessFactory<IncomingStream, OutgoingStream>,
+    handler: OperationHandler<IncomingStream, OutgoingStream>,
   ) -> usize {
     let list = &mut self.request_channel_handlers;
     list.push((ns.as_ref().to_owned(), op.as_ref().to_owned(), RtRc::new(handler)));
@@ -124,7 +124,7 @@ impl Handlers {
     &mut self,
     ns: impl AsRef<str>,
     op: impl AsRef<str>,
-    handler: ProcessFactory<IncomingMono, ()>,
+    handler: OperationHandler<IncomingMono, ()>,
   ) -> usize {
     let list = &mut self.request_fnf_handlers;
     list.push((ns.as_ref().to_owned(), op.as_ref().to_owned(), RtRc::new(handler)));
@@ -137,7 +137,7 @@ impl Handlers {
 
   #[must_use]
   /// Get a Request/Response handler by id.
-  pub fn get_request_response_handler(&self, index: u32) -> Option<RtRc<ProcessFactory<IncomingMono, OutgoingMono>>> {
+  pub fn get_request_response_handler(&self, index: u32) -> Option<RtRc<OperationHandler<IncomingMono, OutgoingMono>>> {
     let a = self
       .request_response_handlers
       .get(index as usize)
@@ -146,7 +146,7 @@ impl Handlers {
   }
   #[must_use]
   /// Get a Request/Response handler by id.
-  pub fn get_request_stream_handler(&self, index: u32) -> Option<RtRc<ProcessFactory<IncomingMono, OutgoingStream>>> {
+  pub fn get_request_stream_handler(&self, index: u32) -> Option<RtRc<OperationHandler<IncomingMono, OutgoingStream>>> {
     let a = self
       .request_stream_handlers
       .get(index as usize)
@@ -158,7 +158,7 @@ impl Handlers {
   pub fn get_request_channel_handler(
     &self,
     index: u32,
-  ) -> Option<RtRc<ProcessFactory<IncomingStream, OutgoingStream>>> {
+  ) -> Option<RtRc<OperationHandler<IncomingStream, OutgoingStream>>> {
     let a = self
       .request_channel_handlers
       .get(index as usize)
@@ -167,7 +167,7 @@ impl Handlers {
   }
   #[must_use]
   /// Get a Request/Response handler by id.
-  pub fn get_fnf_handler(&self, index: u32) -> Option<RtRc<ProcessFactory<IncomingMono, ()>>> {
+  pub fn get_fnf_handler(&self, index: u32) -> Option<RtRc<OperationHandler<IncomingMono, ()>>> {
     let a = self.request_fnf_handlers.get(index as usize).map(|(_, _, h)| h.clone());
     a
   }

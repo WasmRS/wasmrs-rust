@@ -147,13 +147,21 @@ where
     let opt = self.rx.take();
     opt.map_or(std::task::Poll::Ready(None), |mut rx| {
       let poll = rx.poll_recv(cx);
-      self.rx.insert(rx);
       match poll {
         Poll::Ready(Some(Signal::Complete)) => Poll::Ready(None),
-        Poll::Ready(Some(Signal::Ok(v))) => Poll::Ready(Some(Ok(v))),
-        Poll::Ready(Some(Signal::Err(e))) => Poll::Ready(Some(Err(e))),
+        Poll::Ready(Some(Signal::Ok(v))) => {
+          self.rx.insert(rx);
+          Poll::Ready(Some(Ok(v)))
+        }
+        Poll::Ready(Some(Signal::Err(e))) => {
+          self.rx.insert(rx);
+          Poll::Ready(Some(Err(e)))
+        }
         Poll::Ready(None) => Poll::Ready(None),
-        Poll::Pending => Poll::Pending,
+        Poll::Pending => {
+          self.rx.insert(rx);
+          Poll::Pending
+        }
       }
     })
   }
