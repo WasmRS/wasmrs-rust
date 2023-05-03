@@ -130,15 +130,9 @@ where
           s.done.store(true, Ordering::SeqCst);
           Poll::Ready(Some(v))
         }
-        Poll::Pending => {
-          cx.waker().wake_by_ref();
-          Poll::Pending
-        }
+        Poll::Pending => Poll::Pending,
       },
-      None => {
-        cx.waker().wake_by_ref();
-        Poll::Pending
-      }
+      None => Poll::Pending,
     }
   }
 }
@@ -159,13 +153,11 @@ where
   type Output = Result<Item, Err>;
 
   fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
-    match self.get_mut().inner.as_mut() {
-      Some(inner_future) => inner_future.poll_unpin(cx),
-      None => {
-        cx.waker().wake_by_ref();
-        Poll::Pending
-      }
-    }
+    self
+      .get_mut()
+      .inner
+      .as_mut()
+      .map_or_else(|| Poll::Pending, |inner_future| inner_future.poll_unpin(cx))
   }
 }
 
@@ -177,7 +169,6 @@ where
   Item: ConditionallySafe,
   Err: ConditionallySafe,
 {
-  complete: AtomicBool,
   tx: UnboundedSender<Signal<Item, Err>>,
   rx: FluxReceiver<Item, Err>,
 }
@@ -192,7 +183,6 @@ where
     let (tx, rx) = unbounded_channel();
 
     Self {
-      complete: AtomicBool::new(false),
       tx,
       rx: FluxReceiver::new(rx),
     }
@@ -210,7 +200,6 @@ where
 
     (
       Self {
-        complete: AtomicBool::new(false),
         tx,
         rx: FluxReceiver::none(),
       },
@@ -228,8 +217,8 @@ where
   /// Await the next value in the [Flux].
   pub fn recv(&self) -> FutureResult<Item, Err>
   where
-    Err: 'static,
-    Item: 'static,
+    Err: 'static + std::fmt::Debug,
+    Item: 'static + std::fmt::Debug,
   {
     let val = self.rx.recv();
     Box::pin(async move { val.await })
@@ -260,7 +249,6 @@ where
 {
   fn clone(&self) -> Self {
     Self {
-      complete: AtomicBool::new(self.complete.load(std::sync::atomic::Ordering::SeqCst)),
       tx: self.tx.clone(),
       rx: self.rx.clone(),
     }
@@ -284,10 +272,7 @@ where
         crate::Error::RecvFailed(98),
       ))),
       Poll::Ready(None) => Poll::Ready(Ok(0)),
-      Poll::Pending => {
-        cx.waker().wake_by_ref();
-        Poll::Pending
-      }
+      Poll::Pending => Poll::Pending,
     }
   }
 }
@@ -313,7 +298,6 @@ where
   }
 
   fn complete(&self) {
-    self.complete.store(false, std::sync::atomic::Ordering::SeqCst);
     let _ = self.send_signal(Signal::Complete);
   }
 }

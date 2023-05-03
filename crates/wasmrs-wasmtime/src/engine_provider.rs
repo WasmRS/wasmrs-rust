@@ -147,7 +147,7 @@ impl wasmrs::ModuleHost for WasmtimeCallContext {
       .map_err(|e| wasmrs::Error::OpList(e.to_string()))
   }
 
-  fn get_operation_list(&mut self) -> OperationList {
+  fn get_operation_list(&self) -> OperationList {
     self.store.data().op_list.lock().clone()
   }
 }

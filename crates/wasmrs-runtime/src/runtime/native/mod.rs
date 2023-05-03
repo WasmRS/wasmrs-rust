@@ -126,6 +126,16 @@ where
   pub fn insert(&self, item: T) {
     let _ = self.0.lock().insert(item);
   }
+
+  #[must_use]
+  pub fn is_some(&self) -> bool {
+    self.0.lock().is_some()
+  }
+
+  #[must_use]
+  pub fn is_none(&self) -> bool {
+    self.0.lock().is_none()
+  }
 }
 
 impl<T> Clone for OptionalMut<T> {

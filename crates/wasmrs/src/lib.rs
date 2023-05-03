@@ -101,7 +101,6 @@ mod record;
 pub use record::{get_records, FrameRecord, FRAME_RECORDS};
 use wasmrs_runtime::ConditionallySafe;
 pub use wasmrs_rx::Flux;
-use wasmrs_rx::*;
 
 pub use wasmrs_rx::{BoxFlux, BoxMono};
 
@@ -121,7 +120,7 @@ pub trait ModuleHost: Sync + Send {
   fn get_import(&self, namespace: &str, operation: &str) -> Result<u32>;
 
   /// Get a cloned operation list.
-  fn get_operation_list(&mut self) -> OperationList;
+  fn get_operation_list(&self) -> OperationList;
 }
 
 /// A trait for an RSocket client/server (host/guest).

@@ -3,7 +3,7 @@ use std::io::{Cursor, Write};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use wasmrs::util::to_u24_bytes;
-use wasmrs::{BoxFlux, BoxMono, OperationMap, ProcessFactory, SocketSide};
+use wasmrs::{BoxFlux, BoxMono, OperationHandler, OperationMap, SocketSide};
 pub use wasmrs::{
   Frame, GenericError, IncomingMono, IncomingStream, Metadata, OperationList, OperationType, OutgoingMono,
   OutgoingStream, RSocket, RawPayload,
@@ -26,10 +26,10 @@ thread_local! {
   static GUEST_BUFFER: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
   static HOST_BUFFER: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
   static MAX_HOST_FRAME_SIZE: AtomicU32 = AtomicU32::new(128);
-  pub(crate) static REQUEST_RESPONSE_HANDLERS: UnsafeCell<OperationMap<ProcessFactory<IncomingMono,OutgoingMono>>> = UnsafeCell::new(OperationMap::new());
-  pub(crate) static REQUEST_STREAM_HANDLERS: UnsafeCell<OperationMap<ProcessFactory<IncomingMono,OutgoingStream>>> = UnsafeCell::new(OperationMap::new());
-  pub(crate) static REQUEST_CHANNEL_HANDLERS: UnsafeCell<OperationMap<ProcessFactory<IncomingStream,OutgoingStream>>> = UnsafeCell::new(OperationMap::new());
-  pub(crate) static REQUEST_FNF_HANDLERS: UnsafeCell<OperationMap<ProcessFactory<IncomingMono,()>>> = UnsafeCell::new(OperationMap::new());
+  pub(crate) static REQUEST_RESPONSE_HANDLERS: UnsafeCell<OperationMap<OperationHandler<IncomingMono,OutgoingMono>>> = UnsafeCell::new(OperationMap::new());
+  pub(crate) static REQUEST_STREAM_HANDLERS: UnsafeCell<OperationMap<OperationHandler<IncomingMono,OutgoingStream>>> = UnsafeCell::new(OperationMap::new());
+  pub(crate) static REQUEST_CHANNEL_HANDLERS: UnsafeCell<OperationMap<OperationHandler<IncomingStream,OutgoingStream>>> = UnsafeCell::new(OperationMap::new());
+  pub(crate) static REQUEST_FNF_HANDLERS: UnsafeCell<OperationMap<OperationHandler<IncomingMono,()>>> = UnsafeCell::new(OperationMap::new());
   pub(crate) static OP_LIST: UnsafeCell<OperationList> = UnsafeCell::new(OperationList::default());
   pub(crate) static OP_LIST_BYTES: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
   static SOCKET: UnsafeCell<wasmrs::WasmSocket> = UnsafeCell::new(wasmrs::WasmSocket::new(WasmServer{}, SocketSide::Guest));
@@ -154,10 +154,18 @@ pub(crate) fn send_frame(read_until: u32) {
   exhaust_pool();
 }
 
-fn spawn_writer(mut rx: UnboundedReceiver<Frame>) {
+fn spawn_writer(mut _rx: UnboundedReceiver<Frame>) {
+  #[cfg(target_family = "wasm")]
   spawn(async move {
-    while let Some(frame) = rx.recv().await {
-      send_host_frame(vec![frame.encode()]);
+    loop {
+      match _rx.recv().await {
+        Some(frame) => {
+          send_host_frame(vec![frame.encode()]);
+        }
+        None => {
+          break;
+        }
+      }
     }
   });
 }
@@ -267,7 +275,7 @@ fn register_handler<T>(
 pub fn register_request_response(
   ns: impl AsRef<str>,
   op: impl AsRef<str>,
-  handler: ProcessFactory<IncomingMono, OutgoingMono>,
+  handler: OperationHandler<IncomingMono, OutgoingMono>,
 ) {
   let index = register_handler(&REQUEST_RESPONSE_HANDLERS, &ns, &op, handler);
   add_export(index, OperationType::RequestResponse, ns, op);
@@ -277,7 +285,7 @@ pub fn register_request_response(
 pub fn register_request_stream(
   ns: impl AsRef<str>,
   op: impl AsRef<str>,
-  handler: ProcessFactory<IncomingMono, OutgoingStream>,
+  handler: OperationHandler<IncomingMono, OutgoingStream>,
 ) {
   let index = register_handler(&REQUEST_STREAM_HANDLERS, &ns, &op, handler);
   add_export(index, OperationType::RequestStream, ns, op);
@@ -287,14 +295,14 @@ pub fn register_request_stream(
 pub fn register_request_channel(
   ns: impl AsRef<str>,
   op: impl AsRef<str>,
-  handler: ProcessFactory<IncomingStream, OutgoingStream>,
+  handler: OperationHandler<IncomingStream, OutgoingStream>,
 ) {
   let index = register_handler(&REQUEST_CHANNEL_HANDLERS, &ns, &op, handler);
   add_export(index, OperationType::RequestChannel, ns, op);
 }
 
 /// Register a fire & forget handler under the specified namespace and operation.
-pub fn register_fire_and_forget(ns: impl AsRef<str>, op: impl AsRef<str>, handler: ProcessFactory<IncomingMono, ()>) {
+pub fn register_fire_and_forget(ns: impl AsRef<str>, op: impl AsRef<str>, handler: OperationHandler<IncomingMono, ()>) {
   let index = register_handler(&REQUEST_FNF_HANDLERS, &ns, &op, handler);
   add_export(index, OperationType::RequestFnF, ns, op);
 }
