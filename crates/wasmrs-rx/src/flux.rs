@@ -324,6 +324,41 @@ where
   }
 }
 
+impl<Item, Err> From<Vec<Result<Item, Err>>> for FluxChannel<Item, Err>
+where
+  Item: ConditionallySafe,
+  Err: ConditionallySafe,
+{
+  fn from(value: Vec<Result<Item, Err>>) -> Self {
+    Self::from_iter(value.into_iter())
+  }
+}
+
+impl<Item, Err, const N: usize> From<[Result<Item, Err>; N]> for FluxChannel<Item, Err>
+where
+  Item: ConditionallySafe,
+  Err: ConditionallySafe,
+{
+  fn from(value: [Result<Item, Err>; N]) -> Self {
+    Self::from_iter(value.into_iter())
+  }
+}
+
+impl<Item, Err> FromIterator<Result<Item, Err>> for FluxChannel<Item, Err>
+where
+  Item: ConditionallySafe,
+  Err: ConditionallySafe,
+{
+  fn from_iter<T: IntoIterator<Item = Result<Item, Err>>>(iter: T) -> Self {
+    let (tx, mut rx) = Self::new_parts();
+    for item in iter {
+      tx.send_result(item);
+    }
+    tx.complete();
+    tx
+  }
+}
+
 fn signal_into_result<Item, Err>(signal: Option<Signal<Item, Err>>) -> Option<Result<Item, Err>>
 where
   Item: ConditionallySafe,
