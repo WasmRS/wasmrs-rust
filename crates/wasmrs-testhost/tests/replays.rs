@@ -14,7 +14,7 @@ static REPLAYS: [&str; 2] = [
 ];
 
 #[test_log::test(tokio::test)]
-async fn test_iota_req_channel() -> anyhow::Result<()> {
+async fn test_req_channel() -> anyhow::Result<()> {
   let engine = WasmtimeBuilder::new(MODULE_BYTES)
     .wasi_params(WasiParams::default())
     .build()?;

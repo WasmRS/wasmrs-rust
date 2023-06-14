@@ -21,7 +21,7 @@ fn callback(incoming: BoxFlux<Payload, PayloadError>) -> Result<BoxFlux<RawPaylo
 }
 
 #[test_log::test(tokio::test)]
-async fn test_iota_req_channel_callback() -> anyhow::Result<()> {
+async fn test_req_channel_callback() -> anyhow::Result<()> {
   let engine = WasmtimeBuilder::new(MODULE_BYTES)
     .wasi_params(WasiParams::default())
     .build()?;
@@ -60,6 +60,55 @@ async fn test_iota_req_channel_callback() -> anyhow::Result<()> {
     }
   }
   assert!(outputs.is_empty());
+
+  Ok(())
+}
+
+#[test_log::test(tokio::test)]
+async fn test_req_res() -> anyhow::Result<()> {
+  let engine = WasmtimeBuilder::new(MODULE_BYTES)
+    .wasi_params(WasiParams::default())
+    .build()?;
+  let host = wasmrs_host::Host::new(engine)?;
+
+  let buffer_size = 10 * 1024 * 1024;
+  let context = host.new_context(buffer_size, buffer_size)?;
+  let op = context.get_export("greeting", "sayHello")?;
+
+  let mbytes = Metadata::new(op).encode();
+
+  #[derive(serde::Serialize)]
+  struct Input {
+    message: Vec<String>,
+  }
+  let message = "01234567";
+
+  let mut input = Input { message: vec![] };
+  let mb = 1024 * 1024;
+
+  for _ in 0..mb {
+    input.message.push(message.to_string());
+  }
+
+  let bytes = serialize(&input).unwrap();
+
+  let payload = RawPayload::new(mbytes, bytes.into());
+
+  println!("making large request");
+  let num = input.message.len();
+  let response = context.request_response(payload.clone()).await;
+  println!("finished large request");
+  match response {
+    Ok(v) => {
+      let bytes = v.data.unwrap();
+      let val: String = deserialize(&bytes).unwrap();
+      println!("{}", val);
+      assert_eq!(val, format!("Hello! You sent me {} messages.", num));
+    }
+    Err(e) => {
+      panic!("Error: {:?}", e);
+    }
+  }
 
   Ok(())
 }

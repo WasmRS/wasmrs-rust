@@ -1,7 +1,7 @@
 #[derive(Debug)]
 pub enum Error {
-  MsgPackDecode(wasm_msgpack::decode::Error),
-  MsgPackEncode(wasm_msgpack::encode::Error),
+  MsgPackDecode(rmp_serde::decode::Error),
+  MsgPackEncode(rmp_serde::encode::Error),
 }
 
 #[cfg(feature = "std")]

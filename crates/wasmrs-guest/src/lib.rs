@@ -95,7 +95,6 @@ pub mod error;
 
 pub use serde_json::Value;
 pub use wasmrs::Payload;
-pub use wasmrs_codec::Timestamp;
 pub use wasmrs_rx::{BoxFlux, BoxMono};
 
 /// Deserialize a generic [Value] from CBOR bytes.

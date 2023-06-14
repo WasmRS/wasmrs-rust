@@ -13,10 +13,14 @@ extern "C" fn __wasmrs_init(guest_buffer_size: u32, host_buffer_size: u32, max_h
 }
 
 fn request_response(input: BoxMono<Payload, PayloadError>) -> Result<BoxMono<RawPayload, PayloadError>, GenericError> {
+  #[derive(serde::Deserialize)]
+  struct Input {
+    message: Vec<String>,
+  }
   Ok(
     Mono::from_future(async move {
-      let input = deserialize::<String>(&input.await.unwrap().data).unwrap();
-      let output = format!("Hello, {}!", input);
+      let input = deserialize::<Input>(&input.await.unwrap().data).unwrap();
+      let output = format!("Hello! You sent me {} messages.", input.message.len());
       Ok(RawPayload::new_data(None, Some(serialize(&output).unwrap().into())))
     })
     .boxed(),
@@ -26,7 +30,7 @@ fn request_response(input: BoxMono<Payload, PayloadError>) -> Result<BoxMono<Raw
 fn request_stream(input: BoxMono<Payload, PayloadError>) -> Result<BoxFlux<RawPayload, PayloadError>, GenericError> {
   let channel = FluxChannel::<RawPayload, PayloadError>::new();
   let rx = channel.take_rx().unwrap();
-  spawn(async move {
+  spawn("request_stream", async move {
     let input = deserialize::<String>(&input.await.unwrap().data).unwrap();
     for char in input.chars() {
       channel
@@ -43,7 +47,7 @@ fn request_channel(
 ) -> Result<BoxFlux<RawPayload, PayloadError>, GenericError> {
   let channel = FluxChannel::<RawPayload, PayloadError>::new();
   let rx = channel.take_rx().unwrap();
-  spawn(async move {
+  spawn("request_channel", async move {
     while let Some(payload) = input.next().await {
       if let Err(e) = payload {
         println!("{}", e);
@@ -67,7 +71,7 @@ fn channel_callback(
   let (job_tx, job_rx) = FluxChannel::<RawPayload, PayloadError>::new_parts();
   let (host_tx, host_rx) = FluxChannel::<RawPayload, PayloadError>::new_parts();
   let mut host_stream = Host::default().request_channel(Box::pin(host_rx));
-  spawn(async move {
+  spawn("channel_callback", async move {
     println!("waiting for input...");
     while let Some(payload) = input.next().await {
       if let Err(e) = payload {
@@ -86,7 +90,7 @@ fn channel_callback(
         .unwrap();
     }
   });
-  spawn(async move {
+  spawn("channel_callback", async move {
     println!("waiting for host output...");
     while let Some(Ok(payload)) = host_stream.next().await {
       let output = deserialize::<String>(&payload.data.unwrap()).unwrap();
