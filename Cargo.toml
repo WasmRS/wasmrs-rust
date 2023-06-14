@@ -16,16 +16,16 @@ members = [
 exclude = ["wasm/reqres-component", "wasm/baseline", "wasm/grabbag"]
 
 [workspace.dependencies]
-env_logger = "0.10.0"
-futures = "0.3"
-futures-core = "0.3"
-futures-executor = "0.3"
-futures-util = "0.3"
-serde = "1"
-bytes = "1.2"
-tokio = "1"
-async-trait = "0.1"
-parking_lot = "0.12"
-tracing = "0.1"
-thiserror = "1.0"
-anyhow = "1.0"
+env_logger = { version = "0.10.0", default-features = false }
+futures = { version = "0.3", default-features = false }
+futures-core = { version = "0.3", default-features = false }
+futures-executor = { version = "0.3", default-features = false }
+futures-util = { version = "0.3", default-features = false }
+serde = { version = "1", default-features = false }
+bytes = { version = "1.2", default-features = false }
+tokio = { version = "1", default-features = false }
+async-trait = { version = "0.1", default-features = false }
+parking_lot = { version = "0.12", default-features = false }
+tracing = { version = "0.1", default-features = false }
+thiserror = { version = "1.0", default-features = false }
+anyhow = { version = "1.0", default-features = false }

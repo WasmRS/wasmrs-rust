@@ -10,7 +10,7 @@ use wasmrs_wasmtime::WasmtimeBuilder;
 static MODULE_BYTES: &[u8] = include_bytes!("../../../build/reqres_component.wasm");
 
 #[test_log::test(tokio::test)]
-async fn test_iota_req_channel_single() -> anyhow::Result<()> {
+async fn test_req_channel_single() -> anyhow::Result<()> {
   let engine = WasmtimeBuilder::new(MODULE_BYTES)
     .wasi_params(WasiParams::default())
     .build()?;
@@ -58,7 +58,7 @@ async fn test_iota_req_channel_single() -> anyhow::Result<()> {
 }
 
 #[test_log::test(tokio::test)]
-async fn test_iota_req_channel_multi() -> anyhow::Result<()> {
+async fn test_req_channel_multi() -> anyhow::Result<()> {
   let engine = WasmtimeBuilder::new(MODULE_BYTES)
     .wasi_params(WasiParams::default())
     .build()?;

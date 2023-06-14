@@ -4,3 +4,5 @@
 /Cargo.lock
 /**/target
 */frames/*.frame
+
+.DS_store

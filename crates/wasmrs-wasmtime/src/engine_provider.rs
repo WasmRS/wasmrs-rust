@@ -176,6 +176,9 @@ impl ProviderCallContext for WasmtimeCallContext {
       .call(&mut self.store, (host_buffer_size, guest_buffer_size, 128))
       .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?;
 
+    self.store.data().guest_buffer.update_size(guest_buffer_size);
+    self.store.data().host_buffer.update_size(host_buffer_size);
+
     if let Ok(oplist) = self
       .instance
       .get_typed_func::<(), ()>(&mut self.store, GuestExports::OpListRequest.as_ref())

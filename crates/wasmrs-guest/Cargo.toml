@@ -10,6 +10,7 @@ repository = "https://github.com/wasmrs/wasmrs-rust"
 default = []
 logging = ["env_logger", "log", "wasmrs-runtime/logging"]
 record-frames = ["wasmrs/record-frames"]
+std = ["wasmrs-codec/std"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
