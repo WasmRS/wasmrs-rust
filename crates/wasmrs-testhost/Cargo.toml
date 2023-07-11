@@ -20,9 +20,9 @@ parking_lot = { workspace = true }
 tokio = { workspace = true, features = ["rt", "sync"] }
 bytes = { workspace = true }
 futures = { workspace = true }
-wasmtime = "7.0.0"
-wasmtime-wasi = { version = "7.0.0", features = ["sync"] }
-wasi-common = { version = "7.0.0" }
+wasmtime = "10.0.1"
+wasmtime-wasi = { version = "10.0.1", features = ["sync"] }
+wasi-common = { version = "10.0.1" }
 cfg-if = "1.0.0"
 anyhow = { version = "1.0" }
 base64 = "0.21"

@@ -1,6 +1,12 @@
+use parking_lot::Mutex;
+use wasmtime::Module;
+
 use crate::engine_provider::EpochDeadlines;
 use crate::errors::Error;
 use crate::WasmtimeEngineProvider;
+
+static MODULE_CACHE: once_cell::sync::Lazy<Mutex<std::collections::HashMap<String, Module>>> =
+  once_cell::sync::Lazy::new(|| Mutex::new(std::collections::HashMap::new()));
 
 /// Used to build [`WasmtimeEngineProvider`](crate::WasmtimeEngineProvider) instances.
 #[allow(missing_debug_implementations)]
@@ -8,22 +14,40 @@ use crate::WasmtimeEngineProvider;
 #[derive(Default)]
 pub struct WasmtimeBuilder<'a> {
   engine: Option<wasmtime::Engine>,
-  module_bytes: &'a [u8],
+  module: Option<Module>,
+  module_bytes: Option<(String, &'a [u8])>,
   cache_enabled: bool,
   cache_path: Option<std::path::PathBuf>,
   wasi_params: Option<wasmrs_host::WasiParams>,
   epoch_deadlines: Option<EpochDeadlines>,
 }
 
-#[allow(deprecated)]
 impl<'a> WasmtimeBuilder<'a> {
-  /// A new WasmtimeEngineProviderBuilder instance,
-  /// must provide the wasm module to be loaded
-  pub fn new(module_bytes: &'a [u8]) -> Self {
-    WasmtimeBuilder {
-      module_bytes,
-      ..Default::default()
+  /// A new [WasmtimeBuilder] instance.
+  pub fn new() -> Self {
+    WasmtimeBuilder { ..Default::default() }
+  }
+
+  /// Query if the module cache contains a module with the given id.
+  pub fn is_cached(id: impl AsRef<str>) -> bool {
+    let lock = MODULE_CACHE.lock();
+    lock.contains_key(id.as_ref())
+  }
+
+  /// Initialize the builder with a preloaded module.
+  pub fn with_cached_module(mut self, id: impl AsRef<str>) -> Result<Self, Error> {
+    let lock = MODULE_CACHE.lock();
+    if let Some(module) = lock.get(id.as_ref()) {
+      self.module = Some(module.clone());
+      return Ok(self);
     }
+    Err(Error::NotFound(id.as_ref().to_owned()))
+  }
+
+  /// Initialize the builder with a module from the passed bytes, caching it with the passed ID.
+  pub fn with_module_bytes(mut self, id: impl AsRef<str>, bytes: &'a [u8]) -> Self {
+    self.module_bytes = Some((id.as_ref().to_owned(), bytes));
+    self
   }
 
   /// Provide a preinitialized [`wasmtime::Engine`]
@@ -83,8 +107,8 @@ impl<'a> WasmtimeBuilder<'a> {
   }
 
   /// Create a `WasmtimeEngineProvider` instance
-  pub fn build(&self) -> Result<WasmtimeEngineProvider, Error> {
-    let mut provider = match &self.engine {
+  pub fn build(self) -> Result<WasmtimeEngineProvider, Error> {
+    let engine = match &self.engine {
       Some(e) => {
         // note: we have to call `.clone()` because `e` is behind
         // a shared reference and `Engine` does not implement `Copy`.
@@ -92,7 +116,7 @@ impl<'a> WasmtimeBuilder<'a> {
         // under the hood wasmtime does not create a new `Engine`, but
         // rather creates a new reference to it.
         // See https://docs.rs/wasmtime/latest/wasmtime/struct.Engine.html#engines-and-clone
-        WasmtimeEngineProvider::new_with_engine(self.module_bytes, e.clone(), self.wasi_params.clone())
+        e.clone()
       }
       None => {
         let mut config = wasmtime::Config::default();
@@ -112,10 +136,24 @@ impl<'a> WasmtimeBuilder<'a> {
         #[cfg(feature = "profiler")]
         config.profiler(wasmtime::ProfilingStrategy::JitDump);
 
-        let engine = wasmtime::Engine::new(&config).map_err(Error::Initialization)?;
-        WasmtimeEngineProvider::new_with_engine(self.module_bytes, engine, self.wasi_params.clone())
+        wasmtime::Engine::new(&config).map_err(Error::Initialization)?
       }
-    }?;
+    };
+
+    let module = match (&self.module, &self.module_bytes) {
+      (Some(m), None) => m.clone(),
+      (None, Some((id, bytes))) => {
+        let module = Module::from_binary(&engine, bytes).map_err(Error::Initialization)?;
+        let mut lock = MODULE_CACHE.lock();
+        lock.insert(id.clone(), module.clone());
+        module
+      }
+      (None, None) => return Err(Error::NoModule),
+      _ => return Err(Error::AmbiguousModule),
+    };
+
+    let mut provider = WasmtimeEngineProvider::new_with_engine(module, engine, self.wasi_params.clone())?;
+
     provider.epoch_deadlines = self.epoch_deadlines;
 
     Ok(provider)
