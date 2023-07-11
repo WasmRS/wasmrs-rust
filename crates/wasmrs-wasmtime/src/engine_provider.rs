@@ -15,7 +15,7 @@ use crate::wasmrs_wasmtime::{self};
 #[allow(missing_debug_implementations)]
 pub struct WasmtimeEngineProvider {
   module: Module,
-  engine: Arc<Engine>,
+  engine: Engine,
   linker: Linker<ProviderStore>,
   wasi_params: Option<WasiParams>,
   pub(crate) epoch_deadlines: Option<EpochDeadlines>,
@@ -50,15 +50,13 @@ impl Clone for WasmtimeEngineProvider {
 
 impl WasmtimeEngineProvider {
   /// Creates a new instance of a [WasmtimeEngineProvider] from a separately created [wasmtime::Engine].
-  pub(crate) fn new_with_engine(buf: &[u8], engine: Engine, wasi_params: Option<WasiParams>) -> Result<Self> {
-    let module = Module::new(&engine, buf).map_err(Error::Module)?;
-
+  pub(crate) fn new_with_engine(module: Module, engine: Engine, wasi_params: Option<WasiParams>) -> Result<Self> {
     let mut linker: Linker<ProviderStore> = Linker::new(&engine);
     wasmtime_wasi::add_to_linker(&mut linker, |s| s.wasi_ctx.as_mut().unwrap()).unwrap();
 
     Ok(WasmtimeEngineProvider {
       module,
-      engine: Arc::new(engine),
+      engine,
       wasi_params,
       linker,
       epoch_deadlines: None,

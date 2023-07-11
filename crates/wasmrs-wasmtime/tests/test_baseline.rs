@@ -22,7 +22,8 @@ fn callback(incoming: BoxFlux<Payload, PayloadError>) -> Result<BoxFlux<RawPaylo
 
 #[test_log::test(tokio::test)]
 async fn test_req_channel_callback() -> anyhow::Result<()> {
-  let engine = WasmtimeBuilder::new(MODULE_BYTES)
+  let engine = WasmtimeBuilder::new()
+    .with_module_bytes("baseline", MODULE_BYTES)
     .wasi_params(WasiParams::default())
     .build()?;
   let host = wasmrs_host::Host::new(engine)?;
@@ -66,7 +67,8 @@ async fn test_req_channel_callback() -> anyhow::Result<()> {
 
 #[test_log::test(tokio::test)]
 async fn test_req_res() -> anyhow::Result<()> {
-  let engine = WasmtimeBuilder::new(MODULE_BYTES)
+  let engine = WasmtimeBuilder::new()
+    .with_module_bytes("baseline", MODULE_BYTES)
     .wasi_params(WasiParams::default())
     .build()?;
   let host = wasmrs_host::Host::new(engine)?;

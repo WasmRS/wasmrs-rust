@@ -15,8 +15,9 @@ async fn main() -> anyhow::Result<()> {
   env_logger::init();
   let args = Args::parse();
 
-  let module_bytes = std::fs::read(args.module)?;
-  let engine = WasmtimeBuilder::new(&module_bytes)
+  let module_bytes = std::fs::read(&args.module)?;
+  let engine = WasmtimeBuilder::new()
+    .with_module_bytes(&args.module, &module_bytes)
     .wasi_params(WasiParams::default())
     .build()?;
   let host = wasmrs_host::Host::new(engine)?;
