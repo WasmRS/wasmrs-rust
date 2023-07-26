@@ -55,6 +55,7 @@ pub struct WasmSocket {
   tx: UnboundedSender<Frame>,
   rx: Option<UnboundedReceiver<Frame>>,
   responder: Responder,
+  n: Arc<AtomicU32>,
 }
 
 impl std::fmt::Debug for WasmSocket {
@@ -87,8 +88,19 @@ impl WasmSocket {
       handlers: streams,
       abort_handles,
       channels,
+      n: Arc::new(AtomicU32::new(Frame::REQUEST_MAX)),
       responder: Responder::new(Box::new(rsocket)),
     }
+  }
+
+  /// Set the MAX_N for RequestChannel.
+  pub fn set_n(&self, n: u32) {
+    self.n.store(n, Ordering::SeqCst);
+  }
+
+  /// Get the MAX_N for RequestChannel.
+  pub fn get_n(&self) -> Arc<AtomicU32> {
+    self.n.clone()
   }
 
   /// Take the receiver for this [WasmSocket].
@@ -225,14 +237,15 @@ impl WasmSocket {
     let abort_handles = self.abort_handles.clone();
     let side = self.side;
 
+    let n = self.get_n();
+
     runtime::spawn("on_request_channel", async move {
       let outputs = responder.request_channel(Box::pin(handler_rx));
       let (abort_handle, abort_registration) = AbortHandle::new_pair();
       abort_handles.insert(sid, abort_handle);
       let mut outputs = Abortable::new(outputs, abort_registration);
 
-      // TODO: support custom RequestN.
-      let request_n = Frame::new_request_n(sid, Frame::REQUEST_MAX, 0);
+      let request_n = Frame::new_request_n(sid, n.load(Ordering::SeqCst), 0);
 
       send(&tx, side, request_n);
       while let Some(next) = outputs.next().await {

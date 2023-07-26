@@ -5,23 +5,23 @@ use futures::Stream;
 
 use super::{signal_into_result, FutureResult, Signal};
 use crate::{Error, FluxChannel, Observable, Observer};
-use wasmrs_runtime::{ConditionallySafe, OptionalMut, UnboundedReceiver};
+use wasmrs_runtime::{ConditionallySendSync, OptionalMut, UnboundedReceiver};
 
 #[must_use]
 #[allow(missing_debug_implementations)]
 /// The receving end-only of a [crate::Flux]
 pub struct FluxReceiver<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   rx: OptionalMut<UnboundedReceiver<Signal<Item, Err>>>,
 }
 
 impl<Item, Err> FluxReceiver<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   /// Create a new [FluxReceiver].
   pub fn new(rx: UnboundedReceiver<Signal<Item, Err>>) -> Self {
@@ -46,8 +46,8 @@ where
   /// Create a new [FluxReceiver] that is immediately closed with the passed item.
   pub fn one<I, E>(item: Result<I, E>) -> FluxReceiver<I, E>
   where
-    I: ConditionallySafe,
-    E: ConditionallySafe,
+    I: ConditionallySendSync,
+    E: ConditionallySendSync,
   {
     let (tx, rx) = FluxChannel::new_parts();
     tx.send_result(item).unwrap();
@@ -57,7 +57,7 @@ where
 
 impl<Err> futures::io::AsyncRead for FluxReceiver<Vec<u8>, Err>
 where
-  Err: ConditionallySafe,
+  Err: ConditionallySendSync,
 {
   fn poll_read(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &mut [u8]) -> Poll<std::io::Result<usize>> {
     match Pin::new(&mut self.get_mut()).poll_next(cx) {
@@ -79,7 +79,7 @@ where
 
 impl<Err> futures::io::AsyncRead for FluxReceiver<bytes::Bytes, Err>
 where
-  Err: ConditionallySafe,
+  Err: ConditionallySendSync,
 {
   fn poll_read(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &mut [u8]) -> Poll<std::io::Result<usize>> {
     match Pin::new(&mut self.get_mut()).poll_next(cx) {
@@ -101,8 +101,8 @@ where
 
 impl<Item, Err> Clone for FluxReceiver<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   fn clone(&self) -> Self {
     Self { rx: self.rx.clone() }
@@ -111,22 +111,22 @@ where
 
 impl<Item, Err> Observable<Item, Err> for FluxReceiver<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
 }
 
 impl<Item, Err> FluxReceiver<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   #[must_use]
   /// Receive the next value from the [FluxReceiver].
   pub fn recv(&self) -> FutureResult<Item, Err>
   where
-    Err: ConditionallySafe,
-    Item: ConditionallySafe,
+    Err: ConditionallySendSync,
+    Item: ConditionallySendSync,
   {
     let root_rx = self.rx.clone();
     let opt = root_rx.take();
@@ -177,8 +177,8 @@ where
 
 impl<Item, Err> Stream for FluxReceiver<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   type Item = Result<Item, Err>;
 

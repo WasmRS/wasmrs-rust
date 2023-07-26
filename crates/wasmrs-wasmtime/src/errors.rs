@@ -1,10 +1,8 @@
+use wasi_common::StringArrayError;
+
 /// This crate's Error type
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-  /// WASMTime initialization failed
-  #[error("Initialization failed: {0}")]
-  InitializationFailed(Box<dyn std::error::Error + Send + Sync>),
-
   /// WASMTime initialization failed
   #[error("Initialization failed: {0}")]
   Initialization(anyhow::Error),
@@ -26,8 +24,16 @@ pub enum Error {
   NotFound(String),
 
   /// Error originating from [wasi_common]
-  #[error("{0}")]
+  #[error(transparent)]
   WasiError(#[from] wasi_common::Error),
+
+  /// Error originating from [wasi_common]
+  #[error(transparent)]
+  WasiStringArray(#[from] StringArrayError),
+
+  /// Error originating from [std::io::Error]
+  #[error(transparent)]
+  IO(#[from] std::io::Error),
 
   /// Thrown if the guest's send function is not exported.
   #[error("Guest init function not exported by wasm module.")]
@@ -53,18 +59,13 @@ pub enum Error {
 impl From<Error> for wasmrs::Error {
   fn from(e: Error) -> Self {
     let code = match e {
-      Error::InitializationFailed(_) => wasmrs::ErrorCode::ConnectionError,
+      Error::GuestMemory => wasmrs::ErrorCode::Canceled,
       Error::Initialization(_) => wasmrs::ErrorCode::ConnectionError,
       Error::Func(_) => wasmrs::ErrorCode::ConnectionError,
       Error::Linker(_) => wasmrs::ErrorCode::ConnectionError,
       Error::Module(_) => wasmrs::ErrorCode::ConnectionError,
       Error::WasiError(_) => wasmrs::ErrorCode::ConnectionError,
-      Error::GuestInit => wasmrs::ErrorCode::ApplicationError,
-      Error::GuestSend => wasmrs::ErrorCode::ApplicationError,
-      Error::GuestMemory => wasmrs::ErrorCode::Canceled,
-      Error::NotFound(_) => wasmrs::ErrorCode::ApplicationError,
-      Error::NoModule => wasmrs::ErrorCode::ApplicationError,
-      Error::AmbiguousModule => wasmrs::ErrorCode::ApplicationError,
+      _ => wasmrs::ErrorCode::ApplicationError,
     };
     wasmrs::Error::RSocket(code.into())
   }

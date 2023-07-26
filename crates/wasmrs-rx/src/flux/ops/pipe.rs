@@ -5,14 +5,14 @@ use futures::{Stream, TryStreamExt};
 use pin_project_lite::pin_project;
 
 use crate::flux::FluxChannel;
-use wasmrs_runtime::ConditionallySafe;
+use wasmrs_runtime::ConditionallySendSync;
 
 pin_project! {
 /// A [FluxPipe] is the result of piping one [Flux] into another.
 pub struct FluxPipe<Item, Err, From>
 where
-    Item: ConditionallySafe,
-    Err: ConditionallySafe,
+    Item: ConditionallySendSync,
+    Err: ConditionallySendSync,
 {
     #[pin]
     from: From,
@@ -22,8 +22,8 @@ where
 
 impl<Item, Err, From> FluxPipe<Item, Err, From>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   /// Create a new [FluxPipe]
   pub fn new(from: From, to: FluxChannel<Item, Err>) -> Self {
@@ -33,16 +33,16 @@ where
 
 impl<Item, Err, From> FluxPipe<Item, Err, From>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
   From: Stream<Item = Result<Item, Err>>,
 {
 }
 
 impl<Item, Err, From> Stream for FluxPipe<Item, Err, From>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
   From: Stream<Item = Result<Item, Err>> + Unpin,
 {
   type Item = Result<Item, Err>;

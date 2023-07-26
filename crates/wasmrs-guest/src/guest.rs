@@ -35,6 +35,15 @@ thread_local! {
   static SOCKET: UnsafeCell<wasmrs::WasmSocket> = UnsafeCell::new(wasmrs::WasmSocket::new(WasmServer{}, SocketSide::Guest));
 }
 
+/// Set the MAX_N value for the guest.
+pub fn set_max_n(n: u32) {
+  SOCKET.with(|cell| {
+    #[allow(unsafe_code)]
+    let socket = unsafe { &mut *cell.get() };
+    socket.set_n(n)
+  })
+}
+
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 #[derive(Default)]
 /// The Host inside a WebAssembly module that implements [RSocket]

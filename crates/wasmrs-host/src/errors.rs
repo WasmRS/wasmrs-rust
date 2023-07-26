@@ -1,11 +1,13 @@
 //! Library-specific error types and utility functions
 
+type BoxError = Box<dyn std::error::Error + Send + Sync + 'static>;
+
 /// Error type for wasmRS errors.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
   /// Initialization Failed.
-  #[error("Initialization failed: {0}")]
-  InitFailed(String),
+  #[error(transparent)]
+  InitFailed(BoxError),
 
   /// Creating a new context failed.
   #[error("Could not create new context: {0}")]

@@ -1,12 +1,13 @@
+use wasmrs_runtime::ConditionallySendSync;
+
 use super::Signal;
 use crate::Error;
-use wasmrs_runtime::ConditionallySafe;
 
 /// The wasmrs-rx implementation of an Rx Observer trait
 pub trait Observer<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   /// Send a complete [Signal]
   fn send_signal(&self, signal: Signal<Item, Err>) -> Result<(), Error>;
@@ -36,4 +37,19 @@ where
 
   /// Returns true if the observer has been closed.
   fn is_complete(&self) -> bool;
+}
+
+impl<Item, Err, F> Observer<Item, Err> for F
+where
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
+  F: Fn(Signal<Item, Err>) -> Result<(), Error>,
+{
+  fn send_signal(&self, signal: Signal<Item, Err>) -> Result<(), Error> {
+    self(signal)
+  }
+
+  fn is_complete(&self) -> bool {
+    false
+  }
 }

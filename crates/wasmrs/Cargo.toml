@@ -13,7 +13,7 @@ record-frames = [
   "wasmrs-frames/serde",
   "base64",
   "serde_json",
-  "once_cell"
+  "once_cell",
 ]
 dump-frames = ["record-frames"]
 print-frames = ["record-frames"]
@@ -53,4 +53,4 @@ futures-util = { workspace = true, default-features = false, features = [
 env_logger = { workspace = true }
 anyhow = { version = "1.0" }
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
-test-log = "0.2"
+test-log = { workspace = true }

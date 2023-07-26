@@ -76,22 +76,18 @@
   missing_docs
 )]
 #![doc = include_str!("../README.md")]
-// TODO REMOVE
-#![allow(clippy::needless_pass_by_value, unused)]
 
 mod error;
 mod flux;
 
-use std::pin::Pin;
-
 pub use flux::*;
 
 pub use error::Error;
-use futures::{Stream, TryStream};
-use wasmrs_runtime::ConditionallySafe;
+use futures::Stream;
+use wasmrs_runtime::ConditionallySendSync;
 
 /// A generic trait to wrap over Flux, Mono, and supporting types.
-pub trait Flux<I, E>: Stream<Item = Result<I, E>> + Unpin + ConditionallySafe {}
+pub trait Flux<I, E>: Stream<Item = Result<I, E>> + Unpin + ConditionallySendSync {}
 
 #[cfg(target_family = "wasm")]
 mod wasm {
@@ -118,7 +114,7 @@ pub use native::*;
 impl<I, E, T> Flux<I, E> for T
 where
   T: Stream<Item = Result<I, E>> + Unpin,
-  T: ConditionallySafe,
+  T: ConditionallySendSync,
 {
 }
 
@@ -126,7 +122,7 @@ where
 mod test {
   use super::*;
   use anyhow::Result;
-  use futures::{Stream, StreamExt};
+  use futures::StreamExt;
 
   #[tokio::test]
   async fn test_basic() -> Result<()> {

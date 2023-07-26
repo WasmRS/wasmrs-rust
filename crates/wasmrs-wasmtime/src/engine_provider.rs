@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use bytes::{BufMut, BytesMut};
+use wasi_common::WasiCtx;
 use wasmrs::{Frame, OperationList, WasmSocket};
-use wasmrs_host::{CallbackProvider, EngineProvider, GuestExports, ProviderCallContext, SharedContext, WasiParams};
+use wasmrs_host::{CallbackProvider, EngineProvider, GuestExports, ProviderCallContext, SharedContext};
 use wasmtime::{Engine, Instance, Linker, Memory, Module, Store, TypedFunc};
 
 use super::Result;
@@ -17,7 +18,7 @@ pub struct WasmtimeEngineProvider {
   module: Module,
   engine: Engine,
   linker: Linker<ProviderStore>,
-  wasi_params: Option<WasiParams>,
+  wasi_ctx: Option<WasiCtx>,
   pub(crate) epoch_deadlines: Option<EpochDeadlines>,
 }
 
@@ -34,12 +35,10 @@ pub(crate) struct EpochDeadlines {
 
 impl Clone for WasmtimeEngineProvider {
   fn clone(&self) -> Self {
-    let engine = self.engine.clone();
-
     let mut new = Self {
       module: self.module.clone(),
-      wasi_params: self.wasi_params.clone(),
-      engine,
+      wasi_ctx: self.wasi_ctx.clone(),
+      engine: self.engine.clone(),
       linker: self.linker.clone(),
       epoch_deadlines: self.epoch_deadlines,
     };
@@ -50,14 +49,17 @@ impl Clone for WasmtimeEngineProvider {
 
 impl WasmtimeEngineProvider {
   /// Creates a new instance of a [WasmtimeEngineProvider] from a separately created [wasmtime::Engine].
-  pub(crate) fn new_with_engine(module: Module, engine: Engine, wasi_params: Option<WasiParams>) -> Result<Self> {
+  pub(crate) fn new_with_engine(module: Module, engine: Engine, wasi_ctx: Option<WasiCtx>) -> Result<Self> {
     let mut linker: Linker<ProviderStore> = Linker::new(&engine);
-    wasmtime_wasi::add_to_linker(&mut linker, |s| s.wasi_ctx.as_mut().unwrap()).unwrap();
+
+    if wasi_ctx.is_some() {
+      wasmtime_wasi::add_to_linker(&mut linker, |s| s.wasi_ctx.as_mut().unwrap()).unwrap();
+    }
 
     Ok(WasmtimeEngineProvider {
       module,
       engine,
-      wasi_params,
+      wasi_ctx,
       linker,
       epoch_deadlines: None,
     })
@@ -66,12 +68,12 @@ impl WasmtimeEngineProvider {
 
 impl EngineProvider for WasmtimeEngineProvider {
   fn new_context(&self, socket: Arc<WasmSocket>) -> std::result::Result<SharedContext, wasmrs_host::errors::Error> {
-    let store = new_store(&self.wasi_params, socket, &self.engine)
+    let store = new_store(self.wasi_ctx.clone(), socket, &self.engine)
       .map_err(|e| wasmrs_host::errors::Error::NewContext(e.to_string()))?;
 
     let context = SharedContext::new(
       WasmtimeCallContext::new(self.linker.clone(), &self.module, store)
-        .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?,
+        .map_err(|e| wasmrs_host::errors::Error::InitFailed(Box::new(e)))?,
     );
 
     Ok(context)
@@ -163,16 +165,16 @@ impl ProviderCallContext for WasmtimeCallContext {
       trace!("calling tinygo _start method");
       start
         .call(&mut self.store, ())
-        .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?;
+        .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.into()))?;
     }
 
     let init: TypedFunc<(u32, u32, u32), ()> = self
       .instance
       .get_typed_func(&mut self.store, GuestExports::Init.as_ref())
-      .map_err(|_e| wasmrs_host::errors::Error::InitFailed(Error::GuestInit.to_string()))?;
+      .map_err(|_e| wasmrs_host::errors::Error::InitFailed(Box::new(Error::GuestInit)))?;
     init
       .call(&mut self.store, (host_buffer_size, guest_buffer_size, 128))
-      .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?;
+      .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.into()))?;
 
     self.store.data().guest_buffer.update_size(guest_buffer_size);
     self.store.data().host_buffer.update_size(host_buffer_size);

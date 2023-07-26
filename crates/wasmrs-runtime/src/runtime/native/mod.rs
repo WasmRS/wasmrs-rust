@@ -13,7 +13,7 @@ pub type BoxFuture<Output> = std::pin::Pin<Box<dyn Future<Output = Output> + Sen
 
 pub fn spawn<F>(id: &'static str, task: F) -> TaskHandle
 where
-  F: Future<Output = ()> + Send + 'static,
+  F: Future<Output = ()> + ConditionallySend,
 {
   tracing::trace!("native:runtime:task:start:{}", id);
   tokio::spawn(async move {
@@ -153,7 +153,7 @@ pub struct MutRc<T>(pub(super) Arc<Mutex<T>>);
 
 impl<T> MutRc<T>
 where
-  T: ConditionallySafe,
+  T: ConditionallySendSync,
 {
   pub fn new(item: T) -> Self {
     Self(Arc::new(Mutex::new(item)))
@@ -166,6 +166,10 @@ where
 
 pub type RtRc<T> = Arc<T>;
 
-pub trait ConditionallySafe: Send + Sync + 'static {}
+pub trait ConditionallySendSync: Send + Sync + 'static {}
 
-impl<S> ConditionallySafe for S where S: Send + Sync + 'static {}
+impl<S> ConditionallySendSync for S where S: Send + Sync + 'static {}
+
+pub trait ConditionallySend: Send + 'static {}
+
+impl<S> ConditionallySend for S where S: Send + 'static {}

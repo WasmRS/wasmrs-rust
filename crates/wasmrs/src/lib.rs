@@ -76,8 +76,6 @@
   missing_docs
 )]
 #![doc = include_str!("../README.md")]
-// TODO REMOVE
-#![allow(clippy::needless_pass_by_value)]
 
 mod error;
 mod handlers;
@@ -99,7 +97,7 @@ pub use wasmrs_frames::{ErrorCode, Frame, Metadata, RawPayload};
 mod record;
 #[cfg(feature = "record-frames")]
 pub use record::{get_records, FrameRecord, FRAME_RECORDS};
-use wasmrs_runtime::ConditionallySafe;
+use wasmrs_runtime::ConditionallySendSync;
 pub use wasmrs_rx::Flux;
 
 pub use wasmrs_rx::{BoxFlux, BoxMono};
@@ -124,7 +122,7 @@ pub trait ModuleHost: Sync + Send {
 }
 
 /// A trait for an RSocket client/server (host/guest).
-pub trait RSocket: ConditionallySafe {
+pub trait RSocket: ConditionallySendSync {
   /// Fire and Forget interaction model of RSocket.
   fn fire_and_forget(&self, payload: RawPayload) -> BoxMono<(), PayloadError>;
   /// Request-Response interaction model of RSocket.

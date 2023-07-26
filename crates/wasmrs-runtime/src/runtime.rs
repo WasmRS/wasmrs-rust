@@ -17,7 +17,7 @@ use crate::Error;
 /// Create an unbounded channel.
 pub fn unbounded_channel<Item>() -> (UnboundedSender<Item>, UnboundedReceiver<Item>)
 where
-  Item: ConditionallySafe,
+  Item: ConditionallySendSync,
 {
   let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -28,11 +28,11 @@ where
 /// A Unbounded Sender that works the same way in single-threaded WebAssembly as multi-threaded native.
 pub struct UnboundedSender<Item>(tokio::sync::mpsc::UnboundedSender<Item>)
 where
-  Item: ConditionallySafe;
+  Item: ConditionallySendSync;
 
 impl<Item> Clone for UnboundedSender<Item>
 where
-  Item: ConditionallySafe,
+  Item: ConditionallySendSync,
 {
   fn clone(&self) -> Self {
     Self(self.0.clone())
@@ -41,7 +41,7 @@ where
 
 impl<Item> UnboundedSender<Item>
 where
-  Item: ConditionallySafe,
+  Item: ConditionallySendSync,
 {
   /// Send an `Item` to the channel.
   pub fn send(&self, message: Item) -> Result<(), Error> {
@@ -59,11 +59,11 @@ where
 /// A Unbounded Receiver that works the same way in single-threaded WebAssembly as multi-threaded native.
 pub struct UnboundedReceiver<Item>(tokio::sync::mpsc::UnboundedReceiver<Item>)
 where
-  Item: ConditionallySafe;
+  Item: ConditionallySendSync;
 
 impl<Item> UnboundedReceiver<Item>
 where
-  Item: ConditionallySafe,
+  Item: ConditionallySendSync,
 {
   /// Receive the next `Item` on the channel.
   pub async fn recv(&mut self) -> Option<Item> {
@@ -80,7 +80,7 @@ where
 /// A oneshot channel similar to [tokio::sync::oneshot::channel] but works the same way in single-threaded WebAssembly as multi-threaded native.
 pub fn oneshot<Item>() -> (OneShotSender<Item>, OneShotReceiver<Item>)
 where
-  Item: ConditionallySafe,
+  Item: ConditionallySendSync,
 {
   let (tx, rx) = tokio::sync::oneshot::channel();
 
@@ -91,11 +91,11 @@ where
 /// A Unbounded Sender that works the same way in single-threaded WebAssembly as multi-threaded native.
 pub struct OneShotSender<Item>(tokio::sync::oneshot::Sender<Item>)
 where
-  Item: ConditionallySafe;
+  Item: ConditionallySendSync;
 
 impl<Item> OneShotSender<Item>
 where
-  Item: ConditionallySafe,
+  Item: ConditionallySendSync,
 {
   /// Send an item on the channel.
   pub fn send(self, message: Item) -> Result<(), Error> {
@@ -113,11 +113,11 @@ where
 /// A OneShort Receiver that works the same way in single-threaded WebAssembly as multi-threaded native.
 pub struct OneShotReceiver<Item>(tokio::sync::oneshot::Receiver<Item>)
 where
-  Item: ConditionallySafe;
+  Item: ConditionallySendSync;
 
 impl<Item> OneShotReceiver<Item>
 where
-  Item: ConditionallySafe,
+  Item: ConditionallySendSync,
 {
   /// Receive the next item on the channel.
   pub async fn recv(self) -> Result<Item, Error> {
@@ -127,7 +127,7 @@ where
 
 impl<Item> Future for OneShotReceiver<Item>
 where
-  Item: ConditionallySafe,
+  Item: ConditionallySendSync,
 {
   type Output = Result<Item, Error>;
 

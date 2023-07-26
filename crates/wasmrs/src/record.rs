@@ -1,6 +1,3 @@
-#![allow(unused)]
-use std::path::Path;
-
 use wasmrs_frames::Frame;
 
 use crate::SocketSide;
@@ -17,7 +14,7 @@ impl FrameRecords {
     print_record(record.clone(), self.frames.len());
     self.frames.push(record.clone());
     #[cfg(feature = "dump-frames")]
-    dump_record(record, self.frames.len(), Path::new("frames")).unwrap();
+    dump_record(record, self.frames.len(), std::path::Path::new("frames")).unwrap();
   }
 }
 
@@ -59,6 +56,7 @@ impl FrameRecord {
     matches!(self, FrameRecord::Outgoing { .. })
   }
 
+  #[cfg(feature = "dump-frames")]
   fn dir(&self) -> &str {
     match self {
       FrameRecord::Incoming { .. } => "in",
@@ -66,6 +64,7 @@ impl FrameRecord {
     }
   }
 
+  #[cfg(feature = "dump-frames")]
   fn stream_id(&self) -> u32 {
     match self {
       FrameRecord::Incoming { stream_id, .. } => *stream_id,
@@ -86,7 +85,7 @@ impl FrameRecord {
         .map_err(|e| crate::Error::Record(e.to_string()))?
         .into(),
     )
-    .map_err(|(id, e)| crate::Error::Record(e.to_string()))
+    .map_err(|(_id, e)| crate::Error::Record(e.to_string()))
   }
 
   /// The base64 representation of the frame.
@@ -98,6 +97,7 @@ impl FrameRecord {
     }
   }
 
+  #[cfg(feature = "dump-frames")]
   fn side(&self) -> String {
     match self {
       FrameRecord::Incoming { side, .. } => side.to_string(),
@@ -109,8 +109,8 @@ impl FrameRecord {
 impl std::fmt::Display for FrameRecord {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let (sid, side) = match self {
-      FrameRecord::Incoming { side, stream_id, frame } => (stream_id, side),
-      FrameRecord::Outgoing { side, stream_id, frame } => (stream_id, side),
+      FrameRecord::Incoming { side, stream_id, .. } => (stream_id, side),
+      FrameRecord::Outgoing { side, stream_id, .. } => (stream_id, side),
     };
     f.write_str("s")?;
     sid.fmt(f)?;
@@ -142,8 +142,8 @@ pub(crate) fn write_incoming_record(side: SocketSide, frame: Frame) {
   });
 }
 
-fn dump_record(record: FrameRecord, i: usize, dir: &Path) -> Result<(), crate::Error> {
-  #[cfg(feature = "dump-frames")]
+#[cfg(feature = "dump-frames")]
+fn dump_record(record: FrameRecord, i: usize, dir: &std::path::Path) -> Result<(), crate::Error> {
   {
     use std::fs::File;
     use std::io::Write;
@@ -174,8 +174,8 @@ pub fn get_records() -> Vec<FrameRecord> {
   FRAME_RECORDS.lock().frames.drain(..).collect()
 }
 
+#[cfg(feature = "print-frames")]
 fn print_record(record: FrameRecord, i: usize) {
-  #[cfg(feature = "print-frames")]
   {
     let json = serde_json::to_string(&record).unwrap();
 
