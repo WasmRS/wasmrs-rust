@@ -1,13 +1,13 @@
 use futures::Stream;
 
 use super::{FluxChannel, FluxPipe};
-use wasmrs_runtime::ConditionallySafe;
+use wasmrs_runtime::ConditionallySendSync;
 
 /// The wasmrs-rx implementation of an Rx Observable trait
-pub trait Observable<Item, Err>: Stream<Item = Result<Item, Err>> + ConditionallySafe
+pub trait Observable<Item, Err>: Stream<Item = Result<Item, Err>> + ConditionallySendSync
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
   Self: Sized,
 {
   /// Pipe one [Flux] into another.

@@ -19,7 +19,7 @@ thread_local! {
 
 pub fn spawn<Fut>(_id: &'static str, future: Fut)
 where
-  Fut: Future<Output = ()> + ConditionallySafe + 'static,
+  Fut: Future<Output = ()> + ConditionallySend + 'static,
 {
   SPAWNER.with(|spawner| {
     #[allow(unsafe_code)]
@@ -184,7 +184,7 @@ pub struct OptionalMut<T>(Arc<RefCell<Option<T>>>);
 
 impl<T> OptionalMut<T>
 where
-  T: ConditionallySafe,
+  T: ConditionallySendSync,
 {
   pub fn new(item: T) -> Self {
     Self(Arc::new(RefCell::new(Some(item))))
@@ -223,7 +223,7 @@ pub struct MutRc<T>(pub(super) Rc<RefCell<T>>);
 
 impl<T> MutRc<T>
 where
-  T: ConditionallySafe,
+  T: ConditionallySendSync,
 {
   pub fn new(item: T) -> Self {
     Self(Rc::new(RefCell::new(item)))
@@ -244,6 +244,10 @@ where
 
 pub type RtRc<T> = Rc<T>;
 
-pub trait ConditionallySafe: 'static {}
+pub trait ConditionallySendSync: 'static {}
 
-impl<S> ConditionallySafe for S where S: 'static {}
+impl<S> ConditionallySendSync for S where S: 'static {}
+
+pub trait ConditionallySend: 'static {}
+
+impl<S> ConditionallySend for S where S: 'static {}

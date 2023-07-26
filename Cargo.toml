@@ -16,6 +16,11 @@ members = [
 exclude = ["wasm/reqres-component", "wasm/baseline", "wasm/grabbag"]
 
 [workspace.dependencies]
+# Wasmtime deps
+wasmtime = { version = "11.0" }
+wasmtime-wasi = { version = "11.0", features = ["sync"] }
+wasi-common = { version = "11.0" }
+#
 env_logger = { version = "0.10.0", default-features = false }
 futures = { version = "0.3", default-features = false }
 futures-core = { version = "0.3", default-features = false }
@@ -29,3 +34,9 @@ parking_lot = { version = "0.12", default-features = false }
 tracing = { version = "0.1", default-features = false }
 thiserror = { version = "1.0", default-features = false }
 anyhow = { version = "1.0", default-features = false }
+cfg-if = { version = "1.0.0" }
+once_cell = { version = "1.18" }
+serde_json = { version = "1.0.85" }
+clap = "4.0.9"
+base64 = "0.21"
+test-log = "0.2.10"

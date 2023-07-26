@@ -4,10 +4,8 @@ use bytes::Bytes;
 use parking_lot::Mutex;
 use wasmrs::{BufferState, Frame, OperationList, PayloadError, WasmSocket};
 use wasmrs_host::errors::Error;
-use wasmrs_host::{CallbackProvider, WasiParams};
+use wasmrs_host::CallbackProvider;
 use wasmtime::{Engine, Store};
-
-use crate::wasi::init_wasi;
 
 type WasiCtx = wasmtime_wasi::WasiCtx;
 
@@ -74,12 +72,10 @@ impl CallbackProvider for ProviderStore {
 }
 
 pub(crate) fn new_store(
-  wasi_params: &Option<WasiParams>,
+  wasi_ctx: Option<WasiCtx>,
   socket: Arc<WasmSocket>,
   engine: &Engine,
 ) -> super::Result<Store<ProviderStore>> {
-  let params = wasi_params.clone().unwrap_or_default();
-  let ctx = init_wasi(&params)?;
   Ok(Store::new(
     engine,
     ProviderStore {
@@ -87,7 +83,7 @@ pub(crate) fn new_store(
       guest_buffer: Default::default(),
       op_list: Arc::new(Mutex::new(OperationList::default())),
       socket,
-      wasi_ctx: Some(ctx),
+      wasi_ctx,
     },
   ))
 }

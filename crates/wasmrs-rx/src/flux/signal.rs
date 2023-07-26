@@ -1,11 +1,11 @@
-use wasmrs_runtime::ConditionallySafe;
+use wasmrs_runtime::ConditionallySendSync;
 
 #[derive(PartialEq, Eq, Clone)]
 /// The [Signal] is the wrapper payload that wasmrx types pass around.
 pub enum Signal<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   /// A success value.
   Ok(Item),
@@ -17,8 +17,8 @@ where
 
 impl<Item, Err> std::fmt::Debug for Signal<Item, Err>
 where
-  Item: ConditionallySafe + std::fmt::Debug,
-  Err: ConditionallySafe + std::fmt::Debug,
+  Item: ConditionallySendSync + std::fmt::Debug,
+  Err: ConditionallySendSync + std::fmt::Debug,
 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {

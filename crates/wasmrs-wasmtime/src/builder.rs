@@ -1,8 +1,10 @@
 use parking_lot::Mutex;
+use wasi_common::WasiCtx;
 use wasmtime::Module;
 
 use crate::engine_provider::EpochDeadlines;
 use crate::errors::Error;
+use crate::wasi::init_wasi;
 use crate::WasmtimeEngineProvider;
 
 static MODULE_CACHE: once_cell::sync::Lazy<Mutex<std::collections::HashMap<String, Module>>> =
@@ -19,6 +21,7 @@ pub struct WasmtimeBuilder<'a> {
   cache_enabled: bool,
   cache_path: Option<std::path::PathBuf>,
   wasi_params: Option<wasmrs_host::WasiParams>,
+  wasi_ctx: Option<WasiCtx>,
   epoch_deadlines: Option<EpochDeadlines>,
 }
 
@@ -62,9 +65,18 @@ impl<'a> WasmtimeBuilder<'a> {
     self
   }
 
-  /// WASI params
+  /// WASI params, for basic WASI support.
+  ///
+  /// **Warning:** this has no effect when a custom [`WasiCtx`] is provided via the
+  /// [`WasmtimeEngineProviderBuilder::wasi_ctx`] helper.
   pub fn wasi_params(mut self, wasi: wasmrs_host::WasiParams) -> Self {
     self.wasi_params = Some(wasi);
+    self
+  }
+
+  /// Wasmtime WASI Context, for when you need more control over the WASI environment.
+  pub fn wasi_ctx(mut self, wasi: WasiCtx) -> Self {
+    self.wasi_ctx = Some(wasi);
     self
   }
 
@@ -140,7 +152,7 @@ impl<'a> WasmtimeBuilder<'a> {
       }
     };
 
-    let module = match (&self.module, &self.module_bytes) {
+    let module = match (self.module, self.module_bytes) {
       (Some(m), None) => m.clone(),
       (None, Some((id, bytes))) => {
         let module = Module::from_binary(&engine, bytes).map_err(Error::Initialization)?;
@@ -152,9 +164,19 @@ impl<'a> WasmtimeBuilder<'a> {
       _ => return Err(Error::AmbiguousModule),
     };
 
-    let mut provider = WasmtimeEngineProvider::new_with_engine(module, engine, self.wasi_params.clone())?;
+    let epoch_deadlines = self.epoch_deadlines;
 
-    provider.epoch_deadlines = self.epoch_deadlines;
+    let ctx = if self.wasi_ctx.is_some() {
+      self.wasi_ctx
+    } else if let Some(wasi_params) = self.wasi_params {
+      Some(init_wasi(&wasi_params)?)
+    } else {
+      None
+    };
+
+    let mut provider = WasmtimeEngineProvider::new_with_engine(module, engine, ctx)?;
+
+    provider.epoch_deadlines = epoch_deadlines;
 
     Ok(provider)
   }

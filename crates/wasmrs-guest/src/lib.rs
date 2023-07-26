@@ -76,7 +76,6 @@
   missing_docs
 )]
 #![doc = include_str!("../README.md")]
-#![allow(clippy::needless_pass_by_value)]
 
 mod guest;
 pub use error::Error;

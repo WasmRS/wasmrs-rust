@@ -1,13 +1,14 @@
 use std::io::Write;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
+
 use std::task::Poll;
 
 use futures::AsyncRead;
 use futures::{Future, FutureExt, Stream};
 use wasmrs_runtime::unbounded_channel;
 use wasmrs_runtime::BoxFuture;
-use wasmrs_runtime::ConditionallySafe;
+use wasmrs_runtime::ConditionallySendSync;
 use wasmrs_runtime::UnboundedSender;
 
 use crate::Error;
@@ -29,15 +30,15 @@ type FutureResult<Item, Err> = BoxFuture<Result<Option<Result<Item, Err>>, Error
 pub type FluxBox<Item, Err> = Pin<Box<dyn Observable<Item, Err>>>;
 
 /// A [Future] that wraps a [Result] and can be used as a [Mono].
-pub trait MonoFuture<Item, Err>: Future<Output = Result<Item, Err>> + ConditionallySafe {}
+pub trait MonoFuture<Item, Err>: Future<Output = Result<Item, Err>> + ConditionallySendSync {}
 
 #[allow(missing_debug_implementations)]
 #[must_use]
 /// An implementation of [Mono] as seen in RSocket and reactive streams. It is similar to a [Future<Output = Result<Item, Err>>] that can be pushed to after instantiation.
 pub struct Mono<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe + Sync,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync + Sync,
 {
   inner: Option<Pin<Box<dyn MonoFuture<Item, Err>>>>,
   done: AtomicBool,
@@ -45,8 +46,8 @@ where
 
 impl<Item, Err> Mono<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe + Sync,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync + Sync,
 {
   /// Create a new [Mono].
   pub fn new() -> Self {
@@ -104,8 +105,8 @@ where
 
 impl<Item, Err> Default for Mono<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe + Sync,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync + Sync,
 {
   fn default() -> Self {
     Self::new()
@@ -114,8 +115,8 @@ where
 
 impl<Item, Err> Stream for Mono<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe + Sync,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync + Sync,
 {
   type Item = Result<Item, Err>;
 
@@ -139,16 +140,16 @@ where
 
 impl<Item, Err, T> MonoFuture<Item, Err> for T
 where
-  T: Future<Output = Result<Item, Err>> + ConditionallySafe,
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  T: Future<Output = Result<Item, Err>> + ConditionallySendSync,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
 }
 
 impl<Item, Err> Future for Mono<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe + Sync,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync + Sync,
 {
   type Output = Result<Item, Err>;
 
@@ -166,8 +167,8 @@ where
 /// An implementation of the `Flux` as seen in RSocket and reactive streams. It is similar to a [Stream<Item = Result<Item, Err>>] or an unbounded channel.
 pub struct FluxChannel<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   tx: UnboundedSender<Signal<Item, Err>>,
   rx: FluxReceiver<Item, Err>,
@@ -175,8 +176,8 @@ where
 
 impl<Item, Err> FluxChannel<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   /// Create a new [Flux]
   pub fn new() -> Self {
@@ -208,13 +209,13 @@ where
   }
 
   #[must_use]
-  /// Check if the [Flux] is complete.
+  /// Check if the [FluxChannel] is complete.
   pub fn is_closed(&self) -> bool {
     self.tx.is_closed()
   }
 
   #[must_use]
-  /// Await the next value in the [Flux].
+  /// Await the next value in the [FluxChannel].
   pub fn recv(&self) -> FutureResult<Item, Err>
   where
     Err: 'static + std::fmt::Debug,
@@ -232,8 +233,8 @@ where
 
 impl<Item, Err> TryFrom<FluxChannel<Item, Err>> for FluxReceiver<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   type Error = Error;
 
@@ -244,8 +245,8 @@ where
 
 impl<Item, Err> Clone for FluxChannel<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   fn clone(&self) -> Self {
     Self {
@@ -257,7 +258,7 @@ where
 
 impl<Err> AsyncRead for FluxChannel<Vec<u8>, Err>
 where
-  Err: ConditionallySafe,
+  Err: ConditionallySendSync,
 {
   fn poll_read(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &mut [u8]) -> Poll<std::io::Result<usize>> {
     match Pin::new(&mut self.get_mut().rx).poll_next(cx) {
@@ -279,15 +280,15 @@ where
 
 impl<Item, Err> Observable<Item, Err> for FluxChannel<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
 }
 
 impl<Item, Err> Observer<Item, Err> for FluxChannel<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   fn send_signal(&self, signal: Signal<Item, Err>) -> Result<(), Error> {
     Ok(self.tx.send(signal)?)
@@ -304,8 +305,8 @@ where
 
 impl<Item, Err> Default for FluxChannel<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   fn default() -> Self {
     Self::new()
@@ -314,8 +315,8 @@ where
 
 impl<Item, Err> Stream for FluxChannel<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   type Item = Result<Item, Err>;
 
@@ -326,8 +327,8 @@ where
 
 impl<Item, Err> From<Vec<Result<Item, Err>>> for FluxChannel<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   fn from(value: Vec<Result<Item, Err>>) -> Self {
     Self::from_iter(value.into_iter())
@@ -336,8 +337,8 @@ where
 
 impl<Item, Err, const N: usize> From<[Result<Item, Err>; N]> for FluxChannel<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   fn from(value: [Result<Item, Err>; N]) -> Self {
     Self::from_iter(value.into_iter())
@@ -346,13 +347,13 @@ where
 
 impl<Item, Err> FromIterator<Result<Item, Err>> for FluxChannel<Item, Err>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   fn from_iter<T: IntoIterator<Item = Result<Item, Err>>>(iter: T) -> Self {
-    let (tx, mut rx) = Self::new_parts();
+    let (tx, _) = Self::new_parts();
     for item in iter {
-      tx.send_result(item);
+      let _ = tx.send_result(item);
     }
     tx.complete();
     tx
@@ -361,8 +362,8 @@ where
 
 fn signal_into_result<Item, Err>(signal: Option<Signal<Item, Err>>) -> Option<Result<Item, Err>>
 where
-  Item: ConditionallySafe,
-  Err: ConditionallySafe,
+  Item: ConditionallySendSync,
+  Err: ConditionallySendSync,
 {
   match signal {
     Some(Signal::Complete) => None,

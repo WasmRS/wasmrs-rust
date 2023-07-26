@@ -6,7 +6,9 @@
 pub enum Error {
   /// Receive on a channel failed.
   RecvFailed(u8),
-  /// The receiver in a [Flux] has already been removed.
+  /// The sender in a [FluxChannel] has already been removed or dropped.
+  SenderClosed,
+  /// The receiver in a [FluxChannel] has already been removed.
   ReceiverAlreadyGone,
   /// A Runtime-related error.
   Runtime(String),
@@ -26,6 +28,7 @@ impl std::fmt::Display for Error {
         f.write_str(e)
       }
       Error::Runtime(msg) => f.write_str(msg),
+      Error::SenderClosed => f.write_str("Sender closed"),
     }
   }
 }

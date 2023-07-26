@@ -20,7 +20,9 @@ fn request_response(input: BoxMono<Payload, PayloadError>) -> Result<BoxMono<Raw
   Ok(
     Mono::from_future(async move {
       let input = deserialize::<Input>(&input.await.unwrap().data).unwrap();
-      let output = format!("Hello! You sent me {} messages.", input.message.len());
+      let mut output = "Hello! You sent me ".to_owned();
+      output.push_str(&input.message.len().to_string());
+      output.push_str(" messages.");
       Ok(RawPayload::new_data(None, Some(serialize(&output).unwrap().into())))
     })
     .boxed(),

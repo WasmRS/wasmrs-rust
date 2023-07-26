@@ -102,6 +102,7 @@ impl std::fmt::Display for FrameType {
     f.write_str(name)
   }
 }
+
 impl TryFrom<u8> for FrameType {
   type Error = String;
   fn try_from(index: u8) -> Result<Self, Self::Error> {
@@ -122,7 +123,7 @@ impl TryFrom<u8> for FrameType {
       13 => Ok(Self::Resume),
       14 => Ok(Self::ResumeOk),
       63 => Ok(Self::Ext),
-      _ => Err(format!("{} is not a valid index for FrameType", index)),
+      _ => Err("invalid index for FrameType".to_string()),
     }
   }
 }
@@ -183,7 +184,7 @@ impl TryFrom<u32> for FrameFlag {
       2 => Ok(Self::Complete),
       3 => Ok(Self::Next),
       4 => Ok(Self::Ignore),
-      _ => Err(format!("{} is not a valid index for FrameFlag", index)),
+      _ => Err("invalid index for FrameFlag".to_string()),
     }
   }
 }
@@ -234,7 +235,7 @@ impl TryFrom<u32> for ErrorCode {
       515 => Ok(Self::Canceled),
       516 => Ok(Self::Invalid),
       4294967295 => Ok(Self::Reserved),
-      _ => Err(format!("{} is not a valid index for ErrorCode", index)),
+      _ => Err("invalid index for ErrorCode".to_string()),
     }
   }
 }

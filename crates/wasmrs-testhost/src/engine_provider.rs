@@ -58,7 +58,7 @@ impl WasmtimeEngineProvider {
       .map_err(|e| wasmrs_host::errors::Error::NewContext(e.to_string()))?;
 
     WasmtimeCallContext::new(self.linker.clone(), &self.module, store)
-      .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))
+      .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.into()))
   }
 }
 
@@ -126,16 +126,16 @@ impl WasmtimeCallContext {
       trace!("Calling tinygo _start method");
       start
         .call(&mut self.store, ())
-        .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?;
+        .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.into()))?;
     }
 
     let init: TypedFunc<(u32, u32, u32), ()> = self
       .instance
       .get_typed_func(&mut self.store, GuestExports::Init.as_ref())
-      .map_err(|_e| wasmrs_host::errors::Error::InitFailed(Error::GuestInit.to_string()))?;
+      .map_err(|_e| wasmrs_host::errors::Error::InitFailed(Box::new(Error::GuestInit)))?;
     init
       .call(&mut self.store, (host_buffer_size, guest_buffer_size, 128))
-      .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.to_string()))?;
+      .map_err(|e| wasmrs_host::errors::Error::InitFailed(e.into()))?;
 
     if let Ok(oplist) = self
       .instance

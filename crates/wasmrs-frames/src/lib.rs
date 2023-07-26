@@ -75,8 +75,6 @@
   missing_docs
 )]
 #![doc = include_str!("../README.md")]
-// TODO REMOVE
-#![allow(clippy::needless_pass_by_value)]
 
 mod frames;
 pub use frames::*;
