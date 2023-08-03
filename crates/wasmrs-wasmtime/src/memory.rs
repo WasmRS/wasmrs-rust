@@ -26,7 +26,6 @@ pub(crate) fn read_frame<'a, T: 'a>(
 ) -> super::Result<Bytes> {
   let data = mem.data(store);
   let buff = &data[ptr..(ptr + read_until)];
-  trace!(?buff, "buffer data");
   wasmrs::util::read_frame(buff).map_err(|_| Error::GuestMemory)
 }
 
