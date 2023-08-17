@@ -365,21 +365,45 @@ impl WasmSocket {
     }
   }
 
-  fn on_error(&self, sid: u32, _flag: FrameFlags, code: u32, message: String, metadata: Option<Bytes>) {
+  fn on_error(&self, sid: u32, flag: FrameFlags, code: u32, message: String, metadata: Option<Bytes>) {
     trace!(sid, code, message, ?metadata, side = %self.side, "on_error");
-    if let Some(handler) = self.handlers.remove(&sid) {
-      let e = PayloadError::new(code, message, metadata);
-      match handler {
-        Handler::ReqRR(sender) => {
-          let _ = sender.send(Err(e));
-        }
-        Handler::ReqRS(sender) => {
-          let _ = sender.error(e);
-        }
-        Handler::ReqRC(sender) => {
-          let _ = sender.error(e);
+    let tx = self.tx.clone();
+
+    match self.handlers.entry(sid) {
+      Entry::Occupied(o) => {
+        let e = PayloadError::new(code, message, metadata);
+        match o.get() {
+          Handler::ReqRR(_) => match o.remove() {
+            Handler::ReqRR(sender) => {
+              let _ = sender.send(Err(e));
+            }
+            _ => unreachable!(),
+          },
+          Handler::ReqRS(sender) => {
+            if sender.is_closed() {
+              send_cancel(&tx, sid, self.side);
+            } else if let Err(_e) = sender.error(e) {
+              send_cancel(&tx, sid, self.side);
+            }
+
+            if flag.flag_complete() {
+              o.remove();
+            }
+          }
+          Handler::ReqRC(sender) => {
+            if sender.is_closed() {
+              send_cancel(&tx, sid, self.side);
+            } else if (sender.error(e)).is_err() {
+              send_cancel(&tx, sid, self.side);
+            }
+
+            if flag.flag_complete() {
+              o.remove();
+            }
+          }
         }
       }
+      Entry::Vacant(_) => {}
     }
   }
 }
