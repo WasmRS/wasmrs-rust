@@ -1,5 +1,5 @@
 # WasmRS
-WasmRS implements [reactive streams](https://www.reactive-streams.org)](https://www.reactive-streams.org) in WebAssembly modules to enable asynchronous, bidirectional communication in and out of wasm. WasmRS is a spiritual successor to waPC and dramatically expands on what you can do with WebAssembly.
+WasmRS implements [reactive streams](https://www.reactive-streams.org) in WebAssembly modules to enable asynchronous, bidirectional communication in and out of wasm. WasmRS is a spiritual successor to waPC and dramatically expands on what you can do with WebAssembly.
 
 ## wasmRS Protocol
 
