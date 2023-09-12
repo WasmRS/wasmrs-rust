@@ -1,3 +1,5 @@
+use wasmrs::RSocket;
+
 use crate::engine_provider::EpochDeadlines;
 use crate::errors::Error;
 use crate::WasmtimeEngineProvider;
@@ -83,7 +85,7 @@ impl<'a> WasmtimeBuilder<'a> {
   }
 
   /// Create a `WasmtimeEngineProvider` instance
-  pub fn build(&self) -> Result<WasmtimeEngineProvider, Error> {
+  pub fn build<T: RSocket>(&self) -> Result<WasmtimeEngineProvider<T>, Error> {
     let mut provider = match &self.engine {
       Some(e) => {
         // note: we have to call `.clone()` because `e` is behind

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use parking_lot::Mutex;
-use wasmrs::{BufferState, Frame, OperationList, PayloadError, WasmSocket};
+use wasmrs::{BufferState, Frame, OperationList, PayloadError, RSocket, WasmSocket};
 use wasmrs_host::errors::Error;
 use wasmrs_host::{CallbackProvider, WasiParams};
 use wasmtime::{Engine, Store};
@@ -11,15 +11,15 @@ use crate::wasi::init_wasi;
 
 type WasiCtx = wasmtime_wasi::WasiCtx;
 
-pub(crate) struct ProviderStore {
+pub(crate) struct ProviderStore<T: RSocket> {
   pub(crate) wasi_ctx: Option<WasiCtx>,
-  pub(crate) socket: Arc<WasmSocket>,
+  pub(crate) socket: Arc<WasmSocket<T>>,
   pub(crate) host_buffer: BufferState,
   pub(crate) guest_buffer: BufferState,
   pub(crate) op_list: Arc<Mutex<OperationList>>,
 }
 
-impl CallbackProvider for ProviderStore {
+impl<T: RSocket> CallbackProvider for ProviderStore<T> {
   fn do_host_init(&self, guest_buff_ptr: u32, host_buff_ptr: u32) -> Result<(), Error> {
     self.host_buffer.update_start(host_buff_ptr);
     self.guest_buffer.update_start(guest_buff_ptr);
@@ -73,11 +73,11 @@ impl CallbackProvider for ProviderStore {
   }
 }
 
-pub(crate) fn new_store(
+pub(crate) fn new_store<T: RSocket>(
   wasi_params: &Option<WasiParams>,
-  socket: Arc<WasmSocket>,
+  socket: Arc<WasmSocket<T>>,
   engine: &Engine,
-) -> super::Result<Store<ProviderStore>> {
+) -> super::Result<Store<ProviderStore<T>>> {
   let params = wasi_params.clone().unwrap_or_default();
   let ctx = init_wasi(&params)?;
   Ok(Store::new(

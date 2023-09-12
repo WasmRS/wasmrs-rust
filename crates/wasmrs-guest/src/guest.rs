@@ -2,6 +2,7 @@ use std::cell::UnsafeCell;
 use std::io::{Cursor, Write};
 use std::sync::atomic::{AtomicU32, Ordering};
 
+use futures_util::Stream;
 use wasmrs::util::to_u24_bytes;
 use wasmrs::{BoxFlux, BoxMono, OperationHandler, OperationMap, SocketSide};
 pub use wasmrs::{
@@ -10,7 +11,7 @@ pub use wasmrs::{
 };
 pub use wasmrs_frames::PayloadError;
 pub use wasmrs_runtime::spawn;
-use wasmrs_runtime::{exhaust_pool, RtRc, UnboundedReceiver};
+use wasmrs_runtime::{exhaust_pool, ConditionallySend, RtRc, UnboundedReceiver};
 pub use wasmrs_rx::*;
 
 pub use bytes::Bytes;
@@ -32,7 +33,7 @@ thread_local! {
   pub(crate) static REQUEST_FNF_HANDLERS: UnsafeCell<OperationMap<OperationHandler<IncomingMono,()>>> = UnsafeCell::new(OperationMap::new());
   pub(crate) static OP_LIST: UnsafeCell<OperationList> = UnsafeCell::new(OperationList::default());
   pub(crate) static OP_LIST_BYTES: UnsafeCell<Vec<u8>> = UnsafeCell::new(Vec::new());
-  static SOCKET: UnsafeCell<wasmrs::WasmSocket> = UnsafeCell::new(wasmrs::WasmSocket::new(WasmServer{}, SocketSide::Guest));
+  static SOCKET: UnsafeCell<wasmrs::WasmSocket<WasmServer>> = UnsafeCell::new(wasmrs::WasmSocket::new(WasmServer{}, SocketSide::Guest));
 }
 
 /// Set the MAX_N value for the guest.
@@ -74,7 +75,10 @@ impl RSocket for Host {
     })
   }
 
-  fn request_channel(&self, stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
+  fn request_channel<T: Stream<Item = Result<RawPayload, PayloadError>> + ConditionallySend + Unpin + 'static>(
+    &self,
+    stream: T,
+  ) -> BoxFlux<RawPayload, PayloadError> {
     SOCKET.with(|cell| {
       #[allow(unsafe_code)]
       let socket = unsafe { &mut *cell.get() };

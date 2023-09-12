@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use base64::Engine;
+use futures::Stream;
 use wasmrs::{BoxFlux, BoxMono, RSocket, RawPayload, SocketSide, WasmSocket};
 use wasmrs_frames::PayloadError;
 use wasmrs_host::WasiParams;
@@ -76,7 +77,10 @@ impl RSocket for HostServer {
     rx.boxed()
   }
 
-  fn request_channel(&self, _reqs: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
+  fn request_channel<T: Stream<Item = std::result::Result<RawPayload, PayloadError>> + Send + Unpin + 'static>(
+    &self,
+    _reqs: T,
+  ) -> BoxFlux<RawPayload, PayloadError> {
     let (tx, rx) = FluxChannel::new_parts();
     tx.complete();
     rx.boxed()

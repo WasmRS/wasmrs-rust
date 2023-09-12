@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use bytes::{BufMut, BytesMut};
-use wasmrs::{Frame, OperationList, WasmSocket};
+use wasmrs::{Frame, OperationList, RSocket, WasmSocket};
 use wasmrs_host::{CallbackProvider, GuestExports, ProviderCallContext, WasiParams};
 use wasmtime::{Engine, Instance, Linker, Memory, Module, Store, TypedFunc};
 
@@ -13,10 +13,10 @@ use crate::wasmrs_wasmtime::{self};
 
 /// A wasmRS engine provider that encapsulates the Wasmtime WebAssembly runtime
 #[allow(missing_debug_implementations)]
-pub struct WasmtimeEngineProvider {
+pub struct WasmtimeEngineProvider<T: RSocket> {
   module: Module,
   engine: Arc<Engine>,
-  linker: Linker<ProviderStore>,
+  linker: Linker<ProviderStore<T>>,
   wasi_params: Option<WasiParams>,
   pub(crate) epoch_deadlines: Option<EpochDeadlines>,
 }
@@ -32,12 +32,12 @@ pub(crate) struct EpochDeadlines {
   pub(crate) wasmrs_func: u64,
 }
 
-impl WasmtimeEngineProvider {
+impl<T: RSocket> WasmtimeEngineProvider<T> {
   /// Creates a new instance of a [WasmtimeEngineProvider] from a separately created [wasmtime::Engine].
   pub(crate) fn new_with_engine(buf: &[u8], engine: Engine, wasi_params: Option<WasiParams>) -> Result<Self> {
     let module = Module::new(&engine, buf).map_err(Error::Module)?;
 
-    let mut linker: Linker<ProviderStore> = Linker::new(&engine);
+    let mut linker: Linker<ProviderStore<T>> = Linker::new(&engine);
     wasmtime_wasi::add_to_linker(&mut linker, |s| s.wasi_ctx.as_mut().unwrap()).unwrap();
 
     Ok(WasmtimeEngineProvider {
@@ -52,8 +52,8 @@ impl WasmtimeEngineProvider {
   /// Create a new call context
   pub fn new_context(
     &self,
-    socket: Arc<WasmSocket>,
-  ) -> std::result::Result<WasmtimeCallContext, wasmrs_host::errors::Error> {
+    socket: Arc<WasmSocket<T>>,
+  ) -> std::result::Result<WasmtimeCallContext<T>, wasmrs_host::errors::Error> {
     let store = new_store(&self.wasi_params, socket, &self.engine)
       .map_err(|e| wasmrs_host::errors::Error::NewContext(e.to_string()))?;
 
@@ -64,18 +64,18 @@ impl WasmtimeEngineProvider {
 
 /// Raw Wasmtime call context
 #[allow(missing_debug_implementations)]
-pub struct WasmtimeCallContext {
+pub struct WasmtimeCallContext<T: RSocket> {
   guest_send: TypedFunc<i32, ()>,
   memory: Memory,
-  store: Store<ProviderStore>,
+  store: Store<ProviderStore<T>>,
   instance: Instance,
 }
 
-impl WasmtimeCallContext {
+impl<T: RSocket> WasmtimeCallContext<T> {
   pub(crate) fn new(
-    mut linker: Linker<ProviderStore>,
+    mut linker: Linker<ProviderStore<T>>,
     module: &Module,
-    mut store: Store<ProviderStore>,
+    mut store: Store<ProviderStore<T>>,
   ) -> Result<Self> {
     wasmrs_wasmtime::add_to_linker(&mut linker)?;
     let instance = linker.instantiate(&mut store, module).map_err(Error::Linker)?;
@@ -148,7 +148,7 @@ impl WasmtimeCallContext {
   }
 }
 
-impl wasmrs::ModuleHost for WasmtimeCallContext {
+impl<T: RSocket> wasmrs::ModuleHost for WasmtimeCallContext<T> {
   /// Request-Response interaction model of RSocket.
   fn write_frame(&mut self, req: Frame) -> std::result::Result<(), wasmrs::Error> {
     self.send_frame(req)
@@ -175,7 +175,7 @@ impl wasmrs::ModuleHost for WasmtimeCallContext {
   }
 }
 
-impl ProviderCallContext for WasmtimeCallContext {
+impl<T: RSocket> ProviderCallContext for WasmtimeCallContext<T> {
   fn init(
     &mut self,
     host_buffer_size: u32,

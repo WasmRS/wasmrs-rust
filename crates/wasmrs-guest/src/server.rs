@@ -1,7 +1,7 @@
 use std::cell::UnsafeCell;
 
-use futures_util::{FutureExt, StreamExt};
-use runtime::RtRc;
+use futures_util::{FutureExt, Stream, StreamExt};
+use runtime::{ConditionallySend, RtRc};
 use wasmrs::{BoxFlux, BoxMono, OperationMap, Payload, RSocket, RawPayload};
 use wasmrs_frames::PayloadError;
 use wasmrs_runtime as runtime;
@@ -10,6 +10,7 @@ use wasmrs_rx::{FluxChannel, Observer};
 use crate::error::Error;
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
+#[derive(Clone)]
 pub(crate) struct WasmServer {}
 
 impl RSocket for WasmServer {
@@ -32,7 +33,10 @@ impl RSocket for WasmServer {
     }
   }
 
-  fn request_channel(&self, stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
+  fn request_channel<T: Stream<Item = Result<RawPayload, PayloadError>> + ConditionallySend + Unpin + 'static>(
+    &self,
+    stream: T,
+  ) -> BoxFlux<RawPayload, PayloadError> {
     match request_channel(stream) {
       Ok(flux) => flux,
       Err(e) => futures_util::stream::iter([Err(PayloadError::application_error(e.to_string(), None))]).boxed(),
@@ -63,7 +67,9 @@ fn request_stream(payload: RawPayload) -> Result<BoxFlux<RawPayload, PayloadErro
   handler(futures_util::future::ready(Ok(parsed)).boxed()).map_err(|e| Error::HandlerFail(e.to_string()))
 }
 
-fn request_channel(stream: BoxFlux<RawPayload, PayloadError>) -> Result<BoxFlux<RawPayload, PayloadError>, Error> {
+fn request_channel<T: Stream<Item = Result<RawPayload, PayloadError>> + ConditionallySend + Unpin + 'static>(
+  stream: T,
+) -> Result<BoxFlux<RawPayload, PayloadError>, Error> {
   let (tx, rx) = FluxChannel::new_parts();
 
   runtime::spawn("guest:server:request_channel", async move {
@@ -81,8 +87,10 @@ fn request_channel(stream: BoxFlux<RawPayload, PayloadError>) -> Result<BoxFlux<
   Ok(rx.boxed())
 }
 
-async fn request_channel_inner(
-  mut incoming_stream: BoxFlux<RawPayload, PayloadError>,
+async fn request_channel_inner<
+  T: Stream<Item = Result<RawPayload, PayloadError>> + ConditionallySend + Unpin + 'static,
+>(
+  mut incoming_stream: T,
 ) -> Result<BoxFlux<RawPayload, PayloadError>, Error> {
   let (handler_input, handler_stream) = FluxChannel::new_parts();
   let handler_out = if let Some(result) = incoming_stream.next().await {

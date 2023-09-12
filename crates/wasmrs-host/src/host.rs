@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
+use futures_core::Stream;
 use futures_util::{FutureExt, StreamExt};
 use parking_lot::Mutex;
 use wasmrs::{
@@ -8,7 +9,7 @@ use wasmrs::{
   OutgoingStream, Payload, RSocket, RawPayload, WasmSocket,
 };
 use wasmrs_frames::PayloadError;
-use wasmrs_runtime::{spawn, UnboundedReceiver};
+use wasmrs_runtime::{spawn, ConditionallySend, UnboundedReceiver};
 use wasmrs_rx::*;
 
 use crate::context::{EngineProvider, SharedContext};
@@ -26,7 +27,7 @@ pub struct Host {
 
 impl Host {
   /// Create a new [Host] with an [EngineProvider] implementation.
-  pub fn new<T: EngineProvider + Send + 'static>(engine: T) -> Result<Self> {
+  pub fn new<E: EngineProvider + Send + 'static>(engine: E) -> Result<Self> {
     let host = Host {
       engine: RefCell::new(Box::new(engine)),
       mtu: 256,
@@ -105,7 +106,10 @@ fn spawn_writer(mut rx: UnboundedReceiver<Frame>, context: SharedContext) {
   });
 }
 
-struct HostServer {
+#[allow(missing_debug_implementations)]
+#[derive(Clone)]
+/// A wasmRS native Host.
+pub struct HostServer {
   handlers: Arc<Mutex<Handlers>>,
 }
 
@@ -147,7 +151,12 @@ impl RSocket for HostServer {
     handler(futures_util::future::ready(Ok(payload)).boxed()).unwrap()
   }
 
-  fn request_channel(&self, mut reqs: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
+  fn request_channel<
+    T: Stream<Item = std::result::Result<RawPayload, PayloadError>> + ConditionallySend + Unpin + 'static,
+  >(
+    &self,
+    mut reqs: T,
+  ) -> BoxFlux<RawPayload, PayloadError> {
     let (out_tx, out_rx) = FluxChannel::<RawPayload, PayloadError>::new_parts();
     let handlers = self.handlers.clone();
     tokio::spawn(async move {
@@ -190,7 +199,7 @@ impl RSocket for HostServer {
 
 /// A [CallContext] is a way to bucket calls together with the same memory and configuration.
 pub struct CallContext {
-  socket: Arc<WasmSocket>,
+  socket: Arc<WasmSocket<HostServer>>,
   context: SharedContext,
 }
 
@@ -203,7 +212,7 @@ impl std::fmt::Debug for CallContext {
 }
 
 impl CallContext {
-  fn new(_mtu: usize, socket: Arc<WasmSocket>, context: SharedContext) -> Result<Self> {
+  fn new(_mtu: usize, socket: Arc<WasmSocket<HostServer>>, context: SharedContext) -> Result<Self> {
     Ok(Self { socket, context })
   }
 
@@ -242,7 +251,12 @@ impl RSocket for CallContext {
     self.socket.request_stream(payload)
   }
 
-  fn request_channel(&self, stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
+  fn request_channel<
+    T: Stream<Item = std::result::Result<RawPayload, PayloadError>> + ConditionallySend + Unpin + 'static,
+  >(
+    &self,
+    stream: T,
+  ) -> BoxFlux<RawPayload, PayloadError> {
     self.socket.request_channel(stream)
   }
 }

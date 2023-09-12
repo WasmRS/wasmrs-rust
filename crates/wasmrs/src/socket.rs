@@ -1,5 +1,6 @@
 #![allow(missing_debug_implementations)]
 use bytes::Bytes;
+use runtime::ConditionallySend;
 use wasmrs_frames::{ErrorCode, FrameFlags, RSocketFlags};
 use wasmrs_runtime::{self as runtime, unbounded_channel, Entry, SafeMap, UnboundedReceiver, UnboundedSender};
 use wasmrs_rx::*;
@@ -11,7 +12,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
 use futures::stream::{AbortHandle, Abortable};
-use futures::{FutureExt, StreamExt, TryFutureExt};
+use futures::{pin_mut, FutureExt, Stream, StreamExt, TryFutureExt};
 mod responder;
 
 pub use self::buffer::BufferState;
@@ -46,7 +47,7 @@ impl std::fmt::Display for SocketSide {
 #[derive()]
 #[must_use]
 /// A socket that can be used to communicate between a host & guest via the wasmRS protocol.
-pub struct WasmSocket {
+pub struct WasmSocket<T> {
   side: SocketSide,
   pub(super) handlers: Arc<SafeMap<u32, Handler>>,
   abort_handles: Arc<SafeMap<u32, AbortHandle>>,
@@ -54,11 +55,11 @@ pub struct WasmSocket {
   pub(super) stream_index: AtomicU32,
   tx: UnboundedSender<Frame>,
   rx: Option<UnboundedReceiver<Frame>>,
-  responder: Responder,
+  responder: Responder<T>,
   n: Arc<AtomicU32>,
 }
 
-impl std::fmt::Debug for WasmSocket {
+impl<T: RSocket> std::fmt::Debug for WasmSocket<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.debug_struct("ModuleState")
       .field("# pending streams", &self.handlers.len())
@@ -67,9 +68,9 @@ impl std::fmt::Debug for WasmSocket {
   }
 }
 
-impl WasmSocket {
+impl<T: RSocket> WasmSocket<T> {
   /// Create a new [WasmSocket] with the passed implementation of [RSocket].
-  pub fn new(rsocket: impl RSocket + 'static, side: SocketSide) -> WasmSocket {
+  pub fn new(rsocket: T, side: SocketSide) -> WasmSocket<T> {
     let first_stream_id = match side {
       SocketSide::Guest => 1,
       SocketSide::Host => 2,
@@ -89,7 +90,7 @@ impl WasmSocket {
       abort_handles,
       channels,
       n: Arc::new(AtomicU32::new(Frame::REQUEST_MAX)),
-      responder: Responder::new(Box::new(rsocket)),
+      responder: Responder::new(rsocket),
     }
   }
 
@@ -408,7 +409,7 @@ impl WasmSocket {
   }
 }
 
-impl RSocket for WasmSocket {
+impl<T: RSocket> RSocket for WasmSocket<T> {
   fn fire_and_forget(&self, payload: RawPayload) -> BoxMono<(), PayloadError> {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_response");
@@ -449,7 +450,10 @@ impl RSocket for WasmSocket {
     output.boxed()
   }
 
-  fn request_channel(&self, mut stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
+  fn request_channel<S: Stream<Item = Result<RawPayload, PayloadError>> + ConditionallySend + 'static>(
+    &self,
+    stream: S,
+  ) -> BoxFlux<RawPayload, PayloadError> {
     let sid = self.next_stream_id();
     trace!(sid, side = %self.side, "request_channel");
 
@@ -465,6 +469,7 @@ impl RSocket for WasmSocket {
     runtime::spawn("request_channel", async move {
       let mut first = true;
       let mut n = 1;
+      pin_mut!(stream);
       while let Some(next) = stream.next().await {
         n -= 1;
         match next {
@@ -545,6 +550,7 @@ mod test {
   use bytes::Bytes;
 
   use super::*;
+  #[derive(Clone)]
   struct EchoRSocket;
 
   impl RSocket for EchoRSocket {
@@ -567,9 +573,13 @@ mod test {
       Box::pin(rx)
     }
 
-    fn request_channel(&self, mut stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
+    fn request_channel<T: Stream<Item = std::result::Result<RawPayload, PayloadError>> + Send + 'static>(
+      &self,
+      stream: T,
+    ) -> BoxFlux<RawPayload, PayloadError> {
       let (tx, rx) = FluxChannel::new_parts();
       runtime::spawn("request_channel", async move {
+        pin_mut!(stream);
         while let Some(next) = stream.next().await {
           tx.send_result(next).unwrap();
         }
@@ -579,7 +589,7 @@ mod test {
     }
   }
 
-  fn make_echo() -> (Arc<WasmSocket>, Arc<WasmSocket>) {
+  fn make_echo() -> (Arc<WasmSocket<EchoRSocket>>, Arc<WasmSocket<EchoRSocket>>) {
     let mut guest = WasmSocket::new(EchoRSocket {}, SocketSide::Guest);
     let mut guest_frame_rx = guest.take_rx().unwrap();
     let mut host = WasmSocket::new(EchoRSocket {}, SocketSide::Host);

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use bytes::{BufMut, BytesMut};
 use wasi_common::WasiCtx;
 use wasmrs::{Frame, OperationList, WasmSocket};
-use wasmrs_host::{CallbackProvider, EngineProvider, GuestExports, ProviderCallContext, SharedContext};
+use wasmrs_host::{CallbackProvider, EngineProvider, GuestExports, HostServer, ProviderCallContext, SharedContext};
 use wasmtime::{Engine, Instance, Linker, Memory, Module, Store, TypedFunc};
 
 use super::Result;
@@ -17,7 +17,7 @@ use crate::wasmrs_wasmtime::{self};
 pub struct WasmtimeEngineProvider {
   module: Module,
   engine: Engine,
-  linker: Linker<ProviderStore>,
+  linker: Linker<ProviderStore<HostServer>>,
   wasi_ctx: Option<WasiCtx>,
   pub(crate) epoch_deadlines: Option<EpochDeadlines>,
 }
@@ -50,7 +50,7 @@ impl Clone for WasmtimeEngineProvider {
 impl WasmtimeEngineProvider {
   /// Creates a new instance of a [WasmtimeEngineProvider] from a separately created [wasmtime::Engine].
   pub(crate) fn new_with_engine(module: Module, engine: Engine, wasi_ctx: Option<WasiCtx>) -> Result<Self> {
-    let mut linker: Linker<ProviderStore> = Linker::new(&engine);
+    let mut linker: Linker<ProviderStore<HostServer>> = Linker::new(&engine);
 
     if wasi_ctx.is_some() {
       wasmtime_wasi::add_to_linker(&mut linker, |s| s.wasi_ctx.as_mut().unwrap()).unwrap();
@@ -67,7 +67,10 @@ impl WasmtimeEngineProvider {
 }
 
 impl EngineProvider for WasmtimeEngineProvider {
-  fn new_context(&self, socket: Arc<WasmSocket>) -> std::result::Result<SharedContext, wasmrs_host::errors::Error> {
+  fn new_context(
+    &self,
+    socket: Arc<WasmSocket<HostServer>>,
+  ) -> std::result::Result<SharedContext, wasmrs_host::errors::Error> {
     let store = new_store(self.wasi_ctx.clone(), socket, &self.engine)
       .map_err(|e| wasmrs_host::errors::Error::NewContext(e.to_string()))?;
 
@@ -83,15 +86,15 @@ impl EngineProvider for WasmtimeEngineProvider {
 struct WasmtimeCallContext {
   guest_send: TypedFunc<i32, ()>,
   memory: Memory,
-  store: Store<ProviderStore>,
+  store: Store<ProviderStore<HostServer>>,
   instance: Instance,
 }
 
 impl WasmtimeCallContext {
   pub(crate) fn new(
-    mut linker: Linker<ProviderStore>,
+    mut linker: Linker<ProviderStore<HostServer>>,
     module: &Module,
-    mut store: Store<ProviderStore>,
+    mut store: Store<ProviderStore<HostServer>>,
   ) -> Result<Self> {
     wasmrs_wasmtime::add_to_linker(&mut linker)?;
     let instance = linker.instantiate(&mut store, module).map_err(Error::Linker)?;

@@ -4,6 +4,8 @@ use bytes::Bytes;
 use parking_lot::Mutex;
 use wasmrs::{Frame, OperationList, WasmSocket};
 
+use crate::host::HostServer;
+
 type Result<T> = std::result::Result<T, crate::errors::Error>;
 
 #[derive(Clone)]
@@ -51,7 +53,7 @@ pub trait EngineProvider {
   }
 
   /// Called to create a new [SharedContext].
-  fn new_context(&self, state: Arc<WasmSocket>) -> Result<SharedContext>;
+  fn new_context(&self, state: Arc<WasmSocket<HostServer>>) -> Result<SharedContext>;
 }
 
 /// The trait implemented by a context for a call or set of calls.

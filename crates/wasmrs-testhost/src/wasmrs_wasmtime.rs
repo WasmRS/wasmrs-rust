@@ -1,4 +1,5 @@
 use bytes::Bytes;
+use wasmrs::RSocket;
 use wasmrs_host::{CallbackProvider, HostExports, IntoEnumIterator};
 use wasmtime::{AsContext, Caller, FuncType, Linker, Val, ValType};
 
@@ -6,7 +7,7 @@ use crate::errors::Error;
 use crate::memory::{get_caller_memory, get_vec_from_memory, read_frame};
 use crate::store::ProviderStore;
 
-pub(crate) fn add_to_linker(linker: &mut Linker<ProviderStore>) -> super::Result<()> {
+pub(crate) fn add_to_linker<T: RSocket>(linker: &mut Linker<ProviderStore<T>>) -> super::Result<()> {
   let module_name = wasmrs_host::HOST_NAMESPACE;
   for export in HostExports::iter() {
     match export {
@@ -39,9 +40,9 @@ pub(crate) fn add_to_linker(linker: &mut Linker<ProviderStore>) -> super::Result
   Ok(())
 }
 
-fn linker_send() -> (
+fn linker_send<T: RSocket>() -> (
   FuncType,
-  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
+  impl Fn(Caller<'_, ProviderStore<T>>, &[Val], &mut [Val]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
 ) {
   (
     FuncType::new(vec![ValType::I32], vec![]),
@@ -68,9 +69,9 @@ fn linker_send() -> (
   )
 }
 
-fn linker_init() -> (
+fn linker_init<T: RSocket>() -> (
   FuncType,
-  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
+  impl Fn(Caller<'_, ProviderStore<T>>, &[Val], &mut [Val]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
 ) {
   (
     FuncType::new(vec![ValType::I32, ValType::I32], vec![]),
@@ -93,9 +94,9 @@ fn linker_init() -> (
   )
 }
 
-fn linker_console_log() -> (
+fn linker_console_log<T: RSocket>() -> (
   FuncType,
-  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
+  impl Fn(Caller<'_, ProviderStore<T>>, &[Val], &mut [Val]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
 ) {
   (
     FuncType::new(vec![ValType::I32, ValType::I32], vec![]),
@@ -113,9 +114,9 @@ fn linker_console_log() -> (
   )
 }
 
-fn linker_op_list() -> (
+fn linker_op_list<T: RSocket>() -> (
   FuncType,
-  impl Fn(Caller<'_, ProviderStore>, &[Val], &mut [Val]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
+  impl Fn(Caller<'_, ProviderStore<T>>, &[Val], &mut [Val]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
 ) {
   (
     FuncType::new(vec![ValType::I32, ValType::I32], vec![]),

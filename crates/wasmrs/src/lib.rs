@@ -83,6 +83,7 @@ mod operations;
 mod socket;
 /// Utility functions related to frames.
 pub mod util;
+use futures::Stream;
 pub use handlers::*;
 
 #[macro_use]
@@ -97,7 +98,7 @@ pub use wasmrs_frames::{ErrorCode, Frame, Metadata, RawPayload};
 mod record;
 #[cfg(feature = "record-frames")]
 pub use record::{get_records, FrameRecord, FRAME_RECORDS};
-use wasmrs_runtime::ConditionallySendSync;
+use wasmrs_runtime::{ConditionallySend, ConditionallySendSync};
 pub use wasmrs_rx::Flux;
 
 pub use wasmrs_rx::{BoxFlux, BoxMono};
@@ -130,5 +131,10 @@ pub trait RSocket: ConditionallySendSync {
   /// Request-Stream interaction model of RSocket.
   fn request_stream(&self, payload: RawPayload) -> BoxFlux<RawPayload, PayloadError>;
   /// Request-Channel interaction model of RSocket.
-  fn request_channel(&self, stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError>;
+  fn request_channel<
+    T: Stream<Item = std::result::Result<RawPayload, PayloadError>> + ConditionallySend + Unpin + 'static,
+  >(
+    &self,
+    stream: T,
+  ) -> BoxFlux<RawPayload, PayloadError>;
 }

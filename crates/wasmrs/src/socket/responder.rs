@@ -1,24 +1,32 @@
 use std::sync::Arc;
 
-use futures::{FutureExt, StreamExt};
+use futures::{FutureExt, Stream, StreamExt};
 use parking_lot::RwLock;
+use wasmrs_runtime::ConditionallySend;
 
 use crate::{BoxFlux, BoxMono, PayloadError, RSocket, RawPayload};
 
-#[derive(Clone)]
-pub(crate) struct Responder {
-  inner: Arc<RwLock<Box<dyn RSocket>>>,
+pub(crate) struct Responder<T> {
+  inner: Arc<RwLock<T>>,
 }
 
-impl Responder {
-  pub(crate) fn new(rsocket: Box<dyn RSocket>) -> Responder {
+impl<T: RSocket> Clone for Responder<T> {
+  fn clone(&self) -> Self {
+    Self {
+      inner: self.inner.clone(),
+    }
+  }
+}
+
+impl<T: RSocket> Responder<T> {
+  pub(crate) fn new(rsocket: T) -> Responder<T> {
     Responder {
       inner: Arc::new(RwLock::new(rsocket)),
     }
   }
 }
 
-impl RSocket for Responder {
+impl<T: RSocket> RSocket for Responder<T> {
   fn fire_and_forget(&self, req: RawPayload) -> BoxMono<(), PayloadError> {
     let inner = self.inner.read();
     (*inner).fire_and_forget(req)
@@ -35,12 +43,16 @@ impl RSocket for Responder {
     (*r).request_stream(req)
   }
 
-  fn request_channel(&self, stream: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
+  fn request_channel<S: Stream<Item = Result<RawPayload, PayloadError>> + ConditionallySend + Unpin + 'static>(
+    &self,
+    stream: S,
+  ) -> BoxFlux<RawPayload, PayloadError> {
     let inner = self.inner.clone();
     let r = inner.read();
     (*r).request_channel(stream)
   }
 }
+#[derive(Clone)]
 pub(crate) struct EmptyRSocket;
 
 impl RSocket for EmptyRSocket {
@@ -56,7 +68,10 @@ impl RSocket for EmptyRSocket {
     futures::stream::iter([Err(PayloadError::application_error("Unimplemented", None))]).boxed()
   }
 
-  fn request_channel(&self, _reqs: BoxFlux<RawPayload, PayloadError>) -> BoxFlux<RawPayload, PayloadError> {
+  fn request_channel<T: Stream<Item = Result<RawPayload, PayloadError>>>(
+    &self,
+    _reqs: T,
+  ) -> BoxFlux<RawPayload, PayloadError> {
     futures::stream::iter([Err(PayloadError::application_error("Unimplemented", None))]).boxed()
   }
 }

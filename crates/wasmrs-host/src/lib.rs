@@ -93,6 +93,6 @@ pub mod protocol;
 mod host;
 mod wasi;
 
-pub use host::{CallContext, Host};
+pub use host::{CallContext, Host, HostServer};
 pub use protocol::*;
 pub use wasi::WasiParams;
