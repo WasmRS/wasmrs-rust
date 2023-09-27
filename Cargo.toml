@@ -1,6 +1,5 @@
 [workspace]
 members = [
-  "crates/wasmrs-testhost",
   "crates/wasmrs-frames",
   "crates/wasmrs-codec",
   "crates/wasmrs",
@@ -10,16 +9,15 @@ members = [
   "crates/wasmrs-host",
   "crates/wasmrs-wasmtime",
   "bins/ops",
-  "bins/wasmrs-replay",
   "bins/request",
 ]
 exclude = ["wasm/reqres-component", "wasm/baseline", "wasm/grabbag"]
 
 [workspace.dependencies]
 # Wasmtime deps
-wasmtime = { version = "11.0" }
-wasmtime-wasi = { version = "11.0", features = ["sync"] }
-wasi-common = { version = "11.0" }
+wasmtime = { version = "13.0", features = ["async"] }
+wasmtime-wasi = { version = "13.0", features = ["sync"] }
+wasi-common = { version = "13.0" }
 #
 env_logger = { version = "0.10.0", default-features = false }
 futures = { version = "0.3", default-features = false }
