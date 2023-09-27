@@ -130,7 +130,7 @@ fn linker_op_list() -> (
       let memory = get_caller_memory(&mut caller);
       let vec = get_vec_from_memory(caller.as_context(), memory, ptr.unwrap(), len.unwrap());
 
-      caller.data().do_op_list(Bytes::from(vec))?;
+      caller.data_mut().do_op_list(Bytes::from(vec))?;
       Ok(())
     },
   )

@@ -14,18 +14,21 @@ profiler = []
 [dependencies]
 wasmrs-host = { path = "../wasmrs-host", version = "0.15.0" }
 wasmrs = { path = "../wasmrs", version = "0.15.0" }
+
+wasmtime = { workspace = true, features = ["async"] }
+wasmtime-wasi = { workspace = true, features = ["sync"] }
+wasi-common = { workspace = true }
+
 tracing = { workspace = true }
 thiserror = { workspace = true }
 parking_lot = { workspace = true }
 tokio = { workspace = true, features = ["rt", "sync"] }
 bytes = { workspace = true }
 futures = { workspace = true }
-wasmtime = { workspace = true }
-wasmtime-wasi = { workspace = true, features = ["sync"] }
-wasi-common = { workspace = true }
 cfg-if = { workspace = true }
 anyhow = { workspace = true }
 once_cell = { workspace = true }
+async-trait = { workspace = true }
 
 [dev-dependencies]
 env_logger = { workspace = true }

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use bytes::Bytes;
-use parking_lot::Mutex;
 use wasmrs::{BufferState, Frame, OperationList, PayloadError, RSocket, WasmSocket};
 use wasmrs_host::CallbackProvider;
 use wasmrs_host::{errors::Error, HostServer};
@@ -14,7 +13,7 @@ pub(crate) struct ProviderStore<T> {
   pub(crate) socket: Arc<WasmSocket<T>>,
   pub(crate) host_buffer: BufferState,
   pub(crate) guest_buffer: BufferState,
-  pub(crate) op_list: Arc<Mutex<OperationList>>,
+  pub(crate) op_list: OperationList,
 }
 
 impl<T: RSocket> CallbackProvider for ProviderStore<T> {
@@ -43,7 +42,7 @@ impl<T: RSocket> CallbackProvider for ProviderStore<T> {
     println!("{}", msg);
   }
 
-  fn do_op_list(&self, bytes: Bytes) -> Result<(), Error> {
+  fn do_op_list(&mut self, bytes: Bytes) -> Result<(), Error> {
     let op_list = match OperationList::decode(bytes) {
       Ok(v) => v,
       Err(e) => {
@@ -51,23 +50,8 @@ impl<T: RSocket> CallbackProvider for ProviderStore<T> {
         return Err(Error::OpList(e.to_string()));
       }
     };
-    *self.op_list.lock() = op_list;
+    self.op_list = op_list;
     Ok(())
-  }
-
-  fn get_import(&self, namespace: &str, operation: &str) -> Result<u32, Error> {
-    self
-      .op_list
-      .lock()
-      .get_import(namespace, operation)
-      .ok_or_else(|| Error::OpMissing(namespace.to_owned(), operation.to_owned()))
-  }
-  fn get_export(&self, namespace: &str, operation: &str) -> Result<u32, Error> {
-    self
-      .op_list
-      .lock()
-      .get_export(namespace, operation)
-      .ok_or_else(|| Error::OpMissing(namespace.to_owned(), operation.to_owned()))
   }
 }
 
@@ -81,7 +65,7 @@ pub(crate) fn new_store(
     ProviderStore {
       host_buffer: Default::default(),
       guest_buffer: Default::default(),
-      op_list: Arc::new(Mutex::new(OperationList::default())),
+      op_list: OperationList::default(),
       socket,
       wasi_ctx,
     },

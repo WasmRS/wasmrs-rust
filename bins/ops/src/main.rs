@@ -20,8 +20,8 @@ async fn main() -> anyhow::Result<()> {
     .with_module_bytes(&args.module, &module_bytes)
     .wasi_params(WasiParams::default())
     .build()?;
-  let host = wasmrs_host::Host::new(engine)?;
-  let context = host.new_context(64 * 1024, 64 * 1024)?;
+  let host = wasmrs_host::Host::new(engine).await?;
+  let context = host.new_context(64 * 1024, 64 * 1024).await?;
   context.dump_operations();
 
   Ok(())

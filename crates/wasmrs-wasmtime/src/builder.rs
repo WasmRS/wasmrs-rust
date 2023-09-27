@@ -132,6 +132,8 @@ impl<'a> WasmtimeBuilder<'a> {
       }
       None => {
         let mut config = wasmtime::Config::default();
+        config.async_support(true);
+
         if self.epoch_deadlines.is_some() {
           config.epoch_interruption(true);
         }

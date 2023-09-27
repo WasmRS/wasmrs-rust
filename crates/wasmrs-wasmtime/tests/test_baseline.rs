@@ -26,11 +26,11 @@ async fn test_req_channel_callback() -> anyhow::Result<()> {
     .with_module_bytes("baseline", MODULE_BYTES)
     .wasi_params(WasiParams::default())
     .build()?;
-  let host = wasmrs_host::Host::new(engine)?;
+  let host = wasmrs_host::Host::new(engine).await?;
 
   host.register_request_channel("test", "callback", Box::new(callback));
-  let context = host.new_context(64 * 1024, 64 * 1024)?;
-  let op = context.get_export("test", "callback")?;
+  let context = host.new_context(64 * 1024, 64 * 1024).await?;
+  let op = context.get_export("test", "callback").unwrap();
 
   let mbytes = Metadata::new(op).encode();
 
@@ -71,11 +71,11 @@ async fn test_req_res() -> anyhow::Result<()> {
     .with_module_bytes("baseline", MODULE_BYTES)
     .wasi_params(WasiParams::default())
     .build()?;
-  let host = wasmrs_host::Host::new(engine)?;
+  let host = wasmrs_host::Host::new(engine).await?;
 
   let buffer_size = 10 * 1024 * 1024;
-  let context = host.new_context(buffer_size, buffer_size)?;
-  let op = context.get_export("greeting", "sayHello")?;
+  let context = host.new_context(buffer_size, buffer_size).await?;
+  let op = context.get_export("greeting", "sayHello").unwrap();
 
   let mbytes = Metadata::new(op).encode();
 

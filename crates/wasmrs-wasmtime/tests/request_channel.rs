@@ -15,9 +15,9 @@ async fn test_req_channel_single() -> anyhow::Result<()> {
     .with_module_bytes("reqres_component", MODULE_BYTES)
     .wasi_params(WasiParams::default())
     .build()?;
-  let host = wasmrs_host::Host::new(engine)?;
-  let context = host.new_context(64 * 1024, 64 * 1024)?;
-  let op = context.get_export("suite.test", "reverse")?;
+  let host = wasmrs_host::Host::new(engine).await?;
+  let context = host.new_context(64 * 1024, 64 * 1024).await?;
+  let op = context.get_export("suite.test", "reverse").unwrap();
 
   let mbytes = Metadata::new(op).encode();
 
@@ -64,9 +64,9 @@ async fn test_req_channel_multi() -> anyhow::Result<()> {
     .with_module_bytes("reqres_component", MODULE_BYTES)
     .wasi_params(WasiParams::default())
     .build()?;
-  let host = wasmrs_host::Host::new(engine)?;
-  let context = host.new_context(64 * 1024, 64 * 1024)?;
-  let op = context.get_export("suite.test", "wrap")?;
+  let host = wasmrs_host::Host::new(engine).await?;
+  let context = host.new_context(64 * 1024, 64 * 1024).await?;
+  let op = context.get_export("suite.test", "wrap").unwrap();
 
   let mbytes = Metadata::new(op).encode();
 

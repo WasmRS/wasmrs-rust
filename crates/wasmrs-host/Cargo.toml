@@ -21,6 +21,7 @@ strum = { version = "0.24", features = ["derive"] }
 tracing = { workspace = true }
 bytes = { workspace = true }
 dashmap = "5.4"
+async-trait = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros"] }

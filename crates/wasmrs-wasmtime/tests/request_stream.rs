@@ -14,9 +14,9 @@ async fn test_req_stream() -> anyhow::Result<()> {
     .with_module_bytes("reqres_component", MODULE_BYTES)
     .wasi_params(WasiParams::default())
     .build()?;
-  let host = wasmrs_host::Host::new(engine)?;
-  let context = host.new_context(64 * 1024, 64 * 1024)?;
-  let op = context.get_export("suite.test", "chars")?;
+  let host = wasmrs_host::Host::new(engine).await?;
+  let context = host.new_context(64 * 1024, 64 * 1024).await?;
+  let op = context.get_export("suite.test", "chars").unwrap();
 
   let mbytes = Metadata::new(op).encode();
 

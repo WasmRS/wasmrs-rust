@@ -42,10 +42,10 @@ async fn main() -> anyhow::Result<()> {
     .with_module_bytes(&args.module, &module_bytes)
     .wasi_params(WasiParams::default())
     .build()?;
-  let host = wasmrs_host::Host::new(engine)?;
-  let context = host.new_context(64 * 1024, 64 * 1024)?;
+  let host = wasmrs_host::Host::new(engine).await?;
+  let context = host.new_context(64 * 1024, 64 * 1024).await?;
 
-  let op = context.get_export(&args.namespace, &args.operation)?;
+  let op = context.get_export(&args.namespace, &args.operation).unwrap();
 
   let mbytes = Metadata::new(op).encode();
   let val: serde_json::Value = serde_json::from_str(&args.data)?;

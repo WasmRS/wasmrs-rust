@@ -99,24 +99,26 @@ mod record;
 #[cfg(feature = "record-frames")]
 pub use record::{get_records, FrameRecord, FRAME_RECORDS};
 use wasmrs_runtime::{ConditionallySend, ConditionallySendSync};
-pub use wasmrs_rx::Flux;
-
-pub use wasmrs_rx::{BoxFlux, BoxMono};
+pub use wasmrs_rx::{BoxFlux, BoxMono, Flux};
 
 type Result<T> = std::result::Result<T, Error>;
 
 pub use wasmrs_frames::PayloadError;
 
 /// A trait that defines the interface for a wasmRS module host.
+#[async_trait::async_trait]
 pub trait ModuleHost: Sync + Send {
   /// Write a frame to a wasmRS module's memory buffer.
-  fn write_frame(&mut self, frame: Frame) -> Result<()>;
+  async fn write_frame(&self, frame: Frame) -> Result<()>;
+
+  /// Method called when there is a critical failure writing to a stream.
+  async fn on_error(&self, stream_id: u32) -> Result<()>;
 
   /// Get an imported operation's index.
-  fn get_export(&self, namespace: &str, operation: &str) -> Result<u32>;
+  fn get_export(&self, namespace: &str, operation: &str) -> Option<u32>;
 
   /// Get an exported operation's index.
-  fn get_import(&self, namespace: &str, operation: &str) -> Result<u32>;
+  fn get_import(&self, namespace: &str, operation: &str) -> Option<u32>;
 
   /// Get a cloned operation list.
   fn get_operation_list(&self) -> OperationList;

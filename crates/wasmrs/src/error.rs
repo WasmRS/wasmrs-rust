@@ -20,6 +20,8 @@ pub enum Error {
   Frame(wasmrs_frames::Error),
   /// Error associate with recording frames during debug
   Record(String),
+  /// An error calling guest methods.
+  GuestCall(String),
 }
 
 impl std::error::Error for Error {}
@@ -31,6 +33,7 @@ impl std::fmt::Display for Error {
       Error::ReceiverAlreadyGone => f.write_str("Received already taken"),
       Error::WrongType => f.write_str("Tried to decode frame with wrong frame decoder"),
       Error::StringConversion => f.write_str("Could not read string bytes"),
+      Error::GuestCall(e) => f.write_str(e.as_str()),
       Error::MetadataNotFound => f.write_str("No metadata found"),
       Error::Frame(e) => f.write_str(e.to_string().as_str()),
       Error::Record(e) => f.write_str(e.as_str()),
