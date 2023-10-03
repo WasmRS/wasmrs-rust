@@ -122,7 +122,11 @@ fn parse_payload(req: RawPayload) -> Payload {
 impl RSocket for HostServer {
   fn fire_and_forget(&self, req: RawPayload) -> BoxMono<(), PayloadError> {
     let payload = parse_payload(req);
-    let handler = self.handlers.lock().get_fnf_handler(payload.metadata.index).unwrap();
+    let handler = self
+      .handlers
+      .lock()
+      .get_fnf_handler(payload.metadata.index.unwrap())
+      .unwrap();
     handler(futures_util::future::ready(Ok(payload)).boxed()).unwrap();
     futures_util::future::ready(Ok(())).boxed()
   }
@@ -132,7 +136,7 @@ impl RSocket for HostServer {
     let handler = self
       .handlers
       .lock()
-      .get_request_response_handler(payload.metadata.index)
+      .get_request_response_handler(payload.metadata.index.unwrap())
       .unwrap();
 
     handler(futures_util::future::ready(Ok(payload)).boxed()).unwrap()
@@ -143,7 +147,7 @@ impl RSocket for HostServer {
     let handler = self
       .handlers
       .lock()
-      .get_request_stream_handler(payload.metadata.index)
+      .get_request_stream_handler(payload.metadata.index.unwrap())
       .unwrap();
     handler(futures_util::future::ready(Ok(payload)).boxed()).unwrap()
   }
@@ -173,7 +177,7 @@ impl RSocket for HostServer {
       let payload = parse_payload(first);
       let handler = handlers
         .lock()
-        .get_request_channel_handler(payload.metadata.index)
+        .get_request_channel_handler(payload.metadata.index.unwrap())
         .unwrap();
       let _ = inner_tx.send(payload);
       let mut out = handler(inner_rx.boxed()).unwrap();

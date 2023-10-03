@@ -18,8 +18,8 @@ pub(crate) struct ProviderStore<T> {
 
 impl<T: RSocket> CallbackProvider for ProviderStore<T> {
   fn do_host_init(&self, guest_buff_ptr: u32, host_buff_ptr: u32) -> Result<(), Error> {
-    self.host_buffer.update_start(host_buff_ptr);
     self.guest_buffer.update_start(guest_buff_ptr);
+    self.host_buffer.update_start(host_buff_ptr);
     Ok(())
   }
 

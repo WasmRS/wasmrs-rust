@@ -52,7 +52,7 @@ pub struct RawPayload {
 #[must_use]
 pub struct Metadata {
   /// The operation index.
-  pub index: u32,
+  pub index: Option<u32>,
   /// The stream name.
   pub extra: Option<Bytes>,
 }
@@ -131,7 +131,7 @@ impl TryFrom<u8> for FrameType {
 impl From<FrameType> for u32 {
   fn from(value: FrameType) -> Self {
     match value {
-      FrameType::Reserved => unreachable!(),
+      FrameType::Reserved => unreachable!("reserved frame type"),
       FrameType::Setup => 1,
       FrameType::Lease => 2,
       FrameType::Keepalive => 3,
@@ -407,7 +407,7 @@ impl Frame {
       FrameType::Payload => Frame::PayloadFrame(f_payload::PayloadFrame::decode_frame(&header, buffer)?),
       FrameType::Err => Frame::ErrorFrame(f_error::ErrorFrame::decode_frame(&header, buffer)?),
       FrameType::Ext => todo!(),
-      _ => unreachable!(),
+      _ => unreachable!("invalid frame type"),
     };
     Ok(frame)
   }

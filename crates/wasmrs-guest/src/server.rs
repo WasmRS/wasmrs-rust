@@ -47,7 +47,7 @@ impl RSocket for WasmServer {
 fn request_fnf(payload: RawPayload) -> Result<(), Error> {
   let parsed: Payload = payload.try_into()?;
 
-  let handler = get_process_handler(&crate::guest::REQUEST_FNF_HANDLERS, parsed.metadata.index as _)?;
+  let handler = get_process_handler(&crate::guest::REQUEST_FNF_HANDLERS, parsed.metadata.index.unwrap() as _)?;
 
   handler(Box::pin(futures_util::future::ready(Ok(parsed)))).map_err(|e| Error::HandlerFail(e.to_string()))?;
   Ok(())
@@ -56,14 +56,20 @@ fn request_fnf(payload: RawPayload) -> Result<(), Error> {
 fn request_response(payload: RawPayload) -> Result<BoxMono<RawPayload, PayloadError>, Error> {
   let parsed: Payload = payload.try_into()?;
 
-  let handler = get_process_handler(&crate::guest::REQUEST_RESPONSE_HANDLERS, parsed.metadata.index as _)?;
+  let handler = get_process_handler(
+    &crate::guest::REQUEST_RESPONSE_HANDLERS,
+    parsed.metadata.index.unwrap() as _,
+  )?;
 
   handler(Box::pin(futures_util::future::ready(Ok(parsed)))).map_err(|e| Error::HandlerFail(e.to_string()))
 }
 
 fn request_stream(payload: RawPayload) -> Result<BoxFlux<RawPayload, PayloadError>, Error> {
   let parsed: Payload = payload.try_into()?;
-  let handler = get_process_handler(&crate::guest::REQUEST_STREAM_HANDLERS, parsed.metadata.index as _)?;
+  let handler = get_process_handler(
+    &crate::guest::REQUEST_STREAM_HANDLERS,
+    parsed.metadata.index.unwrap() as _,
+  )?;
   handler(futures_util::future::ready(Ok(parsed)).boxed()).map_err(|e| Error::HandlerFail(e.to_string()))
 }
 
@@ -102,7 +108,10 @@ async fn request_channel_inner<
     };
 
     let parsed: Payload = payload.try_into()?;
-    let handler = get_process_handler(&crate::guest::REQUEST_CHANNEL_HANDLERS, parsed.metadata.index as _)?;
+    let handler = get_process_handler(
+      &crate::guest::REQUEST_CHANNEL_HANDLERS,
+      parsed.metadata.index.unwrap() as _,
+    )?;
 
     handler_input.send(parsed).unwrap();
 
