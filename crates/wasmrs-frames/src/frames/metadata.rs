@@ -41,7 +41,6 @@ impl Metadata {
 
   /// Decode bytes into [Metadata] object
   pub fn decode(bytes: &mut Bytes) -> Result<Self, crate::Error> {
-    println!("metadata bytes: {:?}", bytes.to_vec());
     if bytes.is_empty() {
       return Ok(Self {
         index: None,
