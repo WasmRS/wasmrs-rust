@@ -18,7 +18,7 @@ wasmrs-runtime = { path = "../wasmrs-runtime", version = "0.17.0" }
 wasmrs-rx = { path = "../wasmrs-rx", version = "0.17.0" }
 wasmrs-codec = { path = "../wasmrs-codec", version = "0.17.0" }
 wasmrs = { path = "../wasmrs", version = "0.17.0" }
-wasmrs-frames = { path = "../wasmrs-frames", version = "0.17.0" }
+wasmrs-frames = { path = "../wasmrs-frames", version = "0.17.1" }
 bytes = { workspace = true, default-features = false, features = ["serde"] }
 futures-executor = { workspace = true, default-features = false, features = [
   "std",
