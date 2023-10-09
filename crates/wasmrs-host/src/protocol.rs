@@ -68,6 +68,9 @@ pub mod guest_exports {
   /// The wasmRS protocol function `__wasmrs_op_list_request`
   pub const OP_LIST_REQUEST: &str = "__wasmrs_op_list_request";
 
+  /// The wasmRS export that denotes wasmRS version 1 vs version 0. Version 1 aligns metadata with RSocket.
+  pub const VERSION_1: &str = "__wasmrs_v1";
+
   /// The wasmRS protocol function `_start`
   pub const TINYGO_START: &str = "_start";
 
@@ -83,6 +86,7 @@ pub enum GuestExports {
   Start,
   OpListRequest,
   Send,
+  Version1,
 }
 
 impl FromStr for GuestExports {
@@ -94,6 +98,7 @@ impl FromStr for GuestExports {
       guest_exports::TINYGO_START => Self::Start,
       guest_exports::OP_LIST_REQUEST => Self::OpListRequest,
       guest_exports::SEND => Self::Send,
+      guest_exports::VERSION_1 => Self::Version1,
       _ => return Err(()),
     };
     Ok(result)
@@ -107,6 +112,7 @@ impl AsRef<str> for GuestExports {
       GuestExports::Start => guest_exports::TINYGO_START,
       GuestExports::Send => guest_exports::SEND,
       GuestExports::OpListRequest => guest_exports::OP_LIST_REQUEST,
+      GuestExports::Version1 => guest_exports::VERSION_1,
     }
   }
 }

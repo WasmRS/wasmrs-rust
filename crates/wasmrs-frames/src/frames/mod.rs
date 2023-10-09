@@ -46,7 +46,7 @@ pub struct RawPayload {
 }
 
 /// Metadata associated with the frame.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 #[cfg_attr(not(target = "wasm32-unknown-unknown"), derive(Debug))]
 #[cfg_attr(feature = "derive_serde", derive(serde::Serialize, serde::Deserialize))]
 #[must_use]
@@ -321,6 +321,12 @@ impl From<Frame> for Result<Option<RawPayload>, PayloadError> {
   }
 }
 
+fn to_v0_metadata(m: &mut Bytes) {
+  if !m.is_empty() && m[0] == 0xca {
+    _ = m.split_to(4);
+  }
+}
+
 impl Frame {
   pub(crate) const LEN_HEADER: usize = 6;
   /// The IGNORE bit
@@ -424,6 +430,22 @@ impl Frame {
       Frame::RequestFnF(f) => f.encode(),
       Frame::RequestStream(f) => f.encode(),
       Frame::RequestChannel(f) => f.encode(),
+    }
+  }
+
+  /// Convert the metadata to v0 metadata.
+  pub fn make_v0_metadata(&mut self) {
+    match self {
+      Frame::PayloadFrame(ref mut f) => to_v0_metadata(&mut f.metadata),
+
+      Frame::ErrorFrame(ref mut f) => {
+        f.metadata.as_mut().map(to_v0_metadata);
+      }
+      Frame::RequestChannel(f) => to_v0_metadata(&mut f.0.metadata),
+      Frame::RequestFnF(f) => to_v0_metadata(&mut f.0.metadata),
+      Frame::RequestResponse(f) => to_v0_metadata(&mut f.0.metadata),
+      Frame::RequestStream(f) => to_v0_metadata(&mut f.0.metadata),
+      _ => {}
     }
   }
 

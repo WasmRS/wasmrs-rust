@@ -72,11 +72,18 @@ impl EngineProvider for WasmtimeEngineProvider {
   }
 }
 
+#[derive(PartialEq, Debug)]
+enum Version {
+  V0,
+  V1,
+}
+
 struct Imports {
   start: Option<TypedFunc<(), ()>>,
   guest_init: TypedFunc<(u32, u32, u32), ()>,
   op_list: Option<TypedFunc<(), ()>>,
   guest_send: TypedFunc<i32, ()>,
+  version: Version,
 }
 
 struct WasmtimeCallContext {
@@ -103,7 +110,12 @@ impl WasmtimeCallContext {
       .map_err(|_| crate::errors::Error::GuestSend)?;
     let memory = instance.get_memory(&mut store, "memory").unwrap();
 
+    let version = instance
+      .get_typed_func::<(), ()>(&mut store, GuestExports::Version1.as_ref())
+      .map_or(Version::V0, |_| Version::V1);
+
     let imports = Imports {
+      version,
       start: instance.get_typed_func(&mut store, GuestExports::Start.as_ref()).ok(),
       guest_init: instance
         .get_typed_func(&mut store, GuestExports::Init.as_ref())
@@ -126,8 +138,13 @@ impl WasmtimeCallContext {
 #[async_trait::async_trait]
 impl wasmrs::ModuleHost for WasmtimeCallContext {
   /// Request-Response interaction model of RSocket.
-  async fn write_frame(&self, req: Frame) -> std::result::Result<(), wasmrs::Error> {
-    let bytes = req.encode();
+  async fn write_frame(&self, mut req: Frame) -> std::result::Result<(), wasmrs::Error> {
+    let bytes = if self.imports.version == Version::V0 {
+      req.make_v0_metadata();
+      req.encode()
+    } else {
+      req.encode()
+    };
     trace!(?bytes, "writing frame");
 
     let buffer_len_bytes = wasmrs::util::to_u24_bytes(bytes.len() as u32);

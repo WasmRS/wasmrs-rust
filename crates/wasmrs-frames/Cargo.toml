@@ -17,4 +17,4 @@ serde = { workspace = true, features = [
 ], default-features = false, optional = true }
 
 [dev-dependencies]
-anyhow = { workspace = true }
+anyhow = { workspace = true, features = ["std"] }

@@ -1,5 +1,7 @@
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 
+use crate::util::{from_u24_bytes, to_u24_bytes};
+
 use super::Metadata;
 
 impl Metadata {
@@ -22,14 +24,19 @@ impl Metadata {
   #[must_use]
   /// Encode the [Metadata] object into bytes for sending in a [crate::Frame].
   pub fn encode(self) -> Bytes {
-    let len = 8;
-    let mut bytes = BytesMut::with_capacity(len);
-    bytes.fill(0);
-    if let Some(index) = self.index {
-      bytes.put((index).to_be_bytes().as_slice());
-      bytes.put([0u8, 0, 0, 0].as_slice());
+    let custom_mime_len = 4;
+    let our_len: u32 = self
+      .index
+      .map_or(0, |_| 8 + self.extra.as_ref().map(|e| e.len()).unwrap_or(0) as u32);
 
-      debug_assert_eq!(bytes.len(), len, "encoded metadata is not the correct length.");
+    let mut bytes = BytesMut::with_capacity(custom_mime_len + our_len as usize);
+    bytes.fill(0);
+    bytes.put_u8(0xca);
+    bytes.put(to_u24_bytes(our_len));
+
+    if let Some(index) = &self.index {
+      bytes.put((index).to_be_bytes().as_slice());
+      bytes.put([0u8, 0, 0, 0].as_slice()); // reserved
 
       if let Some(extra) = self.extra {
         bytes.put(extra);
@@ -48,14 +55,77 @@ impl Metadata {
       });
     }
 
-    let index = bytes.get_u32();
+    if bytes[0] == 0xca {
+      // new, RSocket-aligned metadata
 
-    let _reserved = bytes.get_u32();
-    let extra = if bytes.is_empty() { None } else { Some(bytes.clone()) };
-    let md = Metadata {
-      index: Some(index),
-      extra,
-    };
-    Ok(md)
+      let _mime_type = bytes.get_u8();
+
+      let mime_len = from_u24_bytes(&bytes.split_to(3)) as usize;
+
+      let index = bytes.get_u32();
+      let _reserved = bytes.get_u32();
+
+      let extra = if bytes.is_empty() {
+        None
+      } else {
+        Some(bytes.split_to(mime_len))
+      };
+
+      Ok(Self {
+        index: Some(index),
+        extra,
+      })
+    } else {
+      let index = bytes.get_u32();
+
+      let _reserved = bytes.get_u32();
+      let extra = if bytes.is_empty() { None } else { Some(bytes.clone()) };
+      let md = Metadata {
+        index: Some(index),
+        extra,
+      };
+      Ok(md)
+    }
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use super::*;
+  use anyhow::Result;
+
+  #[test]
+  fn test_rt() -> Result<()> {
+    let md = Metadata::new(32);
+    let bytes = md.clone().encode();
+    let mut bytes = bytes.clone();
+    let md2 = Metadata::decode(&mut bytes)?;
+
+    assert_eq!(md, md2);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_old() -> Result<()> {
+    let md = Metadata::new(48);
+
+    let mut bytes: Bytes = vec![0, 0, 0, 0x30, 0, 0, 0, 0].into();
+    let md2 = Metadata::decode(&mut bytes)?;
+
+    assert_eq!(md, md2);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_new() -> Result<()> {
+    let md = Metadata::new(48);
+    let mut bytes: Bytes = vec![0xca, 0, 0, 8, 0, 0, 0, 0x30, 0, 0, 0, 0].into();
+    let md2 = Metadata::decode(&mut bytes)?;
+
+    assert_eq!(md, md2);
+
+    Ok(())
   }
 }
