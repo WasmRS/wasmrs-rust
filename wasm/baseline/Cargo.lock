@@ -536,7 +536,7 @@ checksum = "84a22b9f218b40614adcb3f4ff08b703773ad44fa9423e4e0d346d5db86e4ebc"
 
 [[package]]
 name = "wasmrs"
-version = "0.15.0"
+version = "0.17.0"
 dependencies = [
  "async-trait",
  "bytes 1.3.0",
@@ -557,7 +557,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-codec"
-version = "0.15.0"
+version = "0.17.0"
 dependencies = [
  "heapless",
  "rmp-serde",
@@ -567,14 +567,14 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-frames"
-version = "0.15.0"
+version = "0.17.0"
 dependencies = [
  "bytes 1.3.0",
 ]
 
 [[package]]
 name = "wasmrs-guest"
-version = "0.15.0"
+version = "0.17.0"
 dependencies = [
  "bytes 1.3.0",
  "cfg-if",
@@ -592,7 +592,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-runtime"
-version = "0.15.0"
+version = "0.17.0"
 dependencies = [
  "bytes 1.3.0",
  "crossbeam-channel",
@@ -609,7 +609,7 @@ dependencies = [
 
 [[package]]
 name = "wasmrs-rx"
-version = "0.15.0"
+version = "0.17.0"
 dependencies = [
  "async-trait",
  "bytes 1.3.0",

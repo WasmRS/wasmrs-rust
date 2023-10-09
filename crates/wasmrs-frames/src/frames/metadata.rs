@@ -60,7 +60,7 @@ impl Metadata {
 
       let _mime_type = bytes.get_u8();
 
-      let mime_len = from_u24_bytes(&bytes.split_to(3)) as usize;
+      let _mime_len = from_u24_bytes(&bytes.split_to(3)) as usize;
 
       let index = bytes.get_u32();
       let _reserved = bytes.get_u32();
@@ -68,7 +68,7 @@ impl Metadata {
       let extra = if bytes.is_empty() {
         None
       } else {
-        Some(bytes.split_to(mime_len))
+        Some(bytes.split_to(bytes.remaining()))
       };
 
       Ok(Self {
@@ -122,6 +122,18 @@ mod test {
   fn test_new() -> Result<()> {
     let md = Metadata::new(48);
     let mut bytes: Bytes = vec![0xca, 0, 0, 8, 0, 0, 0, 0x30, 0, 0, 0, 0].into();
+    let md2 = Metadata::decode(&mut bytes)?;
+
+    assert_eq!(md, md2);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_new_extra() -> Result<()> {
+    let md = Metadata::new_extra(48, b"hello".to_vec().into());
+    let mut bytes = md.clone().encode();
+
     let md2 = Metadata::decode(&mut bytes)?;
 
     assert_eq!(md, md2);
