@@ -76,6 +76,17 @@ where
   }
 }
 
+impl<T> futures::Stream for UnboundedReceiver<T>
+where
+  T: ConditionallySendSync,
+{
+  type Item = T;
+
+  fn poll_next(mut self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    self.0.poll_recv(cx)
+  }
+}
+
 #[must_use]
 /// A oneshot channel similar to [tokio::sync::oneshot::channel] but works the same way in single-threaded WebAssembly as multi-threaded native.
 pub fn oneshot<Item>() -> (OneShotSender<Item>, OneShotReceiver<Item>)
